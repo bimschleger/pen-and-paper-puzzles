@@ -69,7 +69,9 @@ def extract_readme_featured_games(readme_text: str):
     games = []
     for m in item_pattern.finditer(section_text):
         idx = int(m.group(1))
-        title = m.group(2).strip()
+        raw_title = m.group(2).strip()
+        # Support both plain titles and markdown link titles [Title](path)
+        title = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", raw_title)
         aliases = m.group(3).strip() if m.group(3) else ""
         desc = m.group(4).strip()
         games.append({
