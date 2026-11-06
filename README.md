@@ -20,26 +20,28 @@ Runs **100% On-Device and Offline** on an **ESP32** in native C++ with zero clou
 
 Every print job generates a randomized, unique daily edition featuring all 20 open-source (Apache 2.0 / MIT) puzzle types conforming to strict presentation standards:
 
-1. **Sudoku**: Fill every row, column, and 3x3 box with digits 1-9 without repeating.
-2. **Search** *(Word Search)*: Find all hidden words horizontally, vertically, or diagonally.
-3. **Nonogram** *(Picross)*: Shade cells to match row and column run counts with at least one blank between runs.
-4. **Stars** *(Queens / Star Battle)*: Place stars in every row, column, and outlined region without touching, even diagonally.
-5. **Jumble**: Unscramble each clue word, then use the circled letters to solve the final pun.
-6. **Binary** *(Takuzu / Binairo)*: Fill every cell with 0 or 1 so no more than two identical numbers are adjacent.
-7. **Mines** *(Minesweeper Deduction)*: Deduce all hidden mines using numbers showing how many adjacent cells contain mines.
-8. **Tents** *(Tents & Trees)*: Pitch tents beside trees; no tents may touch even diagonally, matching row/column quotas.
-9. **Bridges** *(Hashiwokakero)*: Connect islands with up to two orthogonal bridges matching numbers into one network.
-10. **Killer** *(Killer Sudoku)*: Fill the grid with digits so cages sum to their clue without repeating digits.
-11. **Cryptogram**: Deduce the hidden quotation where each letter is consistently substituted with another.
-12. **Tango**: Fill grid with 0s and 1s so equal symbols match and opposite symbols differ.
-13. **Ladder** *(Word Ladder / Doublets)*: Deduce words changing one letter at a time to transform start word into end word.
-14. **Wheel** *(Word Wheel / Target Anagram)*: Find words of 4+ letters using the wheel letters, always including the center letter.
-15. **Lights** *(Akari / Light Up)*: Place bulbs to light corridors without facing each other; numbers show how many bulbs share an edge.
-16. **Loop** *(Slitherlink / Fences)*: Draw a single continuous closed loop around numbers indicating surrounding line count.
-17. **Towers** *(Skyscrapers)*: Place building heights so edge clues match how many towers are visible in that line.
-18. **Inequality** *(Futoshiki)*: Fill grid with digits so each digit appears once per line and inequality signs hold.
-19. **Maze** *(Labyrinth)*: Draw a path from the entrance to the exit without crossing any walls.
-20. **Sudokito** *(Mini Sudoku)*: Fill every row, column, and 2x3 box with digits 1-6 without repeating.
+👉 **Looking for full gameplay rules, visual walkthroughs, and opening strategies? See the [Visual Puzzle Guide](docs/PUZZLE_GUIDE.md) with side-by-side starting and completed board images for all 20 games!**
+
+1. **[Sudoku](docs/PUZZLE_GUIDE.md#sudoku)**: Fill every row, column, and 3x3 box with digits 1-9 without repeating.
+2. **[Search](docs/PUZZLE_GUIDE.md#search)** *(Word Search)*: Find all hidden words horizontally, vertically, or diagonally.
+3. **[Nonogram](docs/PUZZLE_GUIDE.md#nonogram)** *(Picross)*: Shade cells to match row and column run counts with at least one blank between runs.
+4. **[Stars](docs/PUZZLE_GUIDE.md#stars)** *(Queens / Star Battle)*: Place stars in every row, column, and outlined region without touching, even diagonally.
+5. **[Jumble](docs/PUZZLE_GUIDE.md#jumble)**: Unscramble each clue word, then use the circled letters to solve the final pun.
+6. **[Binary](docs/PUZZLE_GUIDE.md#binary)** *(Takuzu / Binairo)*: Fill every cell with 0 or 1 so no more than two identical numbers are adjacent.
+7. **[Mines](docs/PUZZLE_GUIDE.md#mines)** *(Minesweeper Deduction)*: Deduce all hidden mines using numbers showing how many adjacent cells contain mines.
+8. **[Tents](docs/PUZZLE_GUIDE.md#tents)** *(Tents & Trees)*: Pitch tents beside trees; no tents may touch even diagonally, matching row/column quotas.
+9. **[Bridges](docs/PUZZLE_GUIDE.md#bridges)** *(Hashiwokakero)*: Connect islands with up to two orthogonal bridges matching numbers into one network.
+10. **[Killer](docs/PUZZLE_GUIDE.md#killer)** *(Killer Sudoku)*: Fill the grid with digits so cages sum to their clue without repeating digits.
+11. **[Cryptogram](docs/PUZZLE_GUIDE.md#cryptogram)**: Deduce the hidden quotation where each letter is consistently substituted with another.
+12. **[Tango](docs/PUZZLE_GUIDE.md#tango)**: Fill grid with 0s and 1s so equal symbols match and opposite symbols differ.
+13. **[Ladder](docs/PUZZLE_GUIDE.md#ladder)** *(Word Ladder / Doublets)*: Deduce words changing one letter at a time to transform start word into end word.
+14. **[Wheel](docs/PUZZLE_GUIDE.md#wheel)** *(Word Wheel / Target Anagram)*: Find words of 4+ letters using the wheel letters, always including the center letter.
+15. **[Lights](docs/PUZZLE_GUIDE.md#lights)** *(Akari / Light Up)*: Place bulbs to light corridors without facing each other; numbers show how many bulbs share an edge.
+16. **[Loop](docs/PUZZLE_GUIDE.md#loop)** *(Slitherlink / Fences)*: Draw a single continuous closed loop around numbers indicating surrounding line count.
+17. **[Towers](docs/PUZZLE_GUIDE.md#towers)** *(Skyscrapers)*: Place building heights so edge clues match how many towers are visible in that line.
+18. **[Inequality](docs/PUZZLE_GUIDE.md#inequality)** *(Futoshiki)*: Fill grid with digits so each digit appears once per line and inequality signs hold.
+19. **[Maze](docs/PUZZLE_GUIDE.md#maze)** *(Labyrinth)*: Draw a path from the entrance to the exit without crossing any walls.
+20. **[Sudokito](docs/PUZZLE_GUIDE.md#sudokito)** *(Mini Sudoku)*: Fill every row, column, and 2x3 box with digits 1-6 without repeating.
 
 > [!NOTE]
 > All puzzle presentation formatting (single-word uppercase titles, $\le 100$-character one-sentence descriptions, centered difficulty placement, and 48-column ASCII solution keys) strictly adheres to [`docs/PUZZLE_HEADER_SPEC.md`](docs/PUZZLE_HEADER_SPEC.md), [`docs/PUZZLE_DESCRIPTION_GUIDELINES.md`](docs/PUZZLE_DESCRIPTION_GUIDELINES.md), and [`docs/PUZZLE_SOLUTION_KEY_SPEC.md`](docs/PUZZLE_SOLUTION_KEY_SPEC.md), verified by `python3 server/test_puzzle_standards.py`.
@@ -125,6 +127,7 @@ pen-and-paper-puzzles/
 │   └── receipt_simulator.html      # Interactive browser-based thermal simulator
 └── docs/
     ├── HARDWARE_SETUP_GUIDE.md     # Step-by-step unboxing, flashing & wiring guide
+    ├── PUZZLE_GUIDE.md             # Visual puzzle guide with start/solved board states
     ├── THERMAL_80MM_PRINT_GUIDE.md # Master 80mm engineering specification & guide
     ├── PUZZLE_HEADER_SPEC.md       # Visual header & instruction standards
     ├── THERMAL_DRAWING_SPEC.md     # 1-bit hatching patterns & stroke tokens
