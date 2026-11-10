@@ -27,9 +27,9 @@ public:
     uint8_t getWallH(uint8_t r, uint8_t c) const;
     uint8_t getWallV(uint8_t r, uint8_t c) const;
 
-    uint16_t getSolutionMoveCount() const { return _solutionMoveCount; }
-    char getSolutionMoveDir(uint16_t idx) const { return _solutionMoves[idx].dir; }
-    uint8_t getSolutionMoveSteps(uint16_t idx) const { return _solutionMoves[idx].steps; }
+    uint16_t getSolutionMoveCount() const;
+    char getSolutionMoveDir(uint16_t idx) const;
+    uint8_t getSolutionMoveSteps(uint16_t idx) const;
 
 private:
     struct MoveStep {
@@ -49,6 +49,7 @@ private:
 
     MoveStep _solutionMoves[300];
     uint16_t _solutionMoveCount;
+    bool     _solutionSolved;
 
     void setWallH(uint8_t r, uint8_t c, uint8_t val);
     void setWallV(uint8_t r, uint8_t c, uint8_t val);
