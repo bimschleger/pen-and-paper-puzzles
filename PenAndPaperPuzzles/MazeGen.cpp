@@ -7,9 +7,25 @@ MazeGen::MazeGen() :
     _size(20),
     _cellSize(24),
     _wallThickness(3),
-    _solutionMoveCount(0) {
+    _solutionMoveCount(0),
+    _solutionSolved(false) {
     memset(_wallsH, 0xFF, sizeof(_wallsH));
     memset(_wallsV, 0xFF, sizeof(_wallsV));
+}
+
+uint16_t MazeGen::getSolutionMoveCount() const {
+    if (!_solutionSolved) const_cast<MazeGen*>(this)->solvePath();
+    return _solutionMoveCount;
+}
+
+char MazeGen::getSolutionMoveDir(uint16_t idx) const {
+    if (!_solutionSolved) const_cast<MazeGen*>(this)->solvePath();
+    return (idx < _solutionMoveCount) ? _solutionMoves[idx].dir : ' ';
+}
+
+uint8_t MazeGen::getSolutionMoveSteps(uint16_t idx) const {
+    if (!_solutionSolved) const_cast<MazeGen*>(this)->solvePath();
+    return (idx < _solutionMoveCount) ? _solutionMoves[idx].steps : 0;
 }
 
 uint8_t MazeGen::getWallH(uint8_t r, uint8_t c) const {
@@ -90,8 +106,10 @@ void MazeGen::generate(MazeDifficulty diff, uint32_t seed) {
         visited[idx >> 3] |= (1 << (idx & 7));
     };
 
-    // Active stack for growing tree algorithm
-    uint16_t active[1600];
+    // Active stack for growing tree algorithm (dynamically allocated to avoid stack overflow)
+    uint16_t totalCells = (uint16_t)_size * _size;
+    uint16_t* active = (uint16_t*)malloc((size_t)totalCells * sizeof(uint16_t));
+    if (!active) return;
     uint16_t activeCount = 0;
 
     setVisited(0, 0);
@@ -147,12 +165,25 @@ void MazeGen::generate(MazeDifficulty diff, uint32_t seed) {
         }
     }
 
-    solvePath();
+    free(active);
+    _solutionSolved = false;
+    _solutionMoveCount = 0;
 }
 
 void MazeGen::solvePath() {
+    if (_solutionSolved) return;
+    _solutionSolved = true;
+    _solutionMoveCount = 0;
+
     uint16_t totalCells = (uint16_t)_size * _size;
-    uint16_t parent[1600];
+    uint16_t* parent = (uint16_t*)malloc((size_t)totalCells * sizeof(uint16_t));
+    uint16_t* queue = (uint16_t*)malloc((size_t)totalCells * sizeof(uint16_t));
+    if (!parent || !queue) {
+        if (parent) free(parent);
+        if (queue) free(queue);
+        return;
+    }
+
     for (uint16_t i = 0; i < totalCells; i++) parent[i] = 0xFFFF;
 
     uint8_t seen[200] = {0};
@@ -165,7 +196,6 @@ void MazeGen::solvePath() {
         seen[idx >> 3] |= (1 << (idx & 7));
     };
 
-    uint16_t queue[1600];
     uint16_t head = 0;
     uint16_t tail = 0;
 
@@ -206,11 +236,11 @@ void MazeGen::solvePath() {
         }
     }
 
-    // Trace back path from target to 0
-    uint16_t pathCells[1600];
+    // Trace back path from target to 0 using queue buffer as temporary path storage (queue is no longer needed)
+    uint16_t* pathCells = queue;
     uint16_t pathLen = 0;
     uint16_t cur = targetCell;
-    while (cur != 0xFFFF) {
+    while (cur != 0xFFFF && pathLen < totalCells) {
         pathCells[pathLen++] = cur;
         if (cur == 0) break;
         cur = parent[cur];
@@ -224,7 +254,6 @@ void MazeGen::solvePath() {
     }
 
     // Convert into aggregated cardinal direction steps
-    _solutionMoveCount = 0;
     for (uint16_t i = 0; i < pathLen - 1; i++) {
         uint8_t r1 = (uint8_t)(pathCells[i] / _size);
         uint8_t c1 = (uint8_t)(pathCells[i] % _size);
@@ -243,9 +272,21 @@ void MazeGen::solvePath() {
             _solutionMoves[_solutionMoveCount++] = { d, 1 };
         }
     }
+
+    free(parent);
+    free(queue);
 }
 
 void MazeGen::printToReceipt(EscPosPrinter& printer, MazeDifficulty diff) {
+    if (_size > 20) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "[ Maze %dx%d requires raster graphics ]", (int)_size, (int)_size);
+        printer.setAlign(ALIGN_CENTER);
+        printer.println(buf);
+        printer.setAlign(ALIGN_LEFT);
+        return;
+    }
+
     const char* indent = "      ";
 
     if (_size <= 12) {
