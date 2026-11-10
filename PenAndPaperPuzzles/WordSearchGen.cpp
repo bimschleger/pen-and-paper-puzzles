@@ -1,5 +1,6 @@
 #include "WordSearchGen.h"
 #include "WordSearchDataset.h"
+#include "GeneratorUtils.h"
 #include "EscPosPrinter.h"
 #include "ThermalCanvas.h"
 
@@ -64,8 +65,9 @@ void WordSearchGen::generate(WordSearchDifficulty difficulty, int seed) {
         const char* sampledWords[16];
         uint16_t chosenIndices[16];
         uint8_t picked = 0;
+        uint16_t attempts = 0;
 
-        while (picked < sampleSize) {
+        while (picked < sampleSize && attempts++ < 100) {
             uint16_t idx = random(poolCount);
             bool dup = false;
             for (uint8_t j = 0; j < picked; j++) {
@@ -82,7 +84,7 @@ void WordSearchGen::generate(WordSearchDifficulty difficulty, int seed) {
         }
 
         // Sort descending by length
-        for (uint8_t i = 1; i < sampleSize; i++) {
+        for (uint8_t i = 1; i < picked; i++) {
             const char* key = sampledWords[i];
             int8_t j = i - 1;
             while (j >= 0 && strlen(sampledWords[j]) < strlen(key)) {
@@ -95,12 +97,7 @@ void WordSearchGen::generate(WordSearchDifficulty difficulty, int seed) {
         // Prepare directional assignment
         uint8_t hardDirs[8] = {0, 1, 2, 3, 4, 5, 6, 7};
         if (difficulty == WS_HARD) {
-            for (int i = 7; i > 0; i--) {
-                int j = random(i + 1);
-                uint8_t tmp = hardDirs[i];
-                hardDirs[i] = hardDirs[j];
-                hardDirs[j] = tmp;
-            }
+            mp_shuffle(hardDirs, 8);
         }
 
         char tempGrid[MAX_GRID_SIZE][MAX_GRID_SIZE];
@@ -110,7 +107,7 @@ void WordSearchGen::generate(WordSearchDifficulty difficulty, int seed) {
         WordPlacement currentPlacements[12];
         uint8_t currentCount = 0;
 
-        for (uint8_t wIdx = 0; wIdx < sampleSize && currentCount < targetCount; wIdx++) {
+        for (uint8_t wIdx = 0; wIdx < picked && currentCount < targetCount; wIdx++) {
             const char* word = sampledWords[wIdx];
             uint8_t len = strlen(word);
             if (len > _gridSize) continue;
@@ -132,12 +129,7 @@ void WordSearchGen::generate(WordSearchDifficulty difficulty, int seed) {
             } else { // WS_MEDIUM
                 for (uint8_t d = 0; d < 8; d++) allowedDirs[d] = d;
                 numAllowed = 8;
-                for (int i = 7; i > 0; i--) {
-                    int j = random(i + 1);
-                    uint8_t tmp = allowedDirs[i];
-                    allowedDirs[i] = allowedDirs[j];
-                    allowedDirs[j] = tmp;
-                }
+                mp_shuffle(allowedDirs, 8);
             }
 
             int16_t bestScore = -1000;

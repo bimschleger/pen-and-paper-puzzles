@@ -270,13 +270,15 @@ def test_visual_consistency():
         print(f"  Ink Duty Cycle   : C++={cpp_duty:5.2f}%  |  Python={py_duty:5.2f}%  (diff={abs(cpp_duty - py_duty):.2f}%)")
         print(f"  Ink IoU Overlap  : {iou:6.2f}%")
 
-        # Visual consistency expectations:
-        # Puzzles with exact math geometry should exceed 98% similarity, and IoU >= 90%
-        if pixel_similarity < 95.0:
-            print(f"  [WARNING] Pixel similarity below 95%: {pixel_similarity:.2f}%")
+        # Rule 8: Mandatory 100.00% bit-for-bit pixel similarity and 100.00% ink IoU overlap
+        if diff_bits != 0 or abs(iou - 100.0) > 1e-6:
+            print(
+                f"  [FAILURE] Rule 8 parity violation for {p_name}: "
+                f"diff_bits={diff_bits}, pixel_similarity={pixel_similarity:.2f}%, IoU={iou:.2f}%"
+            )
             overall_pass = False
         else:
-            print(f"  -> Visual consistency status: EXCELLENT PASS")
+            print(f"  -> Visual consistency status: 100.00% BIT-FOR-BIT EXACT MATCH")
         print()
 
     print("=" * 70)

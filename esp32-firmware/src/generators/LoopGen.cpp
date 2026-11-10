@@ -197,7 +197,8 @@ bool LoopGen::solveDeductive(int8_t clues[9][9], uint8_t n, int8_t H[10][9], int
     }
 
     bool changed = true;
-    while (changed) {
+    int iter = 0;
+    while (changed && iter++ < 200) {
         changed = false;
 
         // 1. Clue propagation

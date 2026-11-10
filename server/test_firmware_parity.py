@@ -39,15 +39,21 @@ GENERATOR_MAP = {
     "mines": ("MinesGen.h", "MinesGen.cpp"),
     "tents": ("TentsGen.h", "TentsGen.cpp"),
     "bridges": ("BridgesGen.h", "BridgesGen.cpp"),
-    "tango": ("TangoGen.h", "TangoGen.cpp"),
-    "wheel": ("WheelGen.h", "WheelGen.cpp"),
     "killer": ("KillerGen.h", "KillerGen.cpp"),
     "cryptogram": ("CryptogramGen.h", "CryptogramGen.cpp"),
+    "tango": ("TangoGen.h", "TangoGen.cpp"),
     "ladder": ("LadderGen.h", "LadderGen.cpp"),
+    "wheel": ("WheelGen.h", "WheelGen.cpp"),
+    "lights": ("LightsGen.h", "LightsGen.cpp"),
+    "loop": ("LoopGen.h", "LoopGen.cpp"),
+    "towers": ("TowersGen.h", "TowersGen.cpp"),
+    "inequality": ("InequalityGen.h", "InequalityGen.cpp"),
+    "maze": ("MazeGen.h", "MazeGen.cpp"),
+    "sudokito": ("SudokitoGen.h", "SudokitoGen.cpp"),
 }
 
 
-def test_generator_parity(strict: bool = False) -> Tuple[List[str], List[str]]:
+def test_generator_parity(strict: bool = True) -> Tuple[List[str], List[str]]:
     print("Test 1: Verifying Python <-> ESP32 C++ Generator Inventory Parity...")
     all_plugins = DEFAULT_REGISTRY.get_all()
 
@@ -268,7 +274,7 @@ def test_offline_puzzle_enum_ordering_parity():
     print(f"  -> Passed! All {len(enum_names)} enum entries in OfflinePuzzleType match DEFAULT_REGISTRY 1:1.")
 
 
-def run_firmware_tests(strict: bool = False):
+def run_firmware_tests(strict: bool = True):
     print("=" * 60)
     print("RUNNING TIER 4: Firmware Parity & C++ Compilation Verification")
     print("=" * 60)
@@ -283,5 +289,5 @@ def run_firmware_tests(strict: bool = False):
 
 
 if __name__ == "__main__":
-    strict_flag = "--strict" in sys.argv
+    strict_flag = "--no-strict" not in sys.argv
     run_firmware_tests(strict=strict_flag)

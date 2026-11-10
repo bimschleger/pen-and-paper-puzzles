@@ -220,7 +220,10 @@ class MinesPuzzle(BasePuzzle):
             state[r][c] = 0
 
         changed = True
-        while changed:
+        max_iter = rows * cols + 10
+        iter_count = 0
+        while changed and iter_count < max_iter:
+            iter_count += 1
             changed = False
 
             for (r, c), val in clues.items():
@@ -244,24 +247,25 @@ class MinesPuzzle(BasePuzzle):
             if changed:
                 continue
 
-            clue_list = list(clues.items())
-            for i in range(len(clue_list)):
-                (r1, c1), v1 = clue_list[i]
+            active_clues = []
+            for (r1, c1), v1 in clues.items():
                 n1 = self._get_neighbors(r1, c1, rows, cols)
-                u1 = set(p for p in n1 if state[p[0]][p[1]] == -1)
+                u1 = {p for p in n1 if state[p[0]][p[1]] == -1}
+                if not u1:
+                    continue
                 m1 = sum(1 for p in n1 if state[p[0]][p[1]] == 1)
-                rem1 = v1 - m1
+                active_clues.append((r1, c1, u1, v1 - m1))
 
-                for j in range(len(clue_list)):
+            for i in range(len(active_clues)):
+                r1, c1, u1, rem1 = active_clues[i]
+                for j in range(len(active_clues)):
                     if i == j:
                         continue
-                    (r2, c2), v2 = clue_list[j]
-                    n2 = self._get_neighbors(r2, c2, rows, cols)
-                    u2 = set(p for p in n2 if state[p[0]][p[1]] == -1)
-                    m2 = sum(1 for p in n2 if state[p[0]][p[1]] == 1)
-                    rem2 = v2 - m2
+                    r2, c2, u2, rem2 = active_clues[j]
+                    if abs(r1 - r2) > 2 or abs(c1 - c2) > 2:
+                        continue
 
-                    if u1 and u1.issubset(u2):
+                    if u1.issubset(u2):
                         diff = u2 - u1
                         rem_diff = rem2 - rem1
                         if rem_diff < 0:

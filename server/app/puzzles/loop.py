@@ -26,25 +26,33 @@ class SlitherlinkSolver:
         self.H = [[0]*n for _ in range(n + 1)]
         self.V = [[0]*(n + 1) for _ in range(n)]
 
-    def propagate(self) -> bool:
+    def propagate(self, check_subloops: bool = False) -> bool:
         n = self.n
+        H = self.H
+        V = self.V
+        clues = self.clues
         changed = True
-        while changed:
+        max_iter = n * n * 4 + 20
+        iter_count = 0
+        while changed and iter_count < max_iter:
+            iter_count += 1
             changed = False
             # 1. Cell clues
             for r in range(n):
+                clues_r = clues[r]
+                H_r = H[r]
+                H_r1 = H[r + 1]
+                V_r = V[r]
                 for c in range(n):
-                    k = self.clues[r][c]
+                    k = clues_r[c]
                     if k < 0:
                         continue
-                    edges = [
-                        ('H', r, c),
-                        ('H', r+1, c),
-                        ('V', r, c),
-                        ('V', r, c+1)
-                    ]
-                    loop_cnt = sum(1 for typ, er, ec in edges if (self.H[er][ec] if typ=='H' else self.V[er][ec]) == 1)
-                    empty_cnt = sum(1 for typ, er, ec in edges if (self.H[er][ec] if typ=='H' else self.V[er][ec]) == -1)
+                    e0 = H_r[c]
+                    e1 = H_r1[c]
+                    e2 = V_r[c]
+                    e3 = V_r[c + 1]
+                    loop_cnt = (e0 == 1) + (e1 == 1) + (e2 == 1) + (e3 == 1)
+                    empty_cnt = (e0 == -1) + (e1 == -1) + (e2 == -1) + (e3 == -1)
                     unk_cnt = 4 - loop_cnt - empty_cnt
 
                     if loop_cnt > k or loop_cnt + unk_cnt < k:
@@ -52,57 +60,67 @@ class SlitherlinkSolver:
 
                     if unk_cnt > 0:
                         if loop_cnt == k:
-                            for typ, er, ec in edges:
-                                val = self.H[er][ec] if typ=='H' else self.V[er][ec]
-                                if val == 0:
-                                    if typ == 'H': self.H[er][ec] = -1
-                                    else: self.V[er][ec] = -1
-                                    changed = True
+                            if e0 == 0: H_r[c] = -1
+                            if e1 == 0: H_r1[c] = -1
+                            if e2 == 0: V_r[c] = -1
+                            if e3 == 0: V_r[c + 1] = -1
+                            changed = True
                         elif loop_cnt + unk_cnt == k:
-                            for typ, er, ec in edges:
-                                val = self.H[er][ec] if typ=='H' else self.V[er][ec]
-                                if val == 0:
-                                    if typ == 'H': self.H[er][ec] = 1
-                                    else: self.V[er][ec] = 1
-                                    changed = True
+                            if e0 == 0: H_r[c] = 1
+                            if e1 == 0: H_r1[c] = 1
+                            if e2 == 0: V_r[c] = 1
+                            if e3 == 0: V_r[c + 1] = 1
+                            changed = True
 
             # 2. Vertex degrees
             for r in range(n + 1):
+                H_r = H[r]
+                V_up = V[r - 1] if r > 0 else None
+                V_dn = V[r] if r < n else None
                 for c in range(n + 1):
-                    incident = []
-                    if c > 0: incident.append(('H', r, c-1))
-                    if c < n: incident.append(('H', r, c))
-                    if r > 0: incident.append(('V', r-1, c))
-                    if r < n: incident.append(('V', r, c))
+                    deg_loop = 0
+                    deg_empty = 0
+                    inc_cnt = 0
+                    if c > 0:
+                        v = H_r[c - 1]
+                        inc_cnt += 1
+                        if v == 1: deg_loop += 1
+                        elif v == -1: deg_empty += 1
+                    if c < n:
+                        v = H_r[c]
+                        inc_cnt += 1
+                        if v == 1: deg_loop += 1
+                        elif v == -1: deg_empty += 1
+                    if V_up is not None:
+                        v = V_up[c]
+                        inc_cnt += 1
+                        if v == 1: deg_loop += 1
+                        elif v == -1: deg_empty += 1
+                    if V_dn is not None:
+                        v = V_dn[c]
+                        inc_cnt += 1
+                        if v == 1: deg_loop += 1
+                        elif v == -1: deg_empty += 1
 
-                    deg_loop = sum(1 for typ, er, ec in incident if (self.H[er][ec] if typ=='H' else self.V[er][ec]) == 1)
-                    deg_empty = sum(1 for typ, er, ec in incident if (self.H[er][ec] if typ=='H' else self.V[er][ec]) == -1)
-                    deg_unk = len(incident) - deg_loop - deg_empty
-
+                    deg_unk = inc_cnt - deg_loop - deg_empty
                     if deg_loop > 2 or (deg_loop == 1 and deg_unk == 0):
                         return False
 
-                    if deg_loop == 2 and deg_unk > 0:
-                        for typ, er, ec in incident:
-                            val = self.H[er][ec] if typ=='H' else self.V[er][ec]
-                            if val == 0:
-                                if typ == 'H': self.H[er][ec] = -1
-                                else: self.V[er][ec] = -1
-                                changed = True
-                    elif deg_loop == 1 and deg_unk == 1:
-                        for typ, er, ec in incident:
-                            val = self.H[er][ec] if typ=='H' else self.V[er][ec]
-                            if val == 0:
-                                if typ == 'H': self.H[er][ec] = 1
-                                else: self.V[er][ec] = 1
-                                changed = True
-                    elif deg_loop == 0 and deg_unk == 1:
-                        for typ, er, ec in incident:
-                            val = self.H[er][ec] if typ=='H' else self.V[er][ec]
-                            if val == 0:
-                                if typ == 'H': self.H[er][ec] = -1
-                                else: self.V[er][ec] = -1
-                                changed = True
+                    if deg_unk > 0:
+                        fill_val = 0
+                        if deg_loop == 2 or (deg_loop == 0 and deg_unk == 1):
+                            fill_val = -1
+                        elif deg_loop == 1 and deg_unk == 1:
+                            fill_val = 1
+                        if fill_val != 0:
+                            if c > 0 and H_r[c - 1] == 0: H_r[c - 1] = fill_val
+                            if c < n and H_r[c] == 0: H_r[c] = fill_val
+                            if V_up is not None and V_up[c] == 0: V_up[c] = fill_val
+                            if V_dn is not None and V_dn[c] == 0: V_dn[c] = fill_val
+                            changed = True
+
+            if changed or not check_subloops:
+                continue
 
             # 3. Prevent premature sub-loop closure
             adj: Dict[Tuple[int, int], Set[Tuple[int, int]]] = {}
@@ -168,7 +186,7 @@ class SlitherlinkSolver:
                                         changed = True
         return True
 
-    def count_solutions(self, max_count: int = 2) -> int:
+    def count_solutions(self, max_count: int = 2, max_depth: int = 64) -> int:
         if not self.propagate():
             return 0
 
@@ -176,17 +194,19 @@ class SlitherlinkSolver:
         for r in range(n + 1):
             for c in range(n):
                 if self.H[r][c] == 0:
+                    if max_depth <= 0:
+                        return max_count
                     cnt = 0
                     saved_H = [row[:] for row in self.H]
                     saved_V = [row[:] for row in self.V]
                     self.H[r][c] = 1
-                    cnt += self.count_solutions(max_count)
+                    cnt += self.count_solutions(max_count - cnt, max_depth - 1)
                     if cnt >= max_count:
                         return cnt
                     self.H = [row[:] for row in saved_H]
                     self.V = [row[:] for row in saved_V]
                     self.H[r][c] = -1
-                    cnt += self.count_solutions(max_count)
+                    cnt += self.count_solutions(max_count - cnt, max_depth - 1)
                     self.H = saved_H
                     self.V = saved_V
                     return cnt
@@ -194,17 +214,19 @@ class SlitherlinkSolver:
         for r in range(n):
             for c in range(n + 1):
                 if self.V[r][c] == 0:
+                    if max_depth <= 0:
+                        return max_count
                     cnt = 0
                     saved_H = [row[:] for row in self.H]
                     saved_V = [row[:] for row in self.V]
                     self.V[r][c] = 1
-                    cnt += self.count_solutions(max_count)
+                    cnt += self.count_solutions(max_count - cnt, max_depth - 1)
                     if cnt >= max_count:
                         return cnt
                     self.H = [row[:] for row in saved_H]
                     self.V = [row[:] for row in saved_V]
                     self.V[r][c] = -1
-                    cnt += self.count_solutions(max_count)
+                    cnt += self.count_solutions(max_count - cnt, max_depth - 1)
                     self.H = saved_H
                     self.V = saved_V
                     return cnt
@@ -407,6 +429,9 @@ class LoopPuzzle(BasePuzzle):
         raise RuntimeError(f"Failed to generate loop polyomino of size {n}")
 
     def generate(self, difficulty: str = "medium", **kwargs) -> BasePuzzleResult:
+        seed = kwargs.get("seed")
+        if seed is not None:
+            random.seed(seed)
         diff = difficulty.lower()
         cfg = self.DIFFICULTY_SETTINGS.get(diff, self.DIFFICULTY_SETTINGS["medium"])
         n = cfg["size"]
@@ -415,7 +440,7 @@ class LoopPuzzle(BasePuzzle):
         for _ in range(20):
             H, V, full_clues = self._generate_loop_polyomino(n)
             solver = SlitherlinkSolver(n, full_clues)
-            if solver.count_solutions(max_count=2) != 1:
+            if solver.count_solutions(max_count=2, max_depth=0) != 1:
                 continue
 
             clues = [row[:] for row in full_clues]
@@ -429,12 +454,12 @@ class LoopPuzzle(BasePuzzle):
                 orig = clues[r][c]
                 clues[r][c] = -1
                 s = SlitherlinkSolver(n, clues)
-                if s.count_solutions(max_count=2) != 1:
+                if s.count_solutions(max_count=2, max_depth=0) != 1:
                     clues[r][c] = orig
 
             # Verify uniqueness of pruned puzzle
             final_solver = SlitherlinkSolver(n, clues)
-            if final_solver.count_solutions(max_count=2) == 1:
+            if final_solver.count_solutions(max_count=2, max_depth=2) == 1:
                 raw_data = {
                     "type": "loop",
                     "difficulty": diff,

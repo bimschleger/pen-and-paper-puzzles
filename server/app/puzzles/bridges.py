@@ -399,6 +399,15 @@ class BridgesPuzzle(BasePuzzle):
                         q.append(neighbor)
             return count == num_islands
 
+        rem_cap = [0] * num_islands
+        for u, v in edges:
+            rem_cap[u] += 2
+            rem_cap[v] += 2
+
+        for i in range(num_islands):
+            if island_rem[i] > rem_cap[i]:
+                return 0
+
         def search(e_idx: int):
             nonlocal solutions_count
             if solutions_count >= max_solutions:
@@ -411,27 +420,32 @@ class BridgesPuzzle(BasePuzzle):
                 return
 
             u, v = edges[e_idx]
+            rem_cap[u] -= 2
+            rem_cap[v] -= 2
+
             has_crossing_active = any(edge_val[other] > 0 for other in crossing_lookup[e_idx])
-            allowed_values = [0] if has_crossing_active else [0, 1, 2]
+            allowed_values = (0,) if has_crossing_active else (0, 1, 2)
 
             for val in allowed_values:
                 if val > island_rem[u] or val > island_rem[v]:
                     continue
+                new_rem_u = island_rem[u] - val
+                new_rem_v = island_rem[v] - val
+                if new_rem_u > rem_cap[u] or new_rem_v > rem_cap[v]:
+                    continue
 
                 edge_val[e_idx] = val
-                island_rem[u] -= val
-                island_rem[v] -= val
+                island_rem[u] = new_rem_u
+                island_rem[v] = new_rem_v
 
-                feasible = True
-                if island_rem[u] < 0 or island_rem[v] < 0:
-                    feasible = False
-
-                if feasible:
-                    search(e_idx + 1)
+                search(e_idx + 1)
 
                 island_rem[u] += val
                 island_rem[v] += val
                 edge_val[e_idx] = 0
+
+            rem_cap[u] += 2
+            rem_cap[v] += 2
 
         search(0)
         return solutions_count

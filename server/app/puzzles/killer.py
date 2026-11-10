@@ -11,6 +11,7 @@ from .base import (
     BasePuzzle,
     BasePuzzleResult,
     load_curated_dataset,
+    select_seeded_d4,
     transform_coord_d4,
     transform_grid_d4,
 )
@@ -61,13 +62,13 @@ class KillerPuzzle(BasePuzzle):
 
         if dataset and tier_key in dataset and len(dataset[tier_key]) > 0:
             tier_puzzles = dataset[tier_key]
-            seed_val = seed if seed is not None else random.randint(0, 799)
-            p_idx = (seed_val // 8) % len(tier_puzzles)
+            p_idx, t = select_seeded_d4(tier_puzzles, seed)
             base_p = tier_puzzles[p_idx]
             size = base_p["size"]
             box_r = base_p["box_rows"]
             box_c = base_p["box_cols"]
-            t = (seed_val % 4) * 2 if (box_r != box_c) else (seed_val % 8)
+            if box_r != box_c:
+                t = (t % 4) * 2
 
             cages, solution = self._transform_puzzle(base_p["cages"], base_p["solution"], size, t)
             raw_data = {

@@ -1,3 +1,4 @@
+#include <chrono>
 #include "Arduino.h"
 #include "WiFi.h"
 #include "WiFiClient.h"
@@ -215,6 +216,95 @@ int main() {
     qrCanvas.printTo(printer);
     qrCanvas.end();
     std::cout << "  -> QR Code generation on ThermalCanvas: OK" << std::endl;
+
+    // Test 8: ESP32 Stack Object Size Audit (all generator classes must be <= 4096 bytes)
+    std::cout << "\n>>> TEST 8: ESP32 STACK OBJECT SIZE AUDIT (<= 4096 BYTES) <<<" << std::endl;
+    struct GenSizeEntry {
+        const char* name;
+        size_t bytes;
+    };
+    GenSizeEntry genSizes[] = {
+        {"SudokuGen", sizeof(SudokuGen)},
+        {"WordSearchGen", sizeof(WordSearchGen)},
+        {"NonogramGen", sizeof(NonogramGen)},
+        {"QueensGen", sizeof(QueensGen)},
+        {"JumbleGen", sizeof(JumbleGen)},
+        {"BinaryGen", sizeof(BinaryGen)},
+        {"MinesGen", sizeof(MinesGen)},
+        {"TentsGen", sizeof(TentsGen)},
+        {"BridgesGen", sizeof(BridgesGen)},
+        {"KillerGen", sizeof(KillerGen)},
+        {"CryptogramGen", sizeof(CryptogramGen)},
+        {"TangoGen", sizeof(TangoGen)},
+        {"LadderGen", sizeof(LadderGen)},
+        {"WheelGen", sizeof(WheelGen)},
+        {"LightsGen", sizeof(LightsGen)},
+        {"LoopGen", sizeof(LoopGen)},
+        {"TowersGen", sizeof(TowersGen)},
+        {"InequalityGen", sizeof(InequalityGen)},
+        {"MazeGen", sizeof(MazeGen)},
+        {"SudokitoGen", sizeof(SudokitoGen)},
+    };
+    for (const auto& gs : genSizes) {
+        std::cout << "  sizeof(" << gs.name << ") = " << gs.bytes << " bytes" << std::endl;
+        if (gs.bytes > 4096) {
+            std::cerr << "FAILED: sizeof(" << gs.name << ") = " << gs.bytes << " exceeds 4096-byte ESP32 stack safety limit!" << std::endl;
+            return 1;
+        }
+    }
+
+    // Test 9: Exhaustive All-20-Games x All-4-Grades Raster + Sampler + Watchdog Latency Audit
+    std::cout << "\n>>> TEST 9: EXHAUSTIVE ALL-20-GAMES x ALL-4-GRADES RASTER & SAMPLER BENCHMARK <<<" << std::endl;
+    PuzzleGrade allGrades[4] = {GRADE_EASY, GRADE_MEDIUM, GRADE_HARD, GRADE_EXTREME};
+    for (uint8_t g = 0; g < OFFLINE_PUZZLE_TOTAL; g++) {
+        config.setGameMask(1UL << g);
+        config.setPuzzleCount(1);
+        const char* pName = config.getPuzzleName((OfflinePuzzleType)g);
+        for (int gi = 0; gi < 4; gi++) {
+            PuzzleGrade gr = allGrades[gi];
+            config.setPuzzleGrade(gr);
+
+            auto t0 = std::chrono::steady_clock::now();
+            bool okR = composer.generateAndPrintReceipt(printer, "Benchmark Raster", gr, &config);
+            auto t1 = std::chrono::steady_clock::now();
+            double msR = std::chrono::duration<double, std::milli>(t1 - t0).count();
+            if (!okR) {
+                std::cerr << "FAILED Raster generation for game " << pName << " grade " << (int)gr << std::endl;
+                return 1;
+            }
+            if (msR > 250.0) {
+                std::cerr << "WATCHDOG LATENCY FAILURE: " << pName << " (grade " << (int)gr << ") took " << msR << " ms (> 250ms limit)" << std::endl;
+                return 1;
+            }
+        }
+
+        // Also test printGameSampler and printGameGuide for every game
+        if (!composer.printGameSampler(printer, g)) {
+            std::cerr << "FAILED printGameSampler for game " << pName << std::endl;
+            return 1;
+        }
+        if (!composer.printGameGuide(printer, g)) {
+            std::cerr << "FAILED printGameGuide for game " << pName << std::endl;
+            return 1;
+        }
+    }
+
+    // Test 10: Game Guide Visual Diagrams for All 20 Games
+    std::cout << "\n>>> TEST 10: GAME GUIDE RASTER DIAGRAMS (0.." << (OFFLINE_PUZZLE_TOTAL - 1) << ") <<<" << std::endl;
+    for (uint8_t g = 0; g < OFFLINE_PUZZLE_TOTAL; g++) {
+        ThermalCanvas guideCanvas;
+        if (!guideCanvas.begin(216)) {
+            std::cerr << "FAILED guideCanvas.begin(216) for game id " << (int)g << std::endl;
+            return 1;
+        }
+        OfflinePuzzleComposer::renderGameGuideRaster(guideCanvas, g);
+        if (guideCanvas.getWidth() != 576 || guideCanvas.getHeight() != 216) {
+            std::cerr << "FAILED renderGameGuideRaster for game id " << (int)g << std::endl;
+            return 1;
+        }
+        guideCanvas.end();
+    }
+    std::cout << "  -> All " << (int)OFFLINE_PUZZLE_TOTAL << " Game Guide visual diagrams rendered cleanly!" << std::endl;
 
     std::cout << "\n==================================================" << std::endl;
     std::cout << ">>> SUCCESS: 100% OFFLINE CONFIG & MULTI-GRADE TESTS VERIFIED! <<<" << std::endl;

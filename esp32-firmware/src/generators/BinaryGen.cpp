@@ -105,8 +105,9 @@ bool BinaryGen::solveDeductive(int8_t grid[8][8], uint8_t maxRule) {
     memcpy(g, grid, sizeof(g));
     const uint8_t half = _size / 2;
     bool changed = true;
+    int iter = 0;
 
-    while (changed) {
+    while (changed && iter++ < 100) {
         changed = false;
 
         // Rule 1: Trio avoidance

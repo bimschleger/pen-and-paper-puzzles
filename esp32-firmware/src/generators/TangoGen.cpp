@@ -137,8 +137,9 @@ bool TangoGen::solveDeductive(int8_t grid[8][8]) {
     memcpy(g, grid, sizeof(g));
     const uint8_t half = _size / 2;
     bool changed = true;
+    int iter = 0;
 
-    while (changed) {
+    while (changed && iter++ < 100) {
         changed = false;
 
         // Pass 1: Direct edge clues

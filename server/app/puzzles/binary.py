@@ -213,8 +213,11 @@ class BinaryPuzzle(BasePuzzle):
         half = n // 2
         changed = True
         rules_used = set()
+        max_iter = n * n + 10
+        iter_count = 0
 
-        while changed:
+        while changed and iter_count < max_iter:
+            iter_count += 1
             changed = False
 
             # Rule 1: Trio avoidance

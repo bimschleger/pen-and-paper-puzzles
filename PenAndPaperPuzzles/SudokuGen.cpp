@@ -49,25 +49,48 @@ bool SudokuGen::fillBoard(uint8_t board[9][9]) {
 }
 
 uint8_t SudokuGen::countSolutions(uint8_t board[9][9], uint8_t maxCount) {
+    int8_t bestR = -1, bestC = -1;
+    uint8_t bestCandCount = 10;
+    uint16_t bestMask = 0;
+
     for (uint8_t r = 0; r < 9; r++) {
         for (uint8_t c = 0; c < 9; c++) {
             if (board[r][c] == 0) {
-                uint8_t count = 0;
+                uint16_t mask = 0;
+                uint8_t cnt = 0;
                 for (uint8_t num = 1; num <= 9; num++) {
                     if (isValid(board, r, c, num)) {
-                        board[r][c] = num;
-                        count += countSolutions(board, maxCount);
-                        board[r][c] = 0;
-                        if (count >= maxCount) {
-                            return count;
-                        }
+                        mask |= (1 << num);
+                        cnt++;
                     }
                 }
+                if (cnt == 0) return 0;
+                if (cnt < bestCandCount) {
+                    bestCandCount = cnt;
+                    bestR = r;
+                    bestC = c;
+                    bestMask = mask;
+                    if (cnt == 1) break;
+                }
+            }
+        }
+        if (bestCandCount == 1) break;
+    }
+
+    if (bestR == -1) return 1;
+
+    uint8_t count = 0;
+    for (uint8_t num = 1; num <= 9; num++) {
+        if (bestMask & (1 << num)) {
+            board[bestR][bestC] = num;
+            count += countSolutions(board, maxCount - count);
+            board[bestR][bestC] = 0;
+            if (count >= maxCount) {
                 return count;
             }
         }
     }
-    return 1;
+    return count;
 }
 
 void SudokuGen::generate(SudokuDifficulty difficulty) {

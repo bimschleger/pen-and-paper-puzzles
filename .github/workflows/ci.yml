@@ -35,6 +35,12 @@ jobs:
       - name: Verify Game Rules, Guides & FAQs
         run: python3 server/test_game_rules.py
 
+      - name: Verify Code Health, DRY Utilities, Loop Bounds & Watchdogs (Rules 6, 15, 17)
+        run: python3 server/test_code_health_and_dry.py
+
+      - name: Verify Web Simulator Headless Runtime & Rule 16 Emulation
+        run: python3 server/test_simulator_runtime.py
+
       - name: Verify 80mm Thermal Receipt Format & Specifications (Rule 11)
         run: python3 server/test_thermal_format.py
 
