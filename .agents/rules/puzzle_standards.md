@@ -38,16 +38,21 @@ All agents and contributors working on Pen and Paper Puzzles must strictly follo
 - **Blank Line Separation**: Exactly one blank line must separate each puzzle's solution block.
 
 ## 5. Automated Verification
-All changes must pass the automated validation suite:
+All changes must pass the unified automated validation suite (`python3 run_tests.py`):
 ```bash
+python3 run_tests.py
 python3 server/test_puzzle_standards.py
 python3 server/test_game_onboarding.py
 python3 server/test_game_rules.py
+python3 server/test_code_health_and_dry.py
+python3 server/test_simulator_runtime.py
 python3 server/test_thermal_format.py
 python3 server/test_visual_consistency.py
+python3 server/test_firmware_parity.py
 python3 server/test_stars_deduction.py
 python3 server/test_towers_deduction.py
 python3 server/test_inequality_deduction.py
+python3 server/test_killer_deduction.py
 ```
 
 ## 6. Puzzle Plugin Architecture & Extension Standards

@@ -39,7 +39,8 @@ bool MinesGen::solveDeductive(int8_t puz[8][8], uint8_t totalMines) {
     }
 
     bool changed = true;
-    while (changed) {
+    int iter = 0;
+    while (changed && iter++ < 100) {
         changed = false;
 
         // Rules 1 & 2: Local saturation & clearing

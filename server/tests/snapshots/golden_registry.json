@@ -11,11 +11,11 @@
   },
   "wordsearch": {
     "title": "SEARCH",
-    "sha256": "751dffa0fc60d505d362d37531875190191b29db2b75f574b8029c4846cd5a36",
+    "sha256": "4142ac54b4ba342a95429025e0492e3934278321a446006765a7b77c69c7e97e",
     "byte_length": 52136,
     "width_dots": 576,
     "height_dots": 724,
-    "average_duty_cycle_pct": 11.52,
+    "average_duty_cycle_pct": 11.48,
     "max_consecutive_dense_lines": 4,
     "is_safe": true
   },
@@ -151,11 +151,11 @@
   },
   "loop": {
     "title": "LOOP",
-    "sha256": "3d5dbaede8ba680d0017be106c31e6c3b8c23377d51953f432fb99aba555c805",
+    "sha256": "0eaa26661efcaa2dc4ef8a9297b3d89e67d768c140fb5e979466d605e2d7319b",
     "byte_length": 41480,
     "width_dots": 576,
     "height_dots": 576,
-    "average_duty_cycle_pct": 1.57,
+    "average_duty_cycle_pct": 1.76,
     "max_consecutive_dense_lines": 0,
     "is_safe": true
   },

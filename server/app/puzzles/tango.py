@@ -354,8 +354,11 @@ class TangoPuzzle(BasePuzzle):
         g = [row[:] for row in grid]
         half = n // 2
         changed = True
+        max_iter = n * n + 10
+        iter_count = 0
 
-        while changed:
+        while changed and iter_count < max_iter:
+            iter_count += 1
             changed = False
 
             # Pass 1: Direct edge clues

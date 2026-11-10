@@ -30,12 +30,13 @@ from app.renderer.canvas import calculate_duty_cycle
 
 def run_standards_tier(puzzle_filter: str = None) -> bool:
     print("\n" + "=" * 70)
-    print(">>> TIER 1: PRESENTATION, NAMING & CONTRACT STANDARDS <<<")
+    print(">>> TIER 1: PRESENTATION, NAMING, DRY & CODE HEALTH STANDARDS <<<")
     print("=" * 70)
     try:
         import test_puzzle_standards
         import test_game_onboarding
         import test_game_rules
+        import test_code_health_and_dry
         test_puzzle_standards.test_titles_and_forbidden_terms()
         test_puzzle_standards.test_difficulty_presentation_and_theme_rules()
         test_puzzle_standards.test_description_length_and_canonical_formula()
@@ -44,7 +45,8 @@ def run_standards_tier(puzzle_filter: str = None) -> bool:
         test_puzzle_standards.test_plugin_contract_compliance()
         test_game_onboarding.run_all_onboarding_checks()
         test_game_rules.main()
-        print("[TIER 1 PASSED] All presentation, authoring and onboarding standards verified.\n")
+        test_code_health_and_dry.run_code_health_tests()
+        print("[TIER 1 PASSED] All presentation, authoring, onboarding, and code health standards verified.\n")
         return True
     except Exception as e:
         print(f"[TIER 1 FAILED] {e}\n")
@@ -91,8 +93,25 @@ def run_logic_tier(puzzle_filter: str = None) -> bool:
                 print(f"  [{diff.upper():<7}] -> CRASH: {e}")
                 all_passed = False
 
+    if not puzzle_filter:
+        import unittest
+        import test_stars_deduction
+        import test_towers_deduction
+        import test_inequality_deduction
+        import test_killer_deduction
+
+        print("\nVerifying Curated Deductive Datasets (Stars, Towers, Inequality, Killer):")
+        loader = unittest.TestLoader()
+        suite = unittest.TestSuite()
+        for mod in (test_stars_deduction, test_towers_deduction, test_inequality_deduction, test_killer_deduction):
+            suite.addTests(loader.loadTestsFromModule(mod))
+        runner = unittest.TextTestRunner(verbosity=1)
+        result = runner.run(suite)
+        if not result.wasSuccessful():
+            all_passed = False
+
     if all_passed:
-        print(f"\n[TIER 2 PASSED] All {total_checks} logic & accuracy checks succeeded.\n")
+        print(f"\n[TIER 2 PASSED] All {total_checks} logic, accuracy & deductive dataset checks succeeded.\n")
     else:
         print(f"\n[TIER 2 FAILED] One or more puzzle accuracy verifications failed.\n")
     return all_passed
@@ -100,11 +119,13 @@ def run_logic_tier(puzzle_filter: str = None) -> bool:
 
 def run_raster_tier(puzzle_filter: str = None) -> bool:
     print("\n" + "=" * 70)
-    print(">>> TIER 3: THERMAL RASTER SPECS, SAFETY & GOLDEN SNAPSHOTS <<<")
+    print(">>> TIER 3: THERMAL RASTER SPECS, VISUAL PARITY & SIMULATOR RUNTIME <<<")
     print("=" * 70)
     try:
         import test_thermal_format
         import test_thermal_snapshots
+        import test_visual_consistency
+        import test_simulator_runtime
 
         test_thermal_snapshots.test_thermal_snapshots_and_safety()
         bundle = test_thermal_format.test_bundle_completeness()
@@ -112,15 +133,17 @@ def run_raster_tier(puzzle_filter: str = None) -> bool:
         test_thermal_format.test_text_receipt_format(bundle)
         test_thermal_format.test_hybrid_receipt_format(bundle)
         test_thermal_format.test_solution_key_spec(bundle)
+        test_visual_consistency.test_visual_consistency()
+        test_simulator_runtime.run_simulator_runtime_tests()
 
-        print("[TIER 3 PASSED] All thermal raster specs, duty cycles, and snapshots verified.\n")
+        print("[TIER 3 PASSED] All thermal raster specs, snapshots, visual parity, and simulator runtime verified.\n")
         return True
     except Exception as e:
         print(f"[TIER 3 FAILED] {e}\n")
         return False
 
 
-def run_firmware_tier(strict: bool = False) -> bool:
+def run_firmware_tier(strict: bool = True) -> bool:
     print("\n" + "=" * 70)
     print(">>> TIER 4: FIRMWARE PARITY & C++ HOST COMPILATION <<<")
     print("=" * 70)
@@ -233,7 +256,7 @@ def main():
     )
     parser.add_argument("--puzzle", "-p", help="Filter tests to a specific puzzle ID (e.g. sudoku, binary)")
     parser.add_argument("--iterations", "-n", type=int, default=5, help="Number of iterations for stress testing")
-    parser.add_argument("--strict-firmware", action="store_true", help="Enforce 100% C++ parity (fail on missing generators)")
+    parser.add_argument("--strict-firmware", action="store_true", default=True, help="Enforce 100% C++ parity (default: True)")
     parser.add_argument("--update-snapshots", action="store_true", help="Regenerate golden raster snapshots")
     args = parser.parse_args()
 

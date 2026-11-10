@@ -48,24 +48,26 @@ When the user runs `/pr` (or asks to create a pull request), execute this exact 
 ---
 
 ### 3. Pre-Flight Verification & Hygiene (Rule Enforcement)
-Before committing, ensure repository integrity:
+Before committing, ensure repository integrity across all 4 tiers (Standards, Logic/Watchdogs, Raster/Simulator/Visual Parity, and Firmware/Stack Safety):
 1. **Arduino Sketch Synchronization (Rule 7)**:
    ```bash
    chmod +x ./scripts/sync_arduino_sketch.sh
    ./scripts/sync_arduino_sketch.sh
    ```
    If `PenAndPaperPuzzles/` files were updated by the sync script, ensure they are staged.
-2. **Puzzle Presentation Standards (Rule 1–4, 6)**:
+2. **Full Unified PR Verification Gate (`run_tests.py`)**:
    ```bash
-   python3 server/test_puzzle_standards.py
+   python3 run_tests.py
    ```
-   If any standard test fails, halt and fix the issue before proceeding.
-3. **Game Onboarding, Setup Portal & Parity Standards (Rule 18)**:
-   ```bash
-   python3 server/test_game_onboarding.py
-   python3 server/test_game_rules.py
-   ```
-   If any onboarding or game rule verification fails, halt and resolve it before proceeding.
+   This single gate executes and enforces:
+   - **Puzzle Presentation, Onboarding & Rules (Rules 1–4, 6, 18)**: `server/test_puzzle_standards.py`, `server/test_game_onboarding.py`, `server/test_game_rules.py`
+   - **Code Health, DRY, Loop Watchdogs & Stack Bounds (Rules 6, 15, 17)**: `server/test_code_health_and_dry.py` ($\le 150\text{ms}$ per-puzzle generation limit, bounded loops, MRV solvers, $\le 1\text{KB}$ C++ stack arrays, build script regex safety)
+   - **Deductive Solvability & Opening Anchors (Rule 10)**: `server/test_stars_deduction.py`, `server/test_towers_deduction.py`, `server/test_inequality_deduction.py`, `server/test_killer_deduction.py`
+   - **Thermal Raster Safety, Golden Snapshots & 100.00% Bit-for-Bit Visual Parity (Rules 8, 11–13)**: `server/test_thermal_format.py`, `server/test_thermal_snapshots.py`, `server/test_visual_consistency.py`
+   - **Web Simulator Headless Runtime & Hardware Emulation (Rule 16)**: `server/test_simulator_runtime.py` (all 20 `*Simulator` classes, `renderOffline<Game>` 1-bit canvases, and `drawSimGuideCanvas` diagrams)
+   - **ESP32 Firmware Parity, Stack Frame Audit & Host Compilation (Rules 7, 14, 17)**: `server/test_firmware_parity.py` (`sizeof(<Game>Gen) <= 4096` and all 20 games $\times$ 4 grades C++ execution)
+
+   If any check fails, halt and fix the issue before proceeding.
 
 ---
 

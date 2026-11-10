@@ -98,6 +98,7 @@ void EscPosPrinter::disconnect() {
 #if (ACTIVE_PRINTER_MODE == PRINTER_MODE_W5500_ETH)
     if (_mode == PRINTER_MODE_W5500_ETH && _ethClient.connected()) {
         _ethClient.flush();
+        delay(250);
         _ethClient.stop();
         _outputStream = nullptr;
         Serial.println("[PRINTER] Disconnected W5500 Ethernet socket.");
@@ -105,6 +106,7 @@ void EscPosPrinter::disconnect() {
 #elif (ACTIVE_PRINTER_MODE == PRINTER_MODE_WIFI_TCP)
     if (_mode != PRINTER_MODE_SERIAL && _tcpClient.connected()) {
         _tcpClient.flush();
+        delay(250);
         _tcpClient.stop();
         _outputStream = nullptr;
         Serial.println("[PRINTER] Disconnected TCP socket.");

@@ -381,25 +381,13 @@ def build_wordsearch_dataset() -> None:
     print(f"  -> Wrote {header_path}")
 
     # Update simulator
-    if SIMULATOR_HTML.exists():
-        content = SIMULATOR_HTML.read_text(encoding="utf-8")
-        for tier, var_name in [
-            ("easy", "WORD_SEARCH_WORDS_EASY"),
-            ("medium", "WORD_SEARCH_WORDS_MEDIUM"),
-            ("hard", "WORD_SEARCH_WORDS_HARD"),
-        ]:
-            js_code = f"    const {var_name} = " + json.dumps(dataset[tier], separators=(",", ":")) + ";"
-            pattern = rf"    const {var_name} = \[.*?\];"
-            if re.search(pattern, content, re.DOTALL):
-                content = re.sub(pattern, lambda m, code=js_code: code, content, flags=re.DOTALL)
-            else:
-                # Replace old WORD_SEARCH_THEMES pattern if present
-                old_var = f"WORD_SEARCH_THEMES_{tier.upper()}"
-                old_pattern = rf"    const {old_var} = \{{.*?\}};"
-                if re.search(old_pattern, content, re.DOTALL):
-                    content = re.sub(old_pattern, lambda m, code=js_code: code, content, flags=re.DOTALL)
-        SIMULATOR_HTML.write_text(content, encoding="utf-8")
-        print(f"  -> Updated WORD_SEARCH_WORDS in {SIMULATOR_HTML}")
+    for tier, var_name in [
+        ("easy", "WORD_SEARCH_WORDS_EASY"),
+        ("medium", "WORD_SEARCH_WORDS_MEDIUM"),
+        ("hard", "WORD_SEARCH_WORDS_HARD"),
+    ]:
+        js_code = f"    const {var_name} = " + json.dumps(dataset[tier], separators=(",", ":")) + ";"
+        update_simulator_js(rf"    const {var_name} = \[.*?\];", js_code, var_name)
 
 
 # =============================================================================
@@ -452,8 +440,16 @@ def build_cryptogram_dataset() -> None:
     print(f"  -> Wrote {header_path}")
 
     # Update simulator
-    js_code = "        this.puzzles = " + json.dumps(quotes, separators=(",", ":")) + ";"
-    update_simulator_js(r"        this\.puzzles = \[.*?\];", js_code, "CryptogramSimulator.puzzles", dotall=True)
+    js_code = (
+        "    class CryptogramSimulator {\n"
+        "      constructor() {\n"
+        "        this.puzzles = " + json.dumps(quotes, separators=(",", ":")) + ";"
+    )
+    update_simulator_js(
+        r"    class CryptogramSimulator \{\n      constructor\(\) \{\n        this\.puzzles = \[.*?\];",
+        js_code,
+        "CryptogramSimulator.puzzles",
+    )
 
 
 # =============================================================================
@@ -590,27 +586,34 @@ def build_wheel_dataset() -> None:
     print(f"  -> Wrote {header_path}")
 
     # Update simulator
-    if SIMULATOR_HTML.exists():
-        sim_wheel = {"easy": [], "medium": [], "hard": []}
-        for tier in ["easy", "medium", "hard"]:
-            for p in by_diff[tier][:20]:
-                bm = p.get("benchmarks", {})
-                lc = p.get("length_counts", {})
-                sim_wheel[tier].append({
-                    "center": p["center_letter"],
-                    "outer": p["outer_letters"],
-                    "pangram": p.get("pangrams", [""])[0] if p.get("pangrams") else "",
-                    "wordCount": p["word_count"],
-                    "good": bm.get("good", 15),
-                    "great": bm.get("great", 25),
-                    "genius": bm.get("genius", 35),
-                    "count4": lc.get("4", 0),
-                    "count5": lc.get("5", 0),
-                    "count6": lc.get("6", 0),
-                    "count7plus": lc.get("7+", 0),
-                })
-        js_code = "        this.puzzles = " + json.dumps(sim_wheel, separators=(",", ":")) + ";"
-        update_simulator_js(r"        this\.puzzles = \{.*?\n        \};", js_code, "WheelSimulator.puzzles", dotall=True)
+    sim_wheel = {"easy": [], "medium": [], "hard": []}
+    for tier in ["easy", "medium", "hard"]:
+        for p in by_diff[tier][:20]:
+            bm = p.get("benchmarks", {})
+            lc = p.get("length_counts", {})
+            sim_wheel[tier].append({
+                "center": p["center_letter"],
+                "outer": p["outer_letters"],
+                "pangram": p.get("pangrams", [""])[0] if p.get("pangrams") else "",
+                "wordCount": p["word_count"],
+                "good": bm.get("good", 15),
+                "great": bm.get("great", 25),
+                "genius": bm.get("genius", 35),
+                "count4": lc.get("4", 0),
+                "count5": lc.get("5", 0),
+                "count6": lc.get("6", 0),
+                "count7plus": lc.get("7+", 0),
+            })
+    js_code = (
+        "    class WheelSimulator {\n"
+        "      constructor() {\n"
+        "        this.puzzles = " + json.dumps(sim_wheel, separators=(",", ":")) + ";"
+    )
+    update_simulator_js(
+        r"    class WheelSimulator \{\n      constructor\(\) \{\n        this\.puzzles = \{.*?\};",
+        js_code,
+        "WheelSimulator.puzzles",
+    )
 
 
 # =============================================================================

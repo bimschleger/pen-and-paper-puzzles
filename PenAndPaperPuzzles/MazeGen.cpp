@@ -7,7 +7,8 @@ MazeGen::MazeGen() :
     _size(20),
     _cellSize(24),
     _wallThickness(3),
-    _solutionMoveCount(0) {
+    _solutionMoveCount(0),
+    _pathSolved(false) {
     memset(_wallsH, 0xFF, sizeof(_wallsH));
     memset(_wallsV, 0xFF, sizeof(_wallsV));
 }
@@ -90,8 +91,14 @@ void MazeGen::generate(MazeDifficulty diff, uint32_t seed) {
         visited[idx >> 3] |= (1 << (idx & 7));
     };
 
-    // Active stack for growing tree algorithm
-    uint16_t active[1600];
+    // Active stack for growing tree algorithm (heap-allocated to protect 8KB ESP32 loopTask stack)
+    uint16_t totalCells = (uint16_t)_size * _size;
+    uint16_t* active = (uint16_t*)malloc(totalCells * sizeof(uint16_t));
+    if (!active) {
+        _solutionMoveCount = 0;
+        _pathSolved = true;
+        return;
+    }
     uint16_t activeCount = 0;
 
     setVisited(0, 0);
@@ -103,7 +110,9 @@ void MazeGen::generate(MazeDifficulty diff, uint32_t seed) {
         char dir;
     };
 
-    while (activeCount > 0) {
+    uint32_t iterGuard = 0;
+    uint32_t maxIter = (uint32_t)totalCells * 4 + 10;
+    while (activeCount > 0 && iterGuard++ < maxIter) {
         uint16_t idx = (random(100) < branchProbPct) ? random(activeCount) : (activeCount - 1);
         uint16_t cell = active[idx];
         uint8_t r = (uint8_t)(cell / _size);
@@ -147,12 +156,40 @@ void MazeGen::generate(MazeDifficulty diff, uint32_t seed) {
         }
     }
 
-    solvePath();
+    free(active);
+    _solutionMoveCount = 0;
+    _pathSolved = false;
+}
+
+uint16_t MazeGen::getSolutionMoveCount() {
+    if (!_pathSolved) solvePath();
+    return _solutionMoveCount;
+}
+
+char MazeGen::getSolutionMoveDir(uint16_t idx) {
+    if (!_pathSolved) solvePath();
+    return _solutionMoves[idx].dir;
+}
+
+uint8_t MazeGen::getSolutionMoveSteps(uint16_t idx) {
+    if (!_pathSolved) solvePath();
+    return _solutionMoves[idx].steps;
 }
 
 void MazeGen::solvePath() {
+    _pathSolved = true;
+    _solutionMoveCount = 0;
+
     uint16_t totalCells = (uint16_t)_size * _size;
-    uint16_t parent[1600];
+    // Allocate BFS buffers on the heap to avoid overflowing the 8KB ESP32 loopTask stack
+    uint16_t* parent = (uint16_t*)malloc(totalCells * sizeof(uint16_t));
+    uint16_t* queue = (uint16_t*)malloc(totalCells * sizeof(uint16_t));
+    if (!parent || !queue) {
+        if (parent) free(parent);
+        if (queue) free(queue);
+        return;
+    }
+
     for (uint16_t i = 0; i < totalCells; i++) parent[i] = 0xFFFF;
 
     uint8_t seen[200] = {0};
@@ -165,7 +202,6 @@ void MazeGen::solvePath() {
         seen[idx >> 3] |= (1 << (idx & 7));
     };
 
-    uint16_t queue[1600];
     uint16_t head = 0;
     uint16_t tail = 0;
 
@@ -173,7 +209,7 @@ void MazeGen::solvePath() {
     setSeen(0, 0);
 
     uint16_t targetCell = totalCells - 1;
-    while (head < tail) {
+    while (head < tail && head < totalCells) {
         uint16_t cell = queue[head++];
         if (cell == targetCell) break;
 
@@ -206,11 +242,11 @@ void MazeGen::solvePath() {
         }
     }
 
-    // Trace back path from target to 0
-    uint16_t pathCells[1600];
+    // Reuse `queue` buffer as `pathCells` to avoid a third 3.2KB allocation
+    uint16_t* pathCells = queue;
     uint16_t pathLen = 0;
     uint16_t cur = targetCell;
-    while (cur != 0xFFFF) {
+    while (cur != 0xFFFF && pathLen < totalCells) {
         pathCells[pathLen++] = cur;
         if (cur == 0) break;
         cur = parent[cur];
@@ -225,24 +261,29 @@ void MazeGen::solvePath() {
 
     // Convert into aggregated cardinal direction steps
     _solutionMoveCount = 0;
-    for (uint16_t i = 0; i < pathLen - 1; i++) {
-        uint8_t r1 = (uint8_t)(pathCells[i] / _size);
-        uint8_t c1 = (uint8_t)(pathCells[i] % _size);
-        uint8_t r2 = (uint8_t)(pathCells[i + 1] / _size);
-        uint8_t c2 = (uint8_t)(pathCells[i + 1] % _size);
+    if (pathLen > 1) {
+        for (uint16_t i = 0; i < pathLen - 1; i++) {
+            uint8_t r1 = (uint8_t)(pathCells[i] / _size);
+            uint8_t c1 = (uint8_t)(pathCells[i] % _size);
+            uint8_t r2 = (uint8_t)(pathCells[i + 1] / _size);
+            uint8_t c2 = (uint8_t)(pathCells[i + 1] % _size);
 
-        char d;
-        if (r2 == r1 + 1) d = 'S';
-        else if (r2 == r1 - 1) d = 'N';
-        else if (c2 == c1 + 1) d = 'E';
-        else d = 'W';
+            char d;
+            if (r2 == r1 + 1) d = 'S';
+            else if (r2 == r1 - 1) d = 'N';
+            else if (c2 == c1 + 1) d = 'E';
+            else d = 'W';
 
-        if (_solutionMoveCount > 0 && _solutionMoves[_solutionMoveCount - 1].dir == d) {
-            _solutionMoves[_solutionMoveCount - 1].steps++;
-        } else if (_solutionMoveCount < 300) {
-            _solutionMoves[_solutionMoveCount++] = { d, 1 };
+            if (_solutionMoveCount > 0 && _solutionMoves[_solutionMoveCount - 1].dir == d) {
+                _solutionMoves[_solutionMoveCount - 1].steps++;
+            } else if (_solutionMoveCount < 300) {
+                _solutionMoves[_solutionMoveCount++] = { d, 1 };
+            }
         }
     }
+
+    free(parent);
+    free(queue);
 }
 
 void MazeGen::printToReceipt(EscPosPrinter& printer, MazeDifficulty diff) {
@@ -281,7 +322,7 @@ void MazeGen::printToReceipt(EscPosPrinter& printer, MazeDifficulty diff) {
                 printer.println("+");
             }
         }
-    } else {
+    } else if (_size <= 20) {
         printer.print(indent);
         printer.print("+ ");
         for (uint8_t c = 1; c < _size; c++) printer.print("+-");
@@ -314,6 +355,9 @@ void MazeGen::printToReceipt(EscPosPrinter& printer, MazeDifficulty diff) {
                 printer.println("+");
             }
         }
+    } else {
+        // 30x30 and 40x40 exceed 48 ASCII columns; fall back to high-res raster
+        printRasterToReceipt(printer, diff);
     }
 }
 

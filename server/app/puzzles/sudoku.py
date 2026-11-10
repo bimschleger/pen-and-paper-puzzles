@@ -165,20 +165,71 @@ class SudokuPuzzle(BasePuzzle):
                     return False
         return True
 
+    _POPCOUNT = [bin(i).count("1") for i in range(1024)]
+
     def _count_solutions(self, board: List[List[int]], max_count: int = 2) -> int:
+        row_mask = [0] * 9
+        col_mask = [0] * 9
+        box_mask = [0] * 9
+        empties: List[Tuple[int, int, int]] = []
+        popcount = self._POPCOUNT
+
         for r in range(9):
             for c in range(9):
-                if board[r][c] == 0:
-                    count = 0
-                    for num in range(1, 10):
-                        if self._is_valid(board, r, c, num):
-                            board[r][c] = num
-                            count += self._count_solutions(board, max_count)
-                            board[r][c] = 0
-                            if count >= max_count:
-                                return count
-                    return count
-        return 1
+                val = board[r][c]
+                b = (r // 3) * 3 + (c // 3)
+                if val != 0:
+                    bit = 1 << val
+                    row_mask[r] |= bit
+                    col_mask[c] |= bit
+                    box_mask[b] |= bit
+                else:
+                    empties.append((r, c, b))
+
+        n_empty = len(empties)
+
+        def backtrack(idx: int, limit: int) -> int:
+            if idx == n_empty:
+                return 1
+
+            # Minimum Remaining Values (MRV) selection among remaining empty cells
+            best_i = idx
+            best_cands = 10
+            best_avail = 0
+            for i in range(idx, n_empty):
+                r, c, b = empties[i]
+                avail = 0x3FE & ~(row_mask[r] | col_mask[c] | box_mask[b])
+                if avail == 0:
+                    return 0
+                cnt = popcount[avail]
+                if cnt < best_cands:
+                    best_cands = cnt
+                    best_i = i
+                    best_avail = avail
+                    if cnt == 1:
+                        break
+
+            empties[idx], empties[best_i] = empties[best_i], empties[idx]
+            r, c, b = empties[idx]
+            count = 0
+            avail = best_avail
+            while avail:
+                bit = avail & -avail
+                avail ^= bit
+                row_mask[r] |= bit
+                col_mask[c] |= bit
+                box_mask[b] |= bit
+                count += backtrack(idx + 1, limit - count)
+                row_mask[r] ^= bit
+                col_mask[c] ^= bit
+                box_mask[b] ^= bit
+                if count >= limit:
+                    break
+
+            empties[idx], empties[best_i] = empties[best_i], empties[idx]
+            return count
+
+        return backtrack(0, max_count)
 
     def verify_accuracy(
         self,
