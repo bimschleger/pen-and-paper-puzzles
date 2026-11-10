@@ -2269,12 +2269,14 @@
         const phrase = selected.phrase.toUpperCase();
         const author = selected.author.toUpperCase();
 
-        // Generate derangement key
+        // Generate derangement key via Sattolo's algorithm (O(N) single-pass cyclic derangement)
         const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-        let shuffled = letters.slice();
-        for (let tries = 0; tries < 100; tries++) {
-          shuffled.sort(() => Math.random() - 0.5);
-          if (letters.every((l, i) => l !== shuffled[i])) break;
+        const shuffled = letters.slice();
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * i);
+          const tmp = shuffled[i];
+          shuffled[i] = shuffled[j];
+          shuffled[j] = tmp;
         }
         const p2c = {};
         const c2p = {};

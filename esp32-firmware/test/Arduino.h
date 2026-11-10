@@ -10,6 +10,8 @@
 #include <cstdint>
 #include <algorithm>
 #include <sstream>
+#include <chrono>
+#include <limits>
 
 #define PROGMEM
 #define memcpy_P memcpy

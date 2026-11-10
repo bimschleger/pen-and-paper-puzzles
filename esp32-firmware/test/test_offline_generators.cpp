@@ -1,8 +1,8 @@
+#include <chrono>
 #include "Arduino.h"
 #include "WiFi.h"
 #include "WiFiClient.h"
 #include "HardwareSerial.h"
-#include <chrono>
 
 #include "../src/printer/EscPosPrinter.h"
 #include "../src/printer/EscPosPrinter.cpp"

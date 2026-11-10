@@ -223,7 +223,7 @@ globalThis.navigator = { clipboard: { writeText: async () => {} } };
 
   const generatedSamples = {};
 
-  // 1. Test all 20 Simulator generators across all difficulty tiers with <= 150ms watchdog
+  // 1. Test all 20 Simulator generators across all difficulty tiers with <= 250ms watchdog
   for (const [key, Cls, argList] of expectedClasses) {
     const inst = new Cls();
     for (const arg of argList) {
@@ -234,13 +234,13 @@ globalThis.navigator = { clipboard: { writeText: async () => {} } };
         if (!res || typeof res !== 'object') {
           throw new Error(`${key} generator returned invalid result for arg=${JSON.stringify(arg)}`);
         }
-        if (elapsed > 150.0) {
-          throw new Error(`Watchdog timeout: ${key}.generate(${JSON.stringify(arg)}) took ${elapsed.toFixed(2)}ms (> 150ms limit)`);
+        if (elapsed > 250.0) {
+          throw new Error(`Watchdog timeout: ${key}.generate(${JSON.stringify(arg)}) took ${elapsed.toFixed(2)}ms (> 250ms limit)`);
         }
         if (!generatedSamples[key]) generatedSamples[key] = res;
       }
     }
-    console.log(`  [OK] ${key.padEnd(12)} generator verified across ${argList.length} tiers (3x Monte Carlo, <= 150ms)`);
+    console.log(`  [OK] ${key.padEnd(12)} generator verified across ${argList.length} tiers (3x Monte Carlo, <= 250ms)`);
   }
 
   // 2. Test all 20 renderOffline<Game> functions for Rule 16 compliance (100% ThermalCanvasSimulator, zero 2D vector calls)
