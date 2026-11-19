@@ -12,6 +12,10 @@ class ThermalCanvas {
 public:
     ThermalCanvas();
     ~ThermalCanvas();
+    ThermalCanvas(const ThermalCanvas&) = delete;
+    ThermalCanvas& operator=(const ThermalCanvas&) = delete;
+
+    static constexpr uint16_t BAND_HEIGHT = 256;
 
     // Buffer lifecycle
     bool begin(uint16_t heightDots);
@@ -31,6 +35,9 @@ public:
     void drawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint8_t thickness = 1, uint8_t color = 1);
     void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint8_t color = 1);
     void fillHatch(int16_t x, int16_t y, int16_t w, int16_t h, uint8_t patternId);
+    void drawGrid(int16_t x0, int16_t y0, uint8_t rows, uint8_t cols, int16_t cellW, int16_t cellH,
+                  uint8_t outerThick = 4, uint8_t innerThick = 1,
+                  uint8_t majorRowStep = 0, uint8_t majorColStep = 0, uint8_t majorThick = 0);
     // Lines & Shapes
     void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint8_t thickness = 1, uint8_t color = 1);
     void drawDashedHLine(int16_t x, int16_t y, int16_t w, uint8_t dashLen = 4, uint8_t gapLen = 4, uint8_t thickness = 1, uint8_t color = 1);
@@ -52,8 +59,43 @@ public:
     // Direct stream to thermal printer
     bool printTo(EscPosPrinter& printer);
 
+    template <typename DrawFn>
+    bool renderBanded(EscPosPrinter& printer, uint16_t totalHeight, DrawFn&& drawFn) {
+        totalHeight = (uint16_t)((totalHeight + 7) & ~7);
+        if (totalHeight == 0) return false;
+
+        uint16_t bandH = (totalHeight < BAND_HEIGHT) ? totalHeight : BAND_HEIGHT;
+        if (!begin(bandH)) return false;
+
+        _totalHeight = totalHeight;
+        if (!printer.beginRasterBitmap(THERMAL_CANVAS_WIDTH, totalHeight)) {
+            end();
+            return false;
+        }
+
+        bool ok = true;
+        for (uint16_t bandY = 0; bandY < totalHeight; bandY += BAND_HEIGHT) {
+            uint16_t curH = totalHeight - bandY;
+            if (curH > BAND_HEIGHT) curH = BAND_HEIGHT;
+            _yOffset = (int16_t)bandY;
+            _height = curH;
+            clear(0);
+            drawFn(*this);
+            if (!printer.writeRasterRows(_buffer, (size_t)curH * THERMAL_CANVAS_WIDTH_BYTES)) {
+                ok = false;
+                break;
+            }
+        }
+
+        printer.endRasterBitmap();
+        end();
+        return ok;
+    }
+
 private:
     uint16_t _height;
+    int16_t  _yOffset;
+    uint16_t _totalHeight;
     uint8_t* _buffer;
 };
 

@@ -25,6 +25,21 @@ SIMULATOR_HTML = ROOT_DIR / "simulator" / "receipt_simulator.html"
 SYNC_SCRIPT = ROOT_DIR / "scripts" / "sync_arduino_sketch.sh"
 
 
+_SIM_HTML_BUF: Optional[str] = None
+
+
+def _validate_ascii(value: str, label: str, max_len: Optional[int] = None) -> str:
+    """Assert printable 7-bit ASCII and optional maximum length for embedded C++ literals."""
+    if not isinstance(value, str):
+        raise ValueError(f"{label}: expected string, got {type(value).__name__}")
+    for ch in value:
+        if ord(ch) < 32 or ord(ch) >= 127:
+            raise ValueError(f"{label}: non-ASCII/control character {ch!r} (U+{ord(ch):04X}) in {value!r}")
+    if max_len is not None and len(value) > max_len:
+        raise ValueError(f"{label}: length {len(value)} exceeds max {max_len}: {value!r}")
+    return value
+
+
 def pack_nibbles(arr: List[int]) -> List[int]:
     """Pack a sequence of 4-bit integers into big-endian nibble pairs (2 values per byte)."""
     out = []
@@ -43,18 +58,30 @@ def update_simulator_js(
     fallback_after_pattern: Optional[str] = None,
 ) -> None:
     """Replace or inject a JavaScript constant/property definition in receipt_simulator.html."""
+    global _SIM_HTML_BUF
     if not SIMULATOR_HTML.exists():
-        return
+        raise FileNotFoundError(f"Simulator HTML not found at {SIMULATOR_HTML}")
     flags = re.DOTALL if dotall else 0
-    content = SIMULATOR_HTML.read_text(encoding="utf-8")
+    content = _SIM_HTML_BUF if _SIM_HTML_BUF is not None else SIMULATOR_HTML.read_text(encoding="utf-8")
     if re.search(pattern, content, flags=flags):
-        content = re.sub(pattern, lambda m: js_code, content, flags=flags)
-        SIMULATOR_HTML.write_text(content, encoding="utf-8")
-        print(f"  -> Updated {label} in {SIMULATOR_HTML}")
+        content = re.sub(pattern, lambda _m: js_code, content, flags=flags)
+        action = "Updated"
     elif fallback_after_pattern and re.search(fallback_after_pattern, content):
-        content = re.sub(fallback_after_pattern, r"\1\n" + js_code, content, count=1)
+        content = re.sub(
+            fallback_after_pattern,
+            lambda m: m.group(1) + "\n" + js_code,
+            content,
+            count=1,
+        )
+        action = "Injected"
+    else:
+        raise RuntimeError(f"Failed to match simulator marker for {label} in {SIMULATOR_HTML}")
+
+    if _SIM_HTML_BUF is not None:
+        _SIM_HTML_BUF = content
+    else:
         SIMULATOR_HTML.write_text(content, encoding="utf-8")
-        print(f"  -> Injected {label} into {SIMULATOR_HTML}")
+    print(f"  -> {action} {label} in {SIMULATOR_HTML}")
 
 
 # =============================================================================
@@ -105,11 +132,13 @@ def build_stars_dataset() -> None:
         lines.append("};")
         lines.append("")
 
+        lines.append("#ifdef HOST_TEST")
         lines.append(f"static const uint8_t STARS_{tier}_SOLUTIONS[{count}][{total_stars}] PROGMEM = {{")
         for p in puzzles:
             packed_solutions = [f"0x{(s[0] << 4) | (s[1] & 0x0F):02X}" for s in p["solution"]]
             lines.append(f"    {{{', '.join(packed_solutions)}}},")
         lines.append("};")
+        lines.append("#endif")
         lines.append("")
 
     lines.append("#endif // STARS_DATASET_H\n")
@@ -154,120 +183,83 @@ def build_killer_dataset() -> None:
         "static const size_t NUM_KILLER_HARD = 100;",
         "static const size_t NUM_KILLER_EXTREME = 100;",
         "",
+        "#ifdef HOST_TEST",
+        "#define MP_KILLER_SOL_FIELD(n) uint8_t solution[n];",
+        "#define MP_KILLER_SOL(...) , { __VA_ARGS__ }",
+        "#else",
+        "#define MP_KILLER_SOL_FIELD(n)",
+        "#define MP_KILLER_SOL(...)",
+        "#endif",
+        "",
         "struct Killer4x4Entry {",
         "    uint8_t cage_map[8];",
-        "    uint8_t solution[8];",
+        "    uint8_t cage_sums[8];",
         "    uint8_t num_cages;",
-        "    uint8_t cage_sums[16];",
+        "    MP_KILLER_SOL_FIELD(8)",
         "};",
         "",
         "struct Killer6x6Entry {",
         "    uint8_t cage_map[18];",
-        "    uint8_t solution[18];",
+        "    uint8_t cage_sums[16];",
         "    uint8_t num_cages;",
-        "    uint8_t cage_sums[18];",
+        "    MP_KILLER_SOL_FIELD(18)",
         "};",
         "",
-        "// --- EASY (4x4, Digits 1-4, Zero Singles, Pure Dominoes) ---",
-        "static const Killer4x4Entry KILLER_EASY_DATASET[100] PROGMEM = {",
     ]
 
-    for p in dataset["easy"]:
-        size = 4
-        c_map = [0] * (size * size)
-        for cg in p["cages"]:
-            cid = cg["id"]
-            for cell in cg["cells"]:
-                r, c = cell[0], cell[1]
-                c_map[r * size + c] = cid
-        c_packed = pack_nibbles(c_map)
-        sol_flat = [p["solution"][r][c] for r in range(size) for c in range(size)]
-        sol_packed = pack_nibbles(sol_flat)
-        num_cages = len(p["cages"])
-        sums = [cg["sum"] for cg in p["cages"]] + [0] * (16 - num_cages)
+    killer_tiers = [
+        ("easy", "KILLER_EASY_DATASET", "Killer4x4Entry", 4, 8, "EASY (4x4, Digits 1-4, Zero Singles, Pure Dominoes)"),
+        ("medium", "KILLER_MEDIUM_DATASET", "Killer4x4Entry", 4, 8, "MEDIUM (4x4, Digits 1-4, Zero Singles)"),
+        ("hard", "KILLER_HARD_DATASET", "Killer6x6Entry", 6, 16, "HARD (6x6, Digits 1-6, Zero Singles, 2-3 Cells)"),
+        ("extreme", "KILLER_EXTREME_DATASET", "Killer6x6Entry", 6, 16, "EXTREME (6x6, Digits 1-6, Zero Singles)"),
+    ]
+    for tier, arr_name, struct_name, size, max_cages, comment in killer_tiers:
+        lines.append(f"// --- {comment} ---")
+        lines.append(f"static const {struct_name} {arr_name}[100] PROGMEM = {{")
+        for p in dataset[tier]:
+            c_map = [0] * (size * size)
+            for cg in p["cages"]:
+                cid = cg["id"]
+                for r, c in cg["cells"]:
+                    c_map[r * size + c] = cid
+            c_packed = pack_nibbles(c_map)
+            sol_flat = [p["solution"][r][c] for r in range(size) for c in range(size)]
+            sol_packed = pack_nibbles(sol_flat)
+            num_cages = len(p["cages"])
+            assert num_cages <= max_cages, f"Killer {size}x{size} {tier} cages {num_cages} > {max_cages}"
+            sums = [cg["sum"] for cg in p["cages"]] + [0] * (max_cages - num_cages)
 
-        c_str = "{" + ", ".join(str(x) for x in c_packed) + "}"
-        s_str = "{" + ", ".join(str(x) for x in sol_packed) + "}"
-        sums_str = "{" + ", ".join(str(x) for x in sums) + "}"
-        lines.append(f"    {{{c_str}, {s_str}, {num_cages}, {sums_str}}},")
-    lines.append("};")
-    lines.append("")
+            c_str = "{" + ", ".join(str(x) for x in c_packed) + "}"
+            sums_str = "{" + ", ".join(str(x) for x in sums) + "}"
+            s_args = ", ".join(str(x) for x in sol_packed)
+            lines.append(f"    {{{c_str}, {sums_str}, {num_cages} MP_KILLER_SOL({s_args})}},")
+        lines.append("};")
+        lines.append("")
 
-    lines.append("// --- MEDIUM (4x4, Digits 1-4, Zero Singles) ---")
-    lines.append("static const Killer4x4Entry KILLER_MEDIUM_DATASET[100] PROGMEM = {")
-    for p in dataset["medium"]:
-        size = 4
-        c_map = [0] * (size * size)
-        for cg in p["cages"]:
-            cid = cg["id"]
-            for cell in cg["cells"]:
-                r, c = cell[0], cell[1]
-                c_map[r * size + c] = cid
-        c_packed = pack_nibbles(c_map)
-        sol_flat = [p["solution"][r][c] for r in range(size) for c in range(size)]
-        sol_packed = pack_nibbles(sol_flat)
-        num_cages = len(p["cages"])
-        sums = [cg["sum"] for cg in p["cages"]] + [0] * (16 - num_cages)
-
-        c_str = "{" + ", ".join(str(x) for x in c_packed) + "}"
-        s_str = "{" + ", ".join(str(x) for x in sol_packed) + "}"
-        sums_str = "{" + ", ".join(str(x) for x in sums) + "}"
-        lines.append(f"    {{{c_str}, {s_str}, {num_cages}, {sums_str}}},")
-    lines.append("};")
-    lines.append("")
-
-    lines.append("// --- HARD (6x6, Digits 1-6, Zero Singles, 2-3 Cells) ---")
-    lines.append("static const Killer6x6Entry KILLER_HARD_DATASET[100] PROGMEM = {")
-    for p in dataset["hard"]:
-        size = 6
-        c_map = [0] * (size * size)
-        for cg in p["cages"]:
-            cid = cg["id"]
-            for cell in cg["cells"]:
-                r, c = cell[0], cell[1]
-                c_map[r * size + c] = cid
-        c_packed = pack_nibbles(c_map)
-        sol_flat = [p["solution"][r][c] for r in range(size) for c in range(size)]
-        sol_packed = pack_nibbles(sol_flat)
-        num_cages = len(p["cages"])
-        sums = [cg["sum"] for cg in p["cages"]] + [0] * (18 - num_cages)
-
-        c_str = "{" + ", ".join(str(x) for x in c_packed) + "}"
-        s_str = "{" + ", ".join(str(x) for x in sol_packed) + "}"
-        sums_str = "{" + ", ".join(str(x) for x in sums) + "}"
-        lines.append(f"    {{{c_str}, {s_str}, {num_cages}, {sums_str}}},")
-    lines.append("};")
-    lines.append("")
-
-    lines.append("// --- EXTREME (6x6, Digits 1-6, Zero Singles) ---")
-    lines.append("static const Killer6x6Entry KILLER_EXTREME_DATASET[100] PROGMEM = {")
-    for p in dataset["extreme"]:
-        size = 6
-        c_map = [0] * (size * size)
-        for cg in p["cages"]:
-            cid = cg["id"]
-            for cell in cg["cells"]:
-                r, c = cell[0], cell[1]
-                c_map[r * size + c] = cid
-        c_packed = pack_nibbles(c_map)
-        sol_flat = [p["solution"][r][c] for r in range(size) for c in range(size)]
-        sol_packed = pack_nibbles(sol_flat)
-        num_cages = len(p["cages"])
-        sums = [cg["sum"] for cg in p["cages"]] + [0] * (18 - num_cages)
-
-        c_str = "{" + ", ".join(str(x) for x in c_packed) + "}"
-        s_str = "{" + ", ".join(str(x) for x in sol_packed) + "}"
-        sums_str = "{" + ", ".join(str(x) for x in sums) + "}"
-        lines.append(f"    {{{c_str}, {s_str}, {num_cages}, {sums_str}}},")
-    lines.append("};")
-    lines.append("")
     lines.append("#endif // KILLER_DATASET_H\n")
 
     header_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"  -> Wrote {header_path}")
 
-    # Update simulator
-    js_code = "    const KILLER_DATASET = " + json.dumps(dataset, separators=(",", ":")) + ";"
+    # Update simulator with compact representation: [size, box_rows, box_cols, c_map_hex, sums, sol]
+    compact_js = {}
+    for tier, puzzles in dataset.items():
+        tier_list = []
+        for p in puzzles:
+            sz = p["size"]
+            c_map = [0] * (sz * sz)
+            for cg in p["cages"]:
+                cid = cg["id"]
+                if cid >= 16:
+                    raise ValueError(f"Killer cage id {cid} exceeds hex nibble encoding")
+                for cell in cg["cells"]:
+                    c_map[cell[0] * sz + cell[1]] = cid
+            c_map_str = "".join(f"{x:x}" for x in c_map)
+            sums = [cg["sum"] for cg in p["cages"]]
+            sol_str = "".join(str(p["solution"][r][c]) for r in range(sz) for c in range(sz))
+            tier_list.append([sz, p["box_rows"], p["box_cols"], c_map_str, sums, sol_str])
+        compact_js[tier] = tier_list
+    js_code = "    const KILLER_DATASET = " + json.dumps(compact_js, separators=(",", ":")) + ";"
     update_simulator_js(r"    const KILLER_DATASET = \{.*?\};", js_code, "KILLER_DATASET")
 
 
@@ -306,7 +298,7 @@ def build_ladder_dataset() -> None:
         for item in items:
             w_len = item.get("wordLen", len(item["solution"][0]))
             total_w = item.get("totalWords", len(item["solution"]))
-            words_str = item.get("words", " ".join(item["solution"]))
+            words_str = _validate_ascii(item.get("words", " ".join(item["solution"])), f"ladder[{tier}].words")
             lines.append(f'    {{ {w_len}, {total_w}, "{words_str}" }},')
         lines.append("};")
         lines.append("")
@@ -357,6 +349,7 @@ def build_wordsearch_dataset() -> None:
     ]:
         lines.append(f"static const char* const {var_name}[{count_var}] PROGMEM = {{")
         for w in words:
+            _validate_ascii(w, f"wordsearch[{tier}]", max_len=16)
             lines.append(f'    "{w}",')
         lines.append("};")
         lines.append("")
@@ -429,8 +422,10 @@ def build_cryptogram_dataset() -> None:
         items = by_diff[tier][:100]
         lines.append(f"static const CryptogramQuote {var_name}[NUM_CRYPTOGRAMS_PER_DIFF] PROGMEM = {{")
         for item in items:
-            phrase_escaped = item["phrase"].replace('"', '\\"')
-            author_escaped = item["author"].replace('"', '\\"')
+            phrase = _validate_ascii(item["phrase"], f"cryptogram[{tier}].phrase")
+            author = _validate_ascii(item["author"], f"cryptogram[{tier}].author")
+            phrase_escaped = phrase.replace('"', '\\"')
+            author_escaped = author.replace('"', '\\"')
             lines.append(f'    {{"{phrase_escaped}", "{author_escaped}"}},')
         lines.append("};")
         lines.append("")
@@ -486,8 +481,8 @@ def build_jumble_dataset() -> None:
     for item in jumbles:
         words = item["words"]
         circles = item["circles"]
-        riddle = item["riddle"].replace('"', '\\"')
-        answer = item["answer"].replace('"', '\\"')
+        riddle = _validate_ascii(item["riddle"], "jumble.riddle").replace('"', '\\"')
+        answer = _validate_ascii(item["answer"], "jumble.answer").replace('"', '\\"')
 
         masks = []
         for c_list in circles:
@@ -498,7 +493,7 @@ def build_jumble_dataset() -> None:
         while len(masks) < 6:
             masks.append("0x00")
 
-        words_str = " ".join(words)
+        words_str = _validate_ascii(" ".join(words), "jumble.words")
         lines.append("    {")
         lines.append(f"        {len(words)},")
         lines.append(f"        {{{', '.join(masks)}}},")
@@ -565,8 +560,8 @@ def build_wheel_dataset() -> None:
         items = by_diff[tier][:20]
         lines.append(f"static const WheelPuzzleDef {var_name}[NUM_WHEEL_PUZZLES_PER_DIFF] PROGMEM = {{")
         for p in items:
-            center = p["center_letter"]
-            outer = "".join(p["outer_letters"])
+            center = _validate_ascii(p["center_letter"], f"wheel[{tier}].center", max_len=1)
+            outer = _validate_ascii("".join(p["outer_letters"]), f"wheel[{tier}].outer", max_len=6)
             wc = p["word_count"]
             bm = p.get("benchmarks", {})
             lc = p.get("length_counts", {})
@@ -640,13 +635,21 @@ def build_towers_dataset() -> None:
         "static const size_t NUM_TOWERS_HARD = 100;",
         "static const size_t NUM_TOWERS_EXTREME = 100;",
         "",
+        "#ifdef HOST_TEST",
+        "#define MP_TOWERS_SOL_FIELD(n) uint8_t solution[n];",
+        "#define MP_TOWERS_SOL(...) { __VA_ARGS__ },",
+        "#else",
+        "#define MP_TOWERS_SOL_FIELD(n)",
+        "#define MP_TOWERS_SOL(...)",
+        "#endif",
+        "",
         "struct Towers4x4Entry {",
-        "    uint8_t solution[8]; // 16 cells packed as nibbles",
+        "    MP_TOWERS_SOL_FIELD(8)",
         "    uint8_t clues[8];    // 16 clues: top(4), bottom(4), left(4), right(4)",
         "};",
         "",
         "struct Towers5x5Entry {",
-        "    uint8_t solution[13]; // 25 cells packed as nibbles (last byte low nibble 0)",
+        "    MP_TOWERS_SOL_FIELD(13)",
         "    uint8_t clues[10];    // 20 clues: top(5), bottom(5), left(5), right(5)",
         "};",
         "",
@@ -669,23 +672,44 @@ def build_towers_dataset() -> None:
             sol_packed = pack_nibbles(sol_flat)
             clues_flat = p["clues"]["top"] + p["clues"]["bottom"] + p["clues"]["left"] + p["clues"]["right"]
             clues_packed = pack_nibbles(clues_flat)
-            s_str = "{" + ", ".join(str(x) for x in sol_packed) + "}"
+            s_args = ", ".join(str(x) for x in sol_packed)
             c_str = "{" + ", ".join(str(x) for x in clues_packed) + "}"
-            lines.append(f"    {{{s_str}, {c_str}}},")
+            lines.append(f"    {{MP_TOWERS_SOL({s_args}) {c_str}}},")
         lines.append("};\n")
 
     lines.append("#endif // TOWERS_DATASET_H\n")
     header_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"  -> Wrote {header_path}")
 
-    # Update simulator
-    js_code = "    const TOWERS_DATASET = " + json.dumps(dataset, separators=(",", ":")) + ";"
+    # Update simulator with compact representation: [size, clues_str, sol_str]
+    compact_js = {}
+    for tier, puzzles in dataset.items():
+        tier_list = []
+        for p in puzzles:
+            sz = p["size"]
+            cl = p["clues"]
+            clues_str = "".join(str(x) for x in (cl["top"] + cl["bottom"] + cl["left"] + cl["right"]))
+            sol_str = "".join(str(p["solution"][r][c]) for r in range(sz) for c in range(sz))
+            tier_list.append([sz, clues_str, sol_str])
+        compact_js[tier] = tier_list
+    js_code = "    const TOWERS_DATASET = " + json.dumps(compact_js, separators=(",", ":")) + ";"
     update_simulator_js(
         r"    const TOWERS_DATASET = \{.*?\};",
         js_code,
         "TOWERS_DATASET",
         fallback_after_pattern=r"(const STARS_DATASET = \{.*?\};)",
     )
+
+
+def pack_2bit(values: list) -> list:
+    packed = []
+    for i in range(0, len(values), 4):
+        b = 0
+        for j in range(4):
+            v = (values[i + j] & 0x03) if (i + j) < len(values) else 0
+            b |= v << ((3 - j) * 2)
+        packed.append(b)
+    return packed
 
 
 # =============================================================================
@@ -712,18 +736,26 @@ def build_inequality_dataset() -> None:
         "static const size_t NUM_INEQUALITY_HARD = 100;",
         "static const size_t NUM_INEQUALITY_EXTREME = 100;",
         "",
+        "#ifdef HOST_TEST",
+        "#define MP_INEQ_SOL_FIELD(n) uint8_t solution[n];",
+        "#define MP_INEQ_SOL(...) { __VA_ARGS__ },",
+        "#else",
+        "#define MP_INEQ_SOL_FIELD(n)",
+        "#define MP_INEQ_SOL(...)",
+        "#endif",
+        "",
         "struct Inequality4x4Entry {",
-        "    uint8_t solution[8]; // 16 cells packed nibbles",
+        "    MP_INEQ_SOL_FIELD(8)",
         "    uint8_t givens[8];   // 16 cells packed nibbles (0=empty, 1..4=given)",
-        "    uint8_t edges_h[12]; // 4 rows x 3 cols",
-        "    uint8_t edges_v[12]; // 3 rows x 4 cols",
+        "    uint8_t edges_h[3];  // 12 edges packed at 2 bits/edge",
+        "    uint8_t edges_v[3];  // 12 edges packed at 2 bits/edge",
         "};",
         "",
         "struct Inequality5x5Entry {",
-        "    uint8_t solution[13]; // 25 cells packed nibbles (last low nibble 0)",
-        "    uint8_t givens[13];   // 25 cells packed nibbles",
-        "    uint8_t edges_h[20];  // 5 rows x 4 cols",
-        "    uint8_t edges_v[20];  // 4 rows x 5 cols",
+        "    MP_INEQ_SOL_FIELD(13)",
+        "    uint8_t givens[13];  // 25 cells packed nibbles",
+        "    uint8_t edges_h[5];  // 20 edges packed at 2 bits/edge",
+        "    uint8_t edges_v[5];  // 20 edges packed at 2 bits/edge",
         "};",
         "",
     ]
@@ -749,23 +781,36 @@ def build_inequality_dataset() -> None:
                 givens_grid[r * size + c] = val
             givens_packed = pack_nibbles(givens_grid)
 
-            eh_flat = [p["edges_h"][r][c] for r in range(size) for c in range(size - 1)]
-            ev_flat = [p["edges_v"][r][c] for r in range(size - 1) for c in range(size)]
+            eh_packed = pack_2bit([p["edges_h"][r][c] for r in range(size) for c in range(size - 1)])
+            ev_packed = pack_2bit([p["edges_v"][r][c] for r in range(size - 1) for c in range(size)])
 
-            s_str = "{" + ", ".join(str(x) for x in sol_packed) + "}"
+            s_args = ", ".join(str(x) for x in sol_packed)
             g_str = "{" + ", ".join(str(x) for x in givens_packed) + "}"
-            eh_str = "{" + ", ".join(str(x) for x in eh_flat) + "}"
-            ev_str = "{" + ", ".join(str(x) for x in ev_flat) + "}"
+            eh_str = "{" + ", ".join(str(x) for x in eh_packed) + "}"
+            ev_str = "{" + ", ".join(str(x) for x in ev_packed) + "}"
 
-            lines.append(f"    {{{s_str}, {g_str}, {eh_str}, {ev_str}}},")
+            lines.append(f"    {{MP_INEQ_SOL({s_args}) {g_str}, {eh_str}, {ev_str}}},")
         lines.append("};\n")
 
     lines.append("#endif // INEQUALITY_DATASET_H\n")
     header_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"  -> Wrote {header_path}")
 
-    # Update simulator
-    js_code = "    const INEQUALITY_DATASET = " + json.dumps(dataset, separators=(",", ":")) + ";"
+    # Update simulator with compact representation: [size, givens_str, eh_str, ev_str, sol_str]
+    compact_js = {}
+    for tier, puzzles in dataset.items():
+        tier_list = []
+        for p in puzzles:
+            sz = p["size"]
+            g_grid = ["0"] * (sz * sz)
+            for r, c, val in p["givens"]:
+                g_grid[r * sz + c] = str(val)
+            eh_str = "".join(str(p["edges_h"][r][c]) for r in range(sz) for c in range(sz - 1))
+            ev_str = "".join(str(p["edges_v"][r][c]) for r in range(sz - 1) for c in range(sz))
+            sol_str = "".join(str(p["solution"][r][c]) for r in range(sz) for c in range(sz))
+            tier_list.append([sz, "".join(g_grid), eh_str, ev_str, sol_str])
+        compact_js[tier] = tier_list
+    js_code = "    const INEQUALITY_DATASET = " + json.dumps(compact_js, separators=(",", ":")) + ";"
     update_simulator_js(
         r"    const INEQUALITY_DATASET = \{.*?\};",
         js_code,
@@ -775,19 +820,30 @@ def build_inequality_dataset() -> None:
 
 
 def main() -> None:
+    global _SIM_HTML_BUF
     print("==================================================================")
     print("STARTING UNIFIED CURATED DATASETS COMPILATION PIPELINE")
     print("==================================================================")
-    build_stars_dataset()
-    build_killer_dataset()
-    build_ladder_dataset()
-    build_wordsearch_dataset()
-    build_cryptogram_dataset()
-    build_jumble_dataset()
-    build_wheel_dataset()
-    build_towers_dataset()
-    build_inequality_dataset()
-    build_game_rules.main()
+    if not SIMULATOR_HTML.exists():
+        raise FileNotFoundError(f"Simulator HTML not found at {SIMULATOR_HTML}")
+
+    _SIM_HTML_BUF = SIMULATOR_HTML.read_text(encoding="utf-8")
+    try:
+        build_stars_dataset()
+        build_killer_dataset()
+        build_ladder_dataset()
+        build_wordsearch_dataset()
+        build_cryptogram_dataset()
+        build_jumble_dataset()
+        build_wheel_dataset()
+        build_towers_dataset()
+        build_inequality_dataset()
+        SIMULATOR_HTML.write_text(_SIM_HTML_BUF, encoding="utf-8")
+        print(f"  -> Wrote buffered simulator dataset updates to {SIMULATOR_HTML}")
+    finally:
+        _SIM_HTML_BUF = None
+
+    build_game_rules.main(sync_sketch=False)
 
     print("\nSynchronizing Arduino IDE sketch target...")
     subprocess.check_call([str(SYNC_SCRIPT)])

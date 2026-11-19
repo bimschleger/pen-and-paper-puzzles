@@ -11,10 +11,12 @@ enum QueensDifficulty {
     QUEENS_MASTER = 3  // 10x10, 2-Star
 };
 
+#ifdef HOST_TEST
 struct StarPos {
     uint8_t row;
     uint8_t col;
 };
+#endif
 
 class QueensGen {
 public:
@@ -34,8 +36,10 @@ private:
     uint8_t _size;
     uint8_t _starsPerUnit;
     int8_t _regions[MAX_SIZE][MAX_SIZE];
+#ifdef HOST_TEST
     StarPos _stars[20];
     uint8_t _numStars;
+#endif
 
     void applyTransform(uint8_t transform);
 };

@@ -17,6 +17,7 @@ public:
     bool softAPConfig(IPAddress ip, IPAddress gw, IPAddress sn) { return true; }
     bool softAP(const char* ssid, const char* pass = nullptr, int ch = 1, int ss = 0, int mc = 4) { return true; }
     bool softAPdisconnect(bool wifioff = false) { return true; }
+    bool reconnect() { return true; }
 };
 static WiFiMock WiFi;
 #endif

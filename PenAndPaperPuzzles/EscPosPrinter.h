@@ -52,9 +52,15 @@ public:
     virtual void printDoubleLine();
     virtual void printHeader(const String& title, const String& subtitle = "");
     virtual void printKeyValue(const String& key, const String& value, int totalCols = 48);
+    virtual void printMasterFooter(const char* closingTagline = "Enjoy your day!",
+                                   bool includeScheduleHint = false,
+                                   bool leadingRule = true);
 
     // Raw byte stream & Raster Graphics
     virtual size_t writeRaw(const uint8_t* buffer, size_t size);
+    virtual bool beginRasterBitmap(uint16_t widthDots, uint16_t totalHeightDots);
+    virtual bool writeRasterRows(const uint8_t* rowData, size_t byteLen);
+    virtual void endRasterBitmap();
     virtual void printRasterBitmap(const uint8_t* bitmapData, uint16_t widthDots, uint16_t heightDots);
 
     // Diagnostic Self Test
@@ -70,6 +76,7 @@ private:
     HardwareSerial* _serial;
     Print* _outputStream;
 
+    bool writeAll(const uint8_t* data, size_t len, uint32_t timeoutMs = 5000);
     void sendCommand(const uint8_t* cmd, size_t length);
 };
 

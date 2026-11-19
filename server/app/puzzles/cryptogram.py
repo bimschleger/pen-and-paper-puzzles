@@ -70,24 +70,22 @@ class CryptogramPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs,
     ) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        difficulty = difficulty.lower()
+        rng = self.make_rng(seed)
+        difficulty = self.normalize_difficulty(difficulty)
         candidates = [p for p in self.puzzles if p.get("diff", "").lower() == difficulty]
         if not candidates:
             candidates = self.puzzles
 
-        selected = random.choice(candidates)
+        selected = rng.choice(candidates)
         phrase = selected["phrase"].upper()
         author = selected.get("author", "ANONYMOUS").upper()
         category = selected.get("category", "General")
 
-        plain_to_cipher, cipher_to_plain = self._generate_derangement_key()
+        plain_to_cipher, cipher_to_plain = self._generate_derangement_key(rng=rng)
         ciphertext = "".join(plain_to_cipher.get(ch, ch) for ch in phrase)
 
         clue_count = 3 if difficulty == "easy" else (1 if difficulty == "hard" else 2)
-        clues = self._select_clues(phrase, plain_to_cipher, clue_count)
+        clues = self._select_clues(phrase, plain_to_cipher, clue_count, rng=rng)
 
         if len(clues) == 1:
             clue_str = f"CLUE: {clues[0]['cipher']} = {clues[0]['plain']}"
@@ -267,11 +265,12 @@ class CryptogramPuzzle(BasePuzzle):
 
         return tb.to_escpos()
 
-    def _generate_derangement_key(self) -> Tuple[Dict[str, str], Dict[str, str]]:
+    def _generate_derangement_key(self, rng: Optional[random.Random] = None) -> Tuple[Dict[str, str], Dict[str, str]]:
+        r_gen = rng if rng is not None else random.Random()
         letters = list(string.ascii_uppercase)
         shuffled = letters.copy()
         for _ in range(100):
-            random.shuffle(shuffled)
+            r_gen.shuffle(shuffled)
             if all(a != b for a, b in zip(letters, shuffled)):
                 break
         else:
@@ -281,7 +280,10 @@ class CryptogramPuzzle(BasePuzzle):
         c2p = dict(zip(shuffled, letters))
         return p2c, c2p
 
-    def _select_clues(self, phrase: str, p2c: Dict[str, str], count: int) -> List[Dict[str, str]]:
+    def _select_clues(
+        self, phrase: str, p2c: Dict[str, str], count: int, rng: Optional[random.Random] = None
+    ) -> List[Dict[str, str]]:
+        r_gen = rng if rng is not None else random.Random()
         distinct_letters = list(set(ch for ch in phrase if ch in string.ascii_uppercase))
         if not distinct_letters:
             distinct_letters = list(string.ascii_uppercase[:count])
@@ -290,7 +292,7 @@ class CryptogramPuzzle(BasePuzzle):
         sorted_in_phrase = [ch for ch in common_order if ch in distinct_letters] + [ch for ch in distinct_letters if ch not in common_order]
 
         count = min(count, len(distinct_letters))
-        chosen_plain = random.sample(sorted_in_phrase[:max(count * 2, count)], count)
+        chosen_plain = r_gen.sample(sorted_in_phrase[:max(count * 2, count)], count)
 
         clues = []
         for p in chosen_plain:
@@ -367,7 +369,7 @@ class CryptogramPuzzle(BasePuzzle):
                     c_part, p_part = p.split("=", 1)
                     cipher_to_clue[c_part.strip().upper()] = p_part.strip().upper()
 
-        output_lines.append("  - - - - - - - - - - - - - - - - - - - - - - - -")
+        output_lines.append("  " + "- " * 22 + "-")
         output_lines.append("  ALPHABET TRACKER:")
         alpha_rows = [
             "ABCDEFG",

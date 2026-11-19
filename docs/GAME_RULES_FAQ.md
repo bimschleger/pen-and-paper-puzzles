@@ -1,6 +1,6 @@
 # Pen and Paper Puzzles: Comprehensive Game Rules & How-to-Play Guide
 
-This authoritative guide contains complete rules, core objectives, opening deduction anchors, and visual move specifications for all 18 games in Pen and Paper Puzzles.
+This authoritative guide contains complete rules, core objectives, opening deduction anchors, and visual move specifications for all 20 games in Pen and Paper Puzzles.
 
 ---
 

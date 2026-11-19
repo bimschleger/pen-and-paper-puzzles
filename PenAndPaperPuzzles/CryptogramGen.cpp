@@ -301,91 +301,77 @@ bool CryptogramGen::printRasterToReceipt(EscPosPrinter& printer) {
     totalH = ((totalH + 7) / 8) * 8; // Align to 8 dots
 
     ThermalCanvas canvas;
-    if (!canvas.begin(totalH)) {
-        return false;
-    }
-    canvas.clear(0);
+    return canvas.renderBanded(printer, totalH, [&](ThermalCanvas& canvas) {
+        int16_t curY = 16;
 
-    int16_t curY = 16;
+        for (uint8_t l = 0; l < numLines; l++) {
+            const String& lineStr = lines[l];
+            int16_t lineLen = lineStr.length();
+            int16_t charW = (lineLen > 0) ? (innerWidth / lineLen) : 24;
+            if (charW > 24) charW = 24;
 
-    // 1. Ciphertext rows with handwriting slot underlines
-    for (uint8_t l = 0; l < numLines; l++) {
-        const String& lineStr = lines[l];
-        int16_t lineLen = lineStr.length();
-        int16_t charW = (lineLen > 0) ? (innerWidth / lineLen) : 24;
-        if (charW > 24) charW = 24;
+            int16_t startX = padding + (innerWidth - lineLen * charW) / 2;
+            int16_t slotY = curY + 24;
+            int16_t charY = curY + 34;
 
-        int16_t startX = padding + (innerWidth - lineLen * charW) / 2;
-        int16_t slotY = curY + 24;
-        int16_t charY = curY + 34;
-
-        for (int16_t i = 0; i < lineLen; i++) {
-            char ch = lineStr[i];
-            int16_t cx = startX + i * charW;
-            if (ch >= 'A' && ch <= 'Z') {
-                int16_t barW = charW - 6;
-                if (barW < 1) barW = 1;
-                canvas.drawHLine(cx + 3, slotY, barW, 2);
-            }
-            canvas.drawChar(cx + 4, charY, ch, 2, 1);
-        }
-        curY += rowHeight + rowGap;
-    }
-
-    // 2. Author line
-    if (_author.length() > 0) {
-        String authStr = String("-- ") + _author;
-        canvas.drawText(padding + 12, curY, authStr.c_str(), 2, 1);
-        curY += authorHeight;
-    }
-
-    // 3. Dashed divider
-    for (int16_t dx = padding; dx < padding + innerWidth; dx += 8) {
-        int16_t w = (dx + 4 <= padding + innerWidth) ? 4 : (padding + innerWidth - dx);
-        canvas.drawHLine(dx, curY, w, 2);
-    }
-    curY += 18;
-
-    // 4. Alphabet Tracker (4 rows of 7 columns, replacing scratchpad)
-    canvas.drawText(padding, curY, "ALPHABET TRACKER:", 2, 1);
-    curY += 26;
-
-    const int16_t colW = 75;
-    const int16_t startX = padding + (innerWidth - 7 * colW) / 2; // 25
-    const int16_t barW = 40;
-    const int16_t rowH = 72;
-
-    const char* alphaRows[] = { "ABCDEFG", "HIJKLMN", "OPQRSTU", "VWXYZ" };
-    for (uint8_t r = 0; r < 4; r++) {
-        const char* rowChars = alphaRows[r];
-        uint8_t rowLen = strlen(rowChars);
-        int16_t slotY = curY + 28;
-
-        for (uint8_t c = 0; c < rowLen; c++) {
-            char ch = rowChars[c];
-            int16_t cx = startX + c * colW;
-            int16_t lineX = cx + (colW - barW) / 2;
-
-            // Pre-printed clue (if available) in scale=3 above underline
-            for (uint8_t k = 0; k < _clueCount; k++) {
-                if (_clues[k].cipher == ch) {
-                    int16_t clueX = cx + (colW - 15) / 2;
-                    int16_t clueY = slotY - 24;
-                    canvas.drawChar(clueX, clueY, _clues[k].plain, 3, 1);
-                    break;
+            for (int16_t i = 0; i < lineLen; i++) {
+                char ch = lineStr[i];
+                int16_t cx = startX + i * charW;
+                if (ch >= 'A' && ch <= 'Z') {
+                    int16_t barW = charW - 6;
+                    if (barW < 1) barW = 1;
+                    canvas.drawHLine(cx + 3, slotY, barW, 2);
                 }
+                canvas.drawChar(cx + 4, charY, ch, 2, 1);
             }
-
-            // Handwriting slot line
-            canvas.drawHLine(lineX, slotY, barW, 2);
-
-            // Base alphabet cipher letter in scale=2 below underline
-            int16_t baseX = cx + (colW - 10) / 2;
-            int16_t baseY = slotY + 6;
-            canvas.drawChar(baseX, baseY, ch, 2, 1);
+            curY += rowHeight + rowGap;
         }
-        curY += rowH;
-    }
 
-    return canvas.printTo(printer);
+        if (_author.length() > 0) {
+            char authBuf[64];
+            snprintf(authBuf, sizeof(authBuf), "-- %s", _author.c_str());
+            canvas.drawText(padding + 12, curY, authBuf, 2, 1);
+            curY += authorHeight;
+        }
+
+        canvas.drawDashedHLine(padding, curY, innerWidth, 4, 4, 2);
+        curY += 18;
+
+        canvas.drawText(padding, curY, "ALPHABET TRACKER:", 2, 1);
+        curY += 26;
+
+        const int16_t colW = 75;
+        const int16_t startX = padding + (innerWidth - 7 * colW) / 2; // 25
+        const int16_t barW = 40;
+        const int16_t rowH = 72;
+
+        const char* alphaRows[] = { "ABCDEFG", "HIJKLMN", "OPQRSTU", "VWXYZ" };
+        for (uint8_t r = 0; r < 4; r++) {
+            const char* rowChars = alphaRows[r];
+            uint8_t rowLen = strlen(rowChars);
+            int16_t slotY = curY + 28;
+
+            for (uint8_t c = 0; c < rowLen; c++) {
+                char ch = rowChars[c];
+                int16_t cx = startX + c * colW;
+                int16_t lineX = cx + (colW - barW) / 2;
+
+                for (uint8_t k = 0; k < _clueCount; k++) {
+                    if (_clues[k].cipher == ch) {
+                        int16_t clueX = cx + (colW - 15) / 2;
+                        int16_t clueY = slotY - 24;
+                        canvas.drawChar(clueX, clueY, _clues[k].plain, 3, 1);
+                        break;
+                    }
+                }
+
+                canvas.drawHLine(lineX, slotY, barW, 2);
+
+                int16_t baseX = cx + (colW - 10) / 2;
+                int16_t baseY = slotY + 6;
+                canvas.drawChar(baseX, baseY, ch, 2, 1);
+            }
+            curY += rowH;
+        }
+    });
 }

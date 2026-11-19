@@ -13,14 +13,15 @@ OfflineTimeManager::OfflineTimeManager() :
     _portalStartedMs(0),
     _pendingExit(false),
     _pendingExitMs(0),
+    _routesConfigured(false),
     _configManager(nullptr),
     _printer(nullptr),
     _server(80) {
 }
 
 void OfflineTimeManager::begin() {
-    // 1. Check for optional DS3231 hardware RTC via I2C (GPIO 21 SDA, GPIO 22 SCL)
-    Wire.begin(21, 22);
+    // 1. Check for optional DS3231 hardware RTC via board-aware I2C pins
+    Wire.begin(RTC_I2C_SDA_PIN, RTC_I2C_SCL_PIN);
     Wire.beginTransmission(DS3231_I2C_ADDR);
     if (Wire.endTransmission() == 0) {
         _ds3231Present = true;
@@ -178,7 +179,11 @@ void OfflineTimeManager::markPrintedToday() {
 // -----------------------------------------------------------------------------
 void OfflineTimeManager::startSetupPortal() {
     Serial.println("\n[PORTAL] Starting SoftAP Web Configurator...");
+#if (ACTIVE_PRINTER_MODE == PRINTER_MODE_WIFI_TCP)
+    WiFi.mode(WIFI_AP_STA);
+#else
     WiFi.mode(WIFI_AP);
+#endif
     WiFi.setSleep(false); // Keep Wi-Fi radio fully active so beacons broadcast continuously
     IPAddress myIP(192, 168, 4, 1);
     IPAddress gateway(192, 168, 4, 1);
@@ -203,7 +208,12 @@ void OfflineTimeManager::stopSetupPortal() {
         _server.stop();
         _dnsServer.stop();
         WiFi.softAPdisconnect(true);
+#if (ACTIVE_PRINTER_MODE == PRINTER_MODE_WIFI_TCP)
+        WiFi.mode(WIFI_STA);
+        WiFi.reconnect();
+#else
         WiFi.mode(WIFI_OFF);
+#endif
         _portalActive = false;
         _pendingExit = false;
         Serial.println("[PORTAL] SoftAP Setup Portal closed.");
@@ -384,20 +394,7 @@ void OfflineTimeManager::printSetupTicket(EscPosPrinter& printer, const OfflineC
     printer.println("");
 
     // Footer
-    printer.printHorizontalLine('-');
-    printer.setAlign(ALIGN_CENTER);
-    printer.println("Enjoy your day!");
-    printer.println("");
-    printer.println("For more puzzles, toggle the power");
-    printer.println("on the front of the printer.");
-    printer.println("");
-    printer.println("To change settings, toggle the power");
-    printer.println("on the cable behind the printer.");
-    if (!config || !config->isDailyScheduleEnabled()) {
-        printer.println("");
-        printer.println("To schedule daily puzzles, go to settings.");
-    }
-    printer.printHorizontalLine('-');
+    printer.printMasterFooter("Enjoy your day!", (!config || !config->isDailyScheduleEnabled()), true);
 
     printer.feed(4);
     printer.cut(false);
@@ -493,20 +490,7 @@ void OfflineTimeManager::printConfigSavedTicket(EscPosPrinter& printer, const Of
 
     // Footer
     printer.println("");
-    printer.printHorizontalLine('-');
-    printer.setAlign(ALIGN_CENTER);
-    printer.println("Setup complete. Ready for printing!");
-    printer.println("");
-    printer.println("For more puzzles, toggle the power");
-    printer.println("on the front of the printer.");
-    printer.println("");
-    printer.println("To change settings, toggle the power");
-    printer.println("on the cable behind the printer.");
-    if (!config.isDailyScheduleEnabled()) {
-        printer.println("");
-        printer.println("To schedule daily puzzles, go to settings.");
-    }
-    printer.printHorizontalLine('-');
+    printer.printMasterFooter("Setup complete. Ready for printing!", !config.isDailyScheduleEnabled(), true);
 
     printer.feed(4);
     printer.cut(false);
@@ -517,31 +501,39 @@ void OfflineTimeManager::printConfigSavedTicket(EscPosPrinter& printer, const Of
 #include "PortalHtml.h"
 
 void OfflineTimeManager::setupWebRoutes() {
+    if (_routesConfigured) {
+        return;
+    }
+    _routesConfigured = true;
+
     _server.on("/", HTTP_GET, [this]() {
+        _portalStartedMs = millis();
         _server.sendHeader("Content-Encoding", "gzip");
         _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         _server.send_P(200, "text/html", (const char*)PORTAL_HTML_GZ, sizeof(PORTAL_HTML_GZ));
     });
 
     _server.on("/api/config", HTTP_GET, [this]() {
-        uint32_t mask = _configManager ? _configManager->getGameMask() : 0x3FFFF;
+        _portalStartedMs = millis();
+        const uint32_t allMask = (1UL << (uint8_t)OFFLINE_PUZZLE_TOTAL) - 1UL;
+        uint32_t mask = _configManager ? _configManager->getGameMask() : allMask;
         uint8_t count = _configManager ? _configManager->getPuzzleCount() : 5;
         uint8_t grade = _configManager ? (uint8_t)_configManager->getPuzzleGrade() : 3;
         bool schedEn = _configManager ? _configManager->isDailyScheduleEnabled() : true;
         uint8_t schedHr = _configManager ? _configManager->getDailyScheduleHour() : 7;
         uint8_t schedMin = _configManager ? _configManager->getDailyScheduleMinute() : 0;
-        String json = "{\"mask\":" + String(mask) +
-                      ",\"count\":" + String(count) +
-                      ",\"grade\":" + String(grade) +
-                      ",\"schedEnabled\":" + (schedEn ? "true" : "false") +
-                      ",\"schedHour\":" + String(schedHr) +
-                      ",\"schedMinute\":" + String(schedMin) +
-                      ",\"time\":\"" + getFormattedTime("%I:%M %p") + "\"" +
-                      ",\"timeSet\":" + (_timeSet ? "true" : "false") + "}";
-        _server.send(200, "application/json", json);
+        String timeStr = getFormattedTime("%I:%M %p");
+        char jsonBuf[256];
+        snprintf(jsonBuf, sizeof(jsonBuf),
+                 "{\"mask\":%lu,\"count\":%u,\"grade\":%u,\"schedEnabled\":%s,\"schedHour\":%u,\"schedMinute\":%u,\"time\":\"%s\",\"timeSet\":%s}",
+                 (unsigned long)mask, (unsigned)count, (unsigned)grade,
+                 schedEn ? "true" : "false", (unsigned)schedHr, (unsigned)schedMin,
+                 timeStr.c_str(), _timeSet ? "true" : "false");
+        _server.send(200, "application/json", jsonBuf);
     });
 
-    _server.on("/api/save-config", HTTP_GET, [this]() {
+    auto handleSaveConfig = [this]() {
+        _portalStartedMs = millis();
         if (_server.hasArg("mask") && _server.hasArg("count") && _server.hasArg("grade")) {
             uint32_t mask = (uint32_t)strtoul(_server.arg("mask").c_str(), NULL, 10);
             uint8_t count = (uint8_t)_server.arg("count").toInt();
@@ -583,21 +575,24 @@ void OfflineTimeManager::setupWebRoutes() {
                 _configManager->save();
                 Serial.printf("[PORTAL] Saved configuration: Mask=0x%04X, Count=%d, Grade=%d, Schedule=%s\n",
                               mask, count, grade, _configManager->getDailyScheduleTimeString().c_str());
-
-                if (_printer) {
-                    printConfigSavedTicket(*_printer, *_configManager);
-                }
             }
 
+            // Send HTTP response immediately before slow printer I/O
             _server.send(200, "application/json", "{\"status\":\"ok\"}");
+            if (_configManager && _printer) {
+                printConfigSavedTicket(*_printer, *_configManager);
+            }
             _pendingExit = true;
             _pendingExitMs = millis();
         } else {
             _server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Missing parameters\"}");
         }
-    });
+    };
+    _server.on("/api/save-config", HTTP_POST, handleSaveConfig);
+    _server.on("/api/save-config", HTTP_GET, handleSaveConfig);
 
     _server.on("/api/set-time", HTTP_GET, [this]() {
+        _portalStartedMs = millis();
         if (_server.hasArg("year") && _server.hasArg("hour")) {
             int y  = _server.arg("year").toInt();
             int mo = _server.hasArg("month") ? _server.arg("month").toInt() : 1;
@@ -607,34 +602,44 @@ void OfflineTimeManager::setupWebRoutes() {
             int s  = _server.hasArg("sec") ? _server.arg("sec").toInt() : 0;
             setSystemTime(y, mo, d, h, mi, s);
 
-            String json = "{\"status\":\"ok\",\"time\":\"" + getFormattedTime("%I:%M %p") + "\"}";
-            _server.send(200, "application/json", json);
+            String timeStr = getFormattedTime("%I:%M %p");
+            char jsonBuf[128];
+            snprintf(jsonBuf, sizeof(jsonBuf), "{\"status\":\"ok\",\"time\":\"%s\"}", timeStr.c_str());
+            _server.send(200, "application/json", jsonBuf);
         } else if (_server.hasArg("epoch")) {
             long epoch = (long)strtoul(_server.arg("epoch").c_str(), NULL, 10);
             int tzOffset = _server.hasArg("tz") ? _server.arg("tz").toInt() : 0;
             setSystemTime(epoch, tzOffset);
 
-            String json = "{\"status\":\"ok\",\"time\":\"" + getFormattedTime("%I:%M %p") + "\"}";
-            _server.send(200, "application/json", json);
+            String timeStr = getFormattedTime("%I:%M %p");
+            char jsonBuf[128];
+            snprintf(jsonBuf, sizeof(jsonBuf), "{\"status\":\"ok\",\"time\":\"%s\"}", timeStr.c_str());
+            _server.send(200, "application/json", jsonBuf);
         } else {
             _server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Missing time parameters\"}");
         }
     });
 
     _server.on("/api/status", HTTP_GET, [this]() {
-        String json = "{\"timeSet\":" + String(_timeSet ? "true" : "false") +
-                      ",\"time\":\"" + getFormattedTime() + "\"}";
-        _server.send(200, "application/json", json);
+        _portalStartedMs = millis();
+        String timeStr = getFormattedTime();
+        char jsonBuf[160];
+        snprintf(jsonBuf, sizeof(jsonBuf), "{\"timeSet\":%s,\"time\":\"%s\"}",
+                 _timeSet ? "true" : "false", timeStr.c_str());
+        _server.send(200, "application/json", jsonBuf);
     });
 
     _server.on("/api/print-guide", HTTP_GET, [this]() {
+        _portalStartedMs = millis();
         if (_server.hasArg("game")) {
             uint8_t gameId = (uint8_t)_server.arg("game").toInt();
             if (_printer) {
                 OfflinePuzzleComposer composer;
                 bool success = composer.printGameGuide(*_printer, gameId);
                 if (success) {
-                    _server.send(200, "application/json", "{\"status\":\"ok\",\"game\":" + String(gameId) + "}");
+                    char jsonBuf[64];
+                    snprintf(jsonBuf, sizeof(jsonBuf), "{\"status\":\"ok\",\"game\":%u}", (unsigned)gameId);
+                    _server.send(200, "application/json", jsonBuf);
                     return;
                 }
             }
@@ -645,13 +650,16 @@ void OfflineTimeManager::setupWebRoutes() {
     });
 
     _server.on("/api/print-sample", HTTP_GET, [this]() {
+        _portalStartedMs = millis();
         if (_server.hasArg("game")) {
             uint8_t gameId = (uint8_t)_server.arg("game").toInt();
             if (_printer) {
                 OfflinePuzzleComposer composer;
                 bool success = composer.printGameSampler(*_printer, gameId);
                 if (success) {
-                    _server.send(200, "application/json", "{\"status\":\"ok\",\"game\":" + String(gameId) + "}");
+                    char jsonBuf[64];
+                    snprintf(jsonBuf, sizeof(jsonBuf), "{\"status\":\"ok\",\"game\":%u}", (unsigned)gameId);
+                    _server.send(200, "application/json", jsonBuf);
                     return;
                 }
             }
@@ -662,6 +670,7 @@ void OfflineTimeManager::setupWebRoutes() {
     });
 
     _server.on("/api/exit", HTTP_GET, [this]() {
+        _portalStartedMs = millis();
         _server.send(200, "text/html", "<body style='background:#0f172a;color:#f8fafc;font-family:sans-serif;padding:30px;text-align:center;'><h2>Setup portal closing.</h2><p>Ready for morning puzzles!</p></body>");
         _pendingExit = true;
         _pendingExitMs = millis();

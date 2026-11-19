@@ -224,10 +224,20 @@ def test_setup_portal_inclusion():
         "portal.html must use dynamic bitmask based on GAMES.length"
     )
 
-    # 3. Check drawThermalGuideCanvas covers all game IDs
+    # 3. Check 1-bit diagram_ops interpreter & panel coverage (replaces legacy Vector Canvas 2D switch)
+    assert "diagram_ops" in portal_text and "ThermalCanvasMini" in portal_text, (
+        "portal.html must render 1-bit ThermalCanvasMini diagrams from canonical diagram_ops"
+    )
+    rules_path = ROOT_DIR / "server" / "data" / "game_rules.json"
+    rules_data = json.loads(rules_path.read_text(encoding="utf-8"))
+    for idx, rule_entry in enumerate(rules_data.get("games", [])):
+        ops = rule_entry.get("diagram_ops", [])
+        assert len(ops) >= 2, f"game_rules.json game[{idx}] ('{rule_entry.get('key')}') missing diagram_ops"
+        panels = {op[0] for op in ops}
+        assert panels == {0, 1}, f"game_rules.json '{rule_entry.get('key')}' must have diagram_ops for panels 0 & 1"
     for gid in range(total_games):
-        assert f"case {gid}:" in portal_text, (
-            f"portal.html drawThermalGuideCanvas missing case {gid} for '{portal_games[gid]['name']}'"
+        assert f'"id":{gid},' in portal_text or f'"id": {gid},' in portal_text, (
+            f"portal.html embedded GAME_RULES missing id={gid}"
         )
 
     # 4. Verify compiled PortalHtml.h matches portal.html

@@ -56,19 +56,17 @@ class JumblePuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs,
     ) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        difficulty = difficulty.lower()
+        rng = self.make_rng(seed)
+        difficulty = self.normalize_difficulty(difficulty)
         candidates = [p for p in self.puzzles if p.get("diff", "").lower() == difficulty]
         if not candidates:
             candidates = self.puzzles
 
-        selected = random.choice(candidates)
+        selected = rng.choice(candidates)
         words_data = []
 
         for idx, word in enumerate(selected["words"]):
-            scrambled = self._scramble(word)
+            scrambled = self._scramble(word, rng=rng)
             circles = selected["circles"][idx] if idx < len(selected.get("circles", [])) else []
             words_data.append({
                 "original": word,
@@ -252,7 +250,8 @@ class JumblePuzzle(BasePuzzle):
                 cx0 = padding + c * clue_size
                 char_x = cx0 + (clue_size - 18) // 2
                 char_y = cur_y + (clue_size - 21) // 2
-                tb.draw_char(char_x, char_y, scram_text[c], scale=3)
+                if c < len(scram_text):
+                    tb.draw_char(char_x, char_y, scram_text[c], scale=3)
 
                 if c in circ:
                     tb.draw_circle(cx0 + 33, cur_y + 66 + 33, 26, thickness=2)
@@ -314,10 +313,11 @@ class JumblePuzzle(BasePuzzle):
 
         return tb.to_escpos()
 
-    def _scramble(self, word: str) -> str:
+    def _scramble(self, word: str, rng: Optional[random.Random] = None) -> str:
+        r_gen = rng if rng is not None else random.Random()
         chars = list(word)
         for _ in range(25):
-            random.shuffle(chars)
+            r_gen.shuffle(chars)
             candidate = "".join(chars)
             if candidate != word:
                 return candidate

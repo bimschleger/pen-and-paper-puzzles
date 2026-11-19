@@ -95,17 +95,11 @@ class LadderGenerator:
     """
 
     def __init__(self, seed: Optional[int] = None, data_path: Optional[str] = None):
-        if seed is not None:
-            random.seed(seed)
-
-        self.words4: List[str] = []
-        self.words5: List[str] = []
+        self._rng = random.Random(seed) if seed is not None else random.Random()
         self.curated: Dict[str, List[Dict[str, Any]]] = FALLBACK_LADDERS
 
         data = load_curated_dataset(data_path or "ladder_words.json")
         if isinstance(data, dict):
-            self.words4 = data.get("words4", [])
-            self.words5 = data.get("words5", [])
             if "curated" in data:
                 self.curated = data["curated"]
             elif "easy" in data and "medium" in data:
@@ -121,15 +115,14 @@ class LadderGenerator:
         Generates a Word Ladder puzzle for the specified difficulty.
         Draws from curated high-quality daily ladders with verified family-friendly vocabulary.
         """
-        if seed is not None:
-            random.seed(seed)
+        rng = random.Random(seed) if seed is not None else self._rng
 
         diff = difficulty.lower()
         pool = self.curated.get(diff, self.curated.get("medium", []))
         if not pool:
             pool = FALLBACK_LADDERS.get(diff, FALLBACK_LADDERS["medium"])
 
-        selected = random.choice(pool)
+        selected = rng.choice(pool)
         solution = list(selected["solution"])
         start_word = solution[0]
         target_word = solution[-1]
@@ -183,9 +176,7 @@ class LadderPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs
     ) -> BasePuzzleResult:
-        diff_clean = difficulty.lower()
-        if diff_clean not in self.supported_difficulties:
-            diff_clean = "medium"
+        diff_clean = self.normalize_difficulty(difficulty)
 
         raw_data = self.generator.generate(difficulty=diff_clean, seed=seed, **kwargs)
         instruction = self.get_instruction(raw_data)

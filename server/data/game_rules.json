@@ -22,19 +22,19 @@
         ],
         "grid": [
           [
-            "·",
-            "·",
-            "·"
+            "\u00b7",
+            "\u00b7",
+            "\u00b7"
           ],
           [
-            "·",
+            "\u00b7",
             "5",
-            "·"
+            "\u00b7"
           ],
           [
-            "·",
-            "·",
-            "·"
+            "\u00b7",
+            "\u00b7",
+            "\u00b7"
           ]
         ]
       },
@@ -47,18 +47,18 @@
         "grid": [
           [
             "5",
-            "·",
-            "·"
+            "\u00b7",
+            "\u00b7"
           ],
           [
-            "·",
+            "\u00b7",
             "5",
-            "·"
+            "\u00b7"
           ],
           [
-            "·",
-            "·",
-            "·"
+            "\u00b7",
+            "\u00b7",
+            "\u00b7"
           ]
         ]
       },
@@ -75,6 +75,50 @@
           "q": "Do arithmetic or mathematical sums matter in classic Sudoku?",
           "a": "No. Sudoku is purely deductive placement. The numbers could just as easily be 9 letters or symbols."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "grid",
+          -48,
+          46,
+          3,
+          3,
+          32
+        ],
+        [
+          0,
+          "text",
+          -6,
+          84,
+          3,
+          "5"
+        ],
+        [
+          1,
+          "grid",
+          -48,
+          46,
+          3,
+          3,
+          32
+        ],
+        [
+          1,
+          "text",
+          -38,
+          52,
+          3,
+          "5"
+        ],
+        [
+          1,
+          "text",
+          -6,
+          84,
+          3,
+          "5"
+        ]
       ]
     },
     {
@@ -108,17 +152,17 @@
         "grid": [
           [
             "C",
-            "·",
-            "·"
+            "\u00b7",
+            "\u00b7"
           ],
           [
-            "·",
+            "\u00b7",
             "A",
-            "·"
+            "\u00b7"
           ],
           [
-            "·",
-            "·",
+            "\u00b7",
+            "\u00b7",
             "T"
           ]
         ]
@@ -143,17 +187,17 @@
           [
             "C",
             "A",
-            "·"
+            "\u00b7"
           ],
           [
-            "·",
+            "\u00b7",
             "T",
-            "·"
+            "\u00b7"
           ],
           [
-            "·",
-            "·",
-            "·"
+            "\u00b7",
+            "\u00b7",
+            "\u00b7"
           ]
         ]
       },
@@ -170,6 +214,101 @@
           "q": "Can one letter belong to more than one word?",
           "a": "Yes. Crossing words frequently share an intersecting common letter."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "grid",
+          -42,
+          46,
+          3,
+          3,
+          28
+        ],
+        [
+          0,
+          "text",
+          -34,
+          50,
+          3,
+          "C"
+        ],
+        [
+          0,
+          "text",
+          -6,
+          78,
+          3,
+          "A"
+        ],
+        [
+          0,
+          "text",
+          22,
+          106,
+          3,
+          "T"
+        ],
+        [
+          0,
+          "line",
+          -38,
+          50,
+          38,
+          126,
+          2
+        ],
+        [
+          1,
+          "grid",
+          -42,
+          46,
+          3,
+          3,
+          28
+        ],
+        [
+          1,
+          "text",
+          -34,
+          50,
+          3,
+          "C"
+        ],
+        [
+          1,
+          "text",
+          -6,
+          50,
+          3,
+          "A"
+        ],
+        [
+          1,
+          "text",
+          -6,
+          78,
+          3,
+          "T"
+        ],
+        [
+          1,
+          "line",
+          -38,
+          60,
+          0,
+          60,
+          2
+        ],
+        [
+          1,
+          "line",
+          0,
+          60,
+          0,
+          94,
+          2
+        ]
       ]
     },
     {
@@ -192,9 +331,9 @@
         ],
         "grid": [
           [
-            "█",
-            "·",
-            "█"
+            "\u2588",
+            "\u00b7",
+            "\u2588"
           ]
         ]
       },
@@ -206,9 +345,9 @@
         ],
         "grid": [
           [
-            "█",
-            "█",
-            "·"
+            "\u2588",
+            "\u2588",
+            "\u00b7"
           ]
         ]
       },
@@ -225,6 +364,69 @@
           "q": "Do the clues specify the order of the blocks?",
           "a": "Yes. Row clues read left-to-right; column clues read top-to-bottom."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "grid",
+          -48,
+          70,
+          4,
+          1,
+          24
+        ],
+        [
+          0,
+          "frect",
+          -46,
+          72,
+          20,
+          20,
+          1
+        ],
+        [
+          0,
+          "frect",
+          2,
+          72,
+          20,
+          20,
+          1
+        ],
+        [
+          0,
+          "text",
+          -76,
+          74,
+          2,
+          "1 1"
+        ],
+        [
+          1,
+          "grid",
+          -48,
+          70,
+          4,
+          1,
+          24
+        ],
+        [
+          1,
+          "frect",
+          -46,
+          72,
+          44,
+          20,
+          1
+        ],
+        [
+          1,
+          "text",
+          -76,
+          74,
+          2,
+          "1 1"
+        ]
       ]
     },
     {
@@ -236,7 +438,7 @@
       "rules": [
         "Every row and column must contain exactly the target star quota (1 or 2 stars).",
         "Every outlined geometric region must contain exactly the target star quota.",
-        "No two stars may touch each other anywhere—not orthogonally, and not diagonally.",
+        "No two stars may touch each other anywhere\u2014not orthogonally, and not diagonally.",
         "Every placed star creates an 8-cell empty buffer zone surrounding it."
       ],
       "valid_move": {
@@ -253,19 +455,19 @@
         ],
         "grid": [
           [
-            "★",
-            "·",
-            "·"
+            "\u2605",
+            "\u00b7",
+            "\u00b7"
           ],
           [
-            "·",
-            "·",
-            "★"
+            "\u00b7",
+            "\u00b7",
+            "\u2605"
           ],
           [
-            "·",
-            "·",
-            "·"
+            "\u00b7",
+            "\u00b7",
+            "\u00b7"
           ]
         ]
       },
@@ -283,25 +485,25 @@
         ],
         "grid": [
           [
-            "★",
-            "·",
-            "·"
+            "\u2605",
+            "\u00b7",
+            "\u00b7"
           ],
           [
-            "·",
-            "★",
-            "·"
+            "\u00b7",
+            "\u2605",
+            "\u00b7"
           ],
           [
-            "·",
-            "·",
-            "·"
+            "\u00b7",
+            "\u00b7",
+            "\u00b7"
           ]
         ]
       },
       "opening_anchors": [
         "Find anchor regions with only 1 or 2 total cells. A 1-cell region requiring 1 star must immediately hold a star!",
-        "Whenever a star is placed, immediately dot all 8 surrounding cells—none of them can ever hold a star."
+        "Whenever a star is placed, immediately dot all 8 surrounding cells\u2014none of them can ever hold a star."
       ],
       "faq": [
         {
@@ -312,6 +514,85 @@
           "q": "Does 'not touching diagonally' apply across the whole board?",
           "a": "No. It applies only to immediate neighboring squares that share a corner point."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "hatch",
+          -48,
+          46,
+          64,
+          32,
+          1
+        ],
+        [
+          0,
+          "grid",
+          -48,
+          46,
+          3,
+          3,
+          32
+        ],
+        [
+          0,
+          "text",
+          -38,
+          52,
+          3,
+          "*"
+        ],
+        [
+          0,
+          "text",
+          26,
+          84,
+          3,
+          "*"
+        ],
+        [
+          1,
+          "hatch",
+          -48,
+          46,
+          64,
+          32,
+          1
+        ],
+        [
+          1,
+          "grid",
+          -48,
+          46,
+          3,
+          3,
+          32
+        ],
+        [
+          1,
+          "text",
+          -38,
+          52,
+          3,
+          "*"
+        ],
+        [
+          1,
+          "text",
+          -6,
+          84,
+          3,
+          "*"
+        ],
+        [
+          1,
+          "line",
+          -20,
+          74,
+          -12,
+          82,
+          2
+        ]
       ]
     },
     {
@@ -335,10 +616,10 @@
         "grid": [
           [
             "B",
-            "Ⓡ",
+            "\u24c7",
             "A",
             "I",
-            "Ⓝ"
+            "\u24c3"
           ]
         ]
       },
@@ -350,10 +631,10 @@
         "grid": [
           [
             "X",
-            "·",
-            "·",
-            "·",
-            "·"
+            "\u00b7",
+            "\u00b7",
+            "\u00b7",
+            "\u00b7"
           ]
         ]
       },
@@ -370,6 +651,98 @@
           "q": "What if an anagram word has multiple valid English solutions?",
           "a": "Only one solution will yield the exact letters needed to solve the final riddle pun."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "grid",
+          -48,
+          70,
+          4,
+          1,
+          24
+        ],
+        [
+          0,
+          "text",
+          -42,
+          74,
+          2,
+          "B"
+        ],
+        [
+          0,
+          "text",
+          -18,
+          74,
+          2,
+          "O"
+        ],
+        [
+          0,
+          "circ",
+          -12,
+          82,
+          10,
+          1
+        ],
+        [
+          0,
+          "text",
+          6,
+          74,
+          2,
+          "A"
+        ],
+        [
+          0,
+          "text",
+          30,
+          74,
+          2,
+          "T"
+        ],
+        [
+          1,
+          "grid",
+          -48,
+          70,
+          4,
+          1,
+          24
+        ],
+        [
+          1,
+          "text",
+          -42,
+          74,
+          2,
+          "B"
+        ],
+        [
+          1,
+          "text",
+          -18,
+          74,
+          2,
+          "T"
+        ],
+        [
+          1,
+          "text",
+          6,
+          74,
+          2,
+          "O"
+        ],
+        [
+          1,
+          "text",
+          30,
+          74,
+          2,
+          "A"
+        ]
       ]
     },
     {
@@ -430,6 +803,90 @@
           "q": "What does equal balance mean?",
           "a": "On an 8x8 board, every single row and column must contain exactly four 0s and four 1s."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "grid",
+          -52,
+          70,
+          4,
+          1,
+          26
+        ],
+        [
+          0,
+          "text",
+          -44,
+          74,
+          2,
+          "1"
+        ],
+        [
+          0,
+          "text",
+          -18,
+          74,
+          2,
+          "0"
+        ],
+        [
+          0,
+          "text",
+          8,
+          74,
+          2,
+          "1"
+        ],
+        [
+          0,
+          "text",
+          34,
+          74,
+          2,
+          "0"
+        ],
+        [
+          1,
+          "grid",
+          -52,
+          70,
+          4,
+          1,
+          26
+        ],
+        [
+          1,
+          "text",
+          -44,
+          74,
+          2,
+          "0"
+        ],
+        [
+          1,
+          "text",
+          -18,
+          74,
+          2,
+          "1"
+        ],
+        [
+          1,
+          "text",
+          8,
+          74,
+          2,
+          "1"
+        ],
+        [
+          1,
+          "text",
+          34,
+          74,
+          2,
+          "1"
+        ]
       ]
     },
     {
@@ -452,12 +909,12 @@
         ],
         "grid": [
           [
-            "💣",
-            "·"
+            "\ud83d\udca3",
+            "\u00b7"
           ],
           [
             "1",
-            "·"
+            "\u00b7"
           ]
         ]
       },
@@ -475,12 +932,12 @@
         ],
         "grid": [
           [
-            "💣",
-            "💣"
+            "\ud83d\udca3",
+            "\ud83d\udca3"
           ],
           [
             "1",
-            "·"
+            "\u00b7"
           ]
         ]
       },
@@ -497,6 +954,66 @@
           "q": "Can a numbered cell contain a mine?",
           "a": "No. Numbered cells are always safe revealed territory; mines are hidden in blank cells."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "grid",
+          -34,
+          60,
+          2,
+          2,
+          34
+        ],
+        [
+          0,
+          "text",
+          -24,
+          100,
+          3,
+          "1"
+        ],
+        [
+          0,
+          "text",
+          -24,
+          66,
+          3,
+          "*"
+        ],
+        [
+          1,
+          "grid",
+          -34,
+          60,
+          2,
+          2,
+          34
+        ],
+        [
+          1,
+          "text",
+          -24,
+          100,
+          3,
+          "1"
+        ],
+        [
+          1,
+          "text",
+          -24,
+          66,
+          3,
+          "*"
+        ],
+        [
+          1,
+          "text",
+          10,
+          66,
+          3,
+          "*"
+        ]
       ]
     },
     {
@@ -507,7 +1024,7 @@
       "objective": "Pitch a tent for every tree on the board such that tents pair 1:1 orthogonally and never touch each other.",
       "rules": [
         "Every tree must have exactly one tent pitched orthogonally adjacent to it (up, down, left, right).",
-        "Tents can never touch another tent—neither orthogonally nor diagonally.",
+        "Tents can never touch another tent\u2014neither orthogonally nor diagonally.",
         "Numbers outside the grid specify the exact count of tents in that row or column.",
         "Tents may be adjacent to trees other than their own assigned partner."
       ],
@@ -519,14 +1036,14 @@
         ],
         "grid": [
           [
-            "🌲",
-            "⛺",
-            "·"
+            "\ud83c\udf32",
+            "\u26fa",
+            "\u00b7"
           ],
           [
-            "·",
-            "·",
-            "·"
+            "\u00b7",
+            "\u00b7",
+            "\u00b7"
           ]
         ]
       },
@@ -544,14 +1061,14 @@
         ],
         "grid": [
           [
-            "🌲",
-            "⛺",
-            "·"
+            "\ud83c\udf32",
+            "\u26fa",
+            "\u00b7"
           ],
           [
-            "·",
-            "·",
-            "⛺"
+            "\u00b7",
+            "\u00b7",
+            "\u26fa"
           ]
         ]
       },
@@ -568,6 +1085,66 @@
           "q": "Can a tent touch a tree that belongs to another tent?",
           "a": "Yes. Tents can touch other trees, but tents can NEVER touch another tent."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "grid",
+          -48,
+          60,
+          3,
+          2,
+          32
+        ],
+        [
+          0,
+          "text",
+          -38,
+          66,
+          3,
+          "T"
+        ],
+        [
+          0,
+          "text",
+          -6,
+          66,
+          3,
+          "^"
+        ],
+        [
+          1,
+          "grid",
+          -48,
+          60,
+          3,
+          2,
+          32
+        ],
+        [
+          1,
+          "text",
+          -38,
+          66,
+          3,
+          "T"
+        ],
+        [
+          1,
+          "text",
+          -6,
+          66,
+          3,
+          "^"
+        ],
+        [
+          1,
+          "text",
+          26,
+          98,
+          3,
+          "^"
+        ]
       ]
     },
     {
@@ -590,9 +1167,9 @@
         ],
         "grid": [
           [
-            "③",
-            "══",
-            "②"
+            "\u2462",
+            "\u2550\u2550",
+            "\u2461"
           ]
         ]
       },
@@ -604,9 +1181,9 @@
         ],
         "grid": [
           [
-            "④",
-            "≡≡",
-            "③"
+            "\u2463",
+            "\u2261\u2261",
+            "\u2462"
           ]
         ]
       },
@@ -623,6 +1200,112 @@
           "q": "Can the completed puzzle have isolated subnetworks?",
           "a": "No. All islands must link together into a single unified continuous group."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "circ",
+          -44,
+          82,
+          16,
+          2
+        ],
+        [
+          0,
+          "text",
+          -49,
+          74,
+          2,
+          "3"
+        ],
+        [
+          0,
+          "circ",
+          44,
+          82,
+          16,
+          2
+        ],
+        [
+          0,
+          "text",
+          39,
+          74,
+          2,
+          "2"
+        ],
+        [
+          0,
+          "hline",
+          -28,
+          78,
+          56,
+          2
+        ],
+        [
+          0,
+          "hline",
+          -28,
+          86,
+          56,
+          2
+        ],
+        [
+          1,
+          "circ",
+          -44,
+          82,
+          16,
+          2
+        ],
+        [
+          1,
+          "text",
+          -49,
+          74,
+          2,
+          "4"
+        ],
+        [
+          1,
+          "circ",
+          44,
+          82,
+          16,
+          2
+        ],
+        [
+          1,
+          "text",
+          39,
+          74,
+          2,
+          "3"
+        ],
+        [
+          1,
+          "hline",
+          -28,
+          76,
+          56,
+          1
+        ],
+        [
+          1,
+          "hline",
+          -28,
+          82,
+          56,
+          1
+        ],
+        [
+          1,
+          "hline",
+          -28,
+          88,
+          56,
+          1
+        ]
       ]
     },
     {
@@ -645,8 +1328,8 @@
         ],
         "grid": [
           [
-            "¹",
-            "²"
+            "\u00b9",
+            "\u00b2"
           ]
         ]
       },
@@ -658,8 +1341,8 @@
         ],
         "grid": [
           [
-            "²",
-            "²"
+            "\u00b2",
+            "\u00b2"
           ]
         ]
       },
@@ -676,6 +1359,106 @@
           "q": "Are starting clues printed as regular Sudoku numbers?",
           "a": "Usually Killer Sudoku boards begin completely empty, relying entirely on cage sums."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "rect",
+          -34,
+          60,
+          68,
+          34,
+          1
+        ],
+        [
+          0,
+          "dhline",
+          -34,
+          60,
+          68,
+          2
+        ],
+        [
+          0,
+          "dhline",
+          -34,
+          94,
+          68,
+          2
+        ],
+        [
+          0,
+          "text",
+          -32,
+          62,
+          1,
+          "3"
+        ],
+        [
+          0,
+          "text",
+          -24,
+          68,
+          2,
+          "1"
+        ],
+        [
+          0,
+          "text",
+          10,
+          68,
+          2,
+          "2"
+        ],
+        [
+          1,
+          "rect",
+          -34,
+          60,
+          68,
+          34,
+          1
+        ],
+        [
+          1,
+          "dhline",
+          -34,
+          60,
+          68,
+          2
+        ],
+        [
+          1,
+          "dhline",
+          -34,
+          94,
+          68,
+          2
+        ],
+        [
+          1,
+          "text",
+          -32,
+          62,
+          1,
+          "4"
+        ],
+        [
+          1,
+          "text",
+          -24,
+          68,
+          2,
+          "2"
+        ],
+        [
+          1,
+          "text",
+          10,
+          68,
+          2,
+          "2"
+        ]
       ]
     },
     {
@@ -739,6 +1522,56 @@
           "q": "What is the most common letter in English text?",
           "a": "The letter 'E' is by far the most frequent, followed by 'T', 'A', 'O', and 'I'."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "text",
+          -44,
+          66,
+          2,
+          "T H E"
+        ],
+        [
+          0,
+          "text",
+          -44,
+          90,
+          2,
+          "W Z K"
+        ],
+        [
+          0,
+          "hline",
+          -48,
+          86,
+          96,
+          1
+        ],
+        [
+          1,
+          "text",
+          -42,
+          66,
+          2,
+          "T O"
+        ],
+        [
+          1,
+          "text",
+          -42,
+          90,
+          2,
+          "W K"
+        ],
+        [
+          1,
+          "hline",
+          -46,
+          86,
+          64,
+          1
+        ]
       ]
     },
     {
@@ -761,14 +1594,14 @@
         ],
         "grid": [
           [
-            "☀️",
+            "\u2600\ufe0f",
             "=",
-            "☀️"
+            "\u2600\ufe0f"
           ]
         ]
       },
       "invalid_move": {
-        "caption": "Three identical symbols in a row '☀️ ☀️ ☀️' (maximum allowed adjacent is two).",
+        "caption": "Three identical symbols in a row '\u2600\ufe0f \u2600\ufe0f \u2600\ufe0f' (maximum allowed adjacent is two).",
         "highlight": [
           0,
           1,
@@ -776,15 +1609,15 @@
         ],
         "grid": [
           [
-            "☀️",
-            "☀️",
-            "☀️"
+            "\u2600\ufe0f",
+            "\u2600\ufe0f",
+            "\u2600\ufe0f"
           ]
         ]
       },
       "opening_anchors": [
         "Satisfy 'x' (opposite) clues: if one cell is given, the adjacent cell is immediately known.",
-        "Watch for symbol pairs: two adjacent suns ('☀️☀️') must be flanked on both sides by moons ('🌙')."
+        "Watch for symbol pairs: two adjacent suns ('\u2600\ufe0f\u2600\ufe0f') must be flanked on both sides by moons ('\ud83c\udf19')."
       ],
       "faq": [
         {
@@ -795,6 +1628,83 @@
           "q": "Does the two-in-a-row limit apply diagonally?",
           "a": "No. The adjacency restriction applies strictly to horizontal and vertical lines."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "rect",
+          -42,
+          66,
+          28,
+          28,
+          2
+        ],
+        [
+          0,
+          "text",
+          -34,
+          70,
+          2,
+          "O"
+        ],
+        [
+          0,
+          "text",
+          -6,
+          70,
+          2,
+          "="
+        ],
+        [
+          0,
+          "rect",
+          14,
+          66,
+          28,
+          28,
+          2
+        ],
+        [
+          0,
+          "text",
+          22,
+          70,
+          2,
+          "O"
+        ],
+        [
+          1,
+          "grid",
+          -42,
+          66,
+          3,
+          1,
+          28
+        ],
+        [
+          1,
+          "text",
+          -34,
+          70,
+          2,
+          "O"
+        ],
+        [
+          1,
+          "text",
+          -6,
+          70,
+          2,
+          "O"
+        ],
+        [
+          1,
+          "text",
+          22,
+          70,
+          2,
+          "O"
+        ]
       ]
     },
     {
@@ -863,6 +1773,56 @@
           "q": "Are proper nouns like names allowed as intermediate words?",
           "a": "No. Every step must be a standard dictionary English word."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "text",
+          -44,
+          62,
+          2,
+          "C A R T"
+        ],
+        [
+          0,
+          "text",
+          -44,
+          90,
+          2,
+          "D A R T"
+        ],
+        [
+          0,
+          "text",
+          -20,
+          76,
+          1,
+          "|"
+        ],
+        [
+          1,
+          "text",
+          -44,
+          62,
+          2,
+          "C A R T"
+        ],
+        [
+          1,
+          "text",
+          -44,
+          90,
+          2,
+          "D A R K"
+        ],
+        [
+          1,
+          "text",
+          -20,
+          76,
+          1,
+          "|"
+        ]
       ]
     },
     {
@@ -889,9 +1849,9 @@
             "W"
           ],
           [
-            "·",
+            "\u00b7",
             "O",
-            "·"
+            "\u00b7"
           ]
         ]
       },
@@ -920,6 +1880,72 @@
           "q": "Do words without the center letter count?",
           "a": "No. Any word that omits the central hub letter is strictly invalid."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "circ",
+          0,
+          82,
+          28,
+          2
+        ],
+        [
+          0,
+          "circ",
+          0,
+          82,
+          12,
+          1
+        ],
+        [
+          0,
+          "text",
+          -5,
+          74,
+          2,
+          "O"
+        ],
+        [
+          0,
+          "text",
+          -40,
+          116,
+          1,
+          "GLOW (USES O)"
+        ],
+        [
+          1,
+          "circ",
+          0,
+          82,
+          28,
+          2
+        ],
+        [
+          1,
+          "circ",
+          0,
+          82,
+          12,
+          1
+        ],
+        [
+          1,
+          "text",
+          -5,
+          74,
+          2,
+          "O"
+        ],
+        [
+          1,
+          "text",
+          -40,
+          116,
+          1,
+          "WING (NO O)"
+        ]
       ]
     },
     {
@@ -948,9 +1974,9 @@
         ],
         "grid": [
           [
-            "💡",
-            "■",
-            "💡"
+            "\ud83d\udca1",
+            "\u25a0",
+            "\ud83d\udca1"
           ]
         ]
       },
@@ -968,9 +1994,9 @@
         ],
         "grid": [
           [
-            "💡",
-            "·",
-            "💡"
+            "\ud83d\udca1",
+            "\u00b7",
+            "\ud83d\udca1"
           ]
         ]
       },
@@ -987,6 +2013,76 @@
           "q": "Can light pass through black barrier blocks?",
           "a": "No. Black blocks completely obstruct and stop light beams."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "rect",
+          -42,
+          66,
+          84,
+          28,
+          2
+        ],
+        [
+          0,
+          "hatch",
+          -14,
+          66,
+          28,
+          28,
+          1
+        ],
+        [
+          0,
+          "text",
+          -34,
+          70,
+          2,
+          "*"
+        ],
+        [
+          0,
+          "text",
+          22,
+          70,
+          2,
+          "*"
+        ],
+        [
+          1,
+          "rect",
+          -42,
+          66,
+          84,
+          28,
+          2
+        ],
+        [
+          1,
+          "text",
+          -34,
+          70,
+          2,
+          "*"
+        ],
+        [
+          1,
+          "line",
+          -26,
+          80,
+          26,
+          80,
+          1
+        ],
+        [
+          1,
+          "text",
+          22,
+          70,
+          2,
+          "*"
+        ]
       ]
     },
     {
@@ -1009,19 +2105,19 @@
         ],
         "grid": [
           [
-            "┌",
-            "─",
-            "┐"
+            "\u250c",
+            "\u2500",
+            "\u2510"
           ],
           [
-            "│",
+            "\u2502",
             "3",
             " "
           ],
           [
-            "└",
-            "─",
-            "┘"
+            "\u2514",
+            "\u2500",
+            "\u2518"
           ]
         ]
       },
@@ -1034,17 +2130,17 @@
         "grid": [
           [
             " ",
-            "│",
+            "\u2502",
             " "
           ],
           [
-            "─",
-            "┼",
-            "─"
+            "\u2500",
+            "\u253c",
+            "\u2500"
           ],
           [
             " ",
-            "│",
+            "\u2502",
             " "
           ]
         ]
@@ -1062,6 +2158,56 @@
           "q": "Can the loop line connect dots diagonally?",
           "a": "No. Lines run strictly horizontally or vertically between adjacent grid dots."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "text",
+          -6,
+          72,
+          3,
+          "3"
+        ],
+        [
+          0,
+          "hline",
+          -16,
+          66,
+          32,
+          3
+        ],
+        [
+          0,
+          "vline",
+          -16,
+          66,
+          32,
+          3
+        ],
+        [
+          0,
+          "hline",
+          -16,
+          98,
+          32,
+          3
+        ],
+        [
+          1,
+          "hline",
+          -26,
+          82,
+          52,
+          3
+        ],
+        [
+          1,
+          "vline",
+          0,
+          56,
+          52,
+          3
+        ]
       ]
     },
     {
@@ -1121,6 +2267,90 @@
           "q": "Can heights repeat in a row or column?",
           "a": "No. Each row and column forms a Latin square where each height appears exactly once."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "text",
+          -60,
+          74,
+          2,
+          "1"
+        ],
+        [
+          0,
+          "rect",
+          -36,
+          70,
+          72,
+          24,
+          2
+        ],
+        [
+          0,
+          "text",
+          -30,
+          74,
+          2,
+          "5"
+        ],
+        [
+          0,
+          "text",
+          -6,
+          74,
+          2,
+          "4"
+        ],
+        [
+          0,
+          "text",
+          18,
+          74,
+          2,
+          "3"
+        ],
+        [
+          1,
+          "text",
+          -60,
+          74,
+          2,
+          "1"
+        ],
+        [
+          1,
+          "rect",
+          -36,
+          70,
+          72,
+          24,
+          2
+        ],
+        [
+          1,
+          "text",
+          -30,
+          74,
+          2,
+          "2"
+        ],
+        [
+          1,
+          "text",
+          -6,
+          74,
+          2,
+          "5"
+        ],
+        [
+          1,
+          "text",
+          18,
+          74,
+          2,
+          "1"
+        ]
       ]
     },
     {
@@ -1176,6 +2406,92 @@
           "q": "Can digits repeat in the same row if they satisfy the inequality?",
           "a": "No. Every digit must be unique within its row and within its column."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "rect",
+          -42,
+          66,
+          28,
+          28,
+          2
+        ],
+        [
+          0,
+          "text",
+          -34,
+          70,
+          2,
+          "2"
+        ],
+        [
+          0,
+          "text",
+          -6,
+          70,
+          2,
+          "<"
+        ],
+        [
+          0,
+          "rect",
+          14,
+          66,
+          28,
+          28,
+          2
+        ],
+        [
+          0,
+          "text",
+          22,
+          70,
+          2,
+          "4"
+        ],
+        [
+          1,
+          "rect",
+          -42,
+          66,
+          28,
+          28,
+          2
+        ],
+        [
+          1,
+          "text",
+          -34,
+          70,
+          2,
+          "5"
+        ],
+        [
+          1,
+          "text",
+          -6,
+          70,
+          2,
+          "<"
+        ],
+        [
+          1,
+          "rect",
+          14,
+          66,
+          28,
+          28,
+          2
+        ],
+        [
+          1,
+          "text",
+          22,
+          70,
+          2,
+          "3"
+        ]
       ]
     },
     {
@@ -1198,9 +2514,9 @@
         ],
         "grid": [
           [
-            "·",
-            "·",
-            "·"
+            "\u00b7",
+            "\u00b7",
+            "\u00b7"
           ]
         ]
       },
@@ -1212,9 +2528,9 @@
         ],
         "grid": [
           [
-            "·",
+            "\u00b7",
             "|",
-            "·"
+            "\u00b7"
           ]
         ]
       },
@@ -1231,6 +2547,64 @@
           "q": "Do I ever need to retrace or loop back?",
           "a": "No. The true solution path is a direct acyclic route without circular loops or backtracking."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "hline",
+          -42,
+          66,
+          84,
+          2
+        ],
+        [
+          0,
+          "hline",
+          -42,
+          94,
+          84,
+          2
+        ],
+        [
+          0,
+          "hline",
+          -38,
+          80,
+          76,
+          3
+        ],
+        [
+          1,
+          "hline",
+          -42,
+          66,
+          84,
+          2
+        ],
+        [
+          1,
+          "hline",
+          -42,
+          94,
+          84,
+          2
+        ],
+        [
+          1,
+          "vline",
+          0,
+          66,
+          28,
+          4
+        ],
+        [
+          1,
+          "hline",
+          -38,
+          80,
+          76,
+          3
+        ]
       ]
     },
     {
@@ -1254,13 +2628,13 @@
         "grid": [
           [
             "1",
-            "·",
+            "\u00b7",
             "2"
           ],
           [
-            "·",
+            "\u00b7",
             "3",
-            "·"
+            "\u00b7"
           ]
         ]
       },
@@ -1277,9 +2651,9 @@
             "2"
           ],
           [
-            "·",
+            "\u00b7",
             "3",
-            "·"
+            "\u00b7"
           ]
         ]
       },
@@ -1296,6 +2670,82 @@
           "q": "Does every Sudokito puzzle have a guaranteed unique solution?",
           "a": "Yes. Each generated puzzle is verified by a uniqueness solver to ensure exactly one logical solution exists without guessing."
         }
+      ],
+      "diagram_ops": [
+        [
+          0,
+          "grid",
+          -48,
+          62,
+          3,
+          2,
+          32
+        ],
+        [
+          0,
+          "text",
+          -38,
+          68,
+          3,
+          "1"
+        ],
+        [
+          0,
+          "text",
+          26,
+          68,
+          3,
+          "2"
+        ],
+        [
+          0,
+          "text",
+          -6,
+          100,
+          3,
+          "3"
+        ],
+        [
+          1,
+          "grid",
+          -48,
+          62,
+          3,
+          2,
+          32
+        ],
+        [
+          1,
+          "text",
+          -38,
+          68,
+          3,
+          "1"
+        ],
+        [
+          1,
+          "text",
+          -6,
+          68,
+          3,
+          "3"
+        ],
+        [
+          1,
+          "text",
+          26,
+          68,
+          3,
+          "2"
+        ],
+        [
+          1,
+          "text",
+          -6,
+          100,
+          3,
+          "3"
+        ]
       ]
     }
   ]

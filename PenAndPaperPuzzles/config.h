@@ -16,9 +16,6 @@
 // 2. On-Demand Puzzle Grade & Difficulty Configuration
 // -----------------------------------------------------------------------------
 #define OFFLINE_PUZZLE_COUNT        5       // Number of random games to select and print (1-20)
-// 0 = Easy, 1 = Medium, 2 = Hard, 3 = Rotating (advances grade on each button press)
-#define PUZZLE_GRADE_DEFAULT        3       // Default: Rotating grade on button press
-#define PUZZLE_GRADE_CYCLE_ON_PRESS true    // Each hardware button press advances grade
 
 // -----------------------------------------------------------------------------
 // 2B. Print Presentation Style (Offline Appliance)
@@ -102,6 +99,16 @@
 #define PRINTER_SERIAL_BAUD     115200
 #define PRINTER_RX_PIN          16
 #define PRINTER_TX_PIN          17
+
+// Board-Aware I2C Pins for Optional DS3231 Hardware RTC
+// ESP32-S3 lacks GPIO 22-25; GPIO 5/6 are clean free pins on ESP32-S3-ETH
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+#define RTC_I2C_SDA_PIN         5
+#define RTC_I2C_SCL_PIN         6
+#else
+#define RTC_I2C_SDA_PIN         21
+#define RTC_I2C_SCL_PIN         22
+#endif
 
 // -----------------------------------------------------------------------------
 // 5. Wi-Fi Network Settings

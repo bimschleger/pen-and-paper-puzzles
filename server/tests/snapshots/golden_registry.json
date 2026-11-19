@@ -1,21 +1,21 @@
 {
   "sudoku": {
     "title": "SUDOKU",
-    "sha256": "146936c817a774dee739c8281e6983130415e368af886f824cdc31d6b422df3e",
-    "byte_length": 41048,
+    "sha256": "f3c5e55c6c8a9c7a3491c9027277fe0d8d0a1cafdb292b356111871ed418a404",
+    "byte_length": 41480,
     "width_dots": 576,
-    "height_dots": 570,
-    "average_duty_cycle_pct": 8.26,
+    "height_dots": 576,
+    "average_duty_cycle_pct": 8.18,
     "max_consecutive_dense_lines": 4,
     "is_safe": true
   },
   "wordsearch": {
     "title": "SEARCH",
-    "sha256": "4142ac54b4ba342a95429025e0492e3934278321a446006765a7b77c69c7e97e",
-    "byte_length": 52136,
+    "sha256": "cf8d12e1fbe9492f329b18f18cc6f7f150dec27311da54231c725b6bb4897dc1",
+    "byte_length": 52424,
     "width_dots": 576,
-    "height_dots": 724,
-    "average_duty_cycle_pct": 11.48,
+    "height_dots": 728,
+    "average_duty_cycle_pct": 11.41,
     "max_consecutive_dense_lines": 4,
     "is_safe": true
   },
@@ -151,11 +151,11 @@
   },
   "loop": {
     "title": "LOOP",
-    "sha256": "0eaa26661efcaa2dc4ef8a9297b3d89e67d768c140fb5e979466d605e2d7319b",
+    "sha256": "8cc21d7af83bc2f691118ffc0c80630adcc1adbf279398730d0f81259e205b0c",
     "byte_length": 41480,
     "width_dots": 576,
     "height_dots": 576,
-    "average_duty_cycle_pct": 1.76,
+    "average_duty_cycle_pct": 1.64,
     "max_consecutive_dense_lines": 0,
     "is_safe": true
   },

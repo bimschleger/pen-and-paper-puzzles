@@ -148,7 +148,7 @@ bool LoopGen::generatePolyominoLoop(uint8_t n) {
             }
             for (uint8_t r = 0; r < n; r++) {
                 for (uint8_t c = 0; c < n; c++) {
-                    _clues[r][c] = solH[r][c] + solH[r + 1][c] + solV[r][c] + solV[r + 1][c];
+                    _clues[r][c] = solH[r][c] + solH[r + 1][c] + solV[r][c] + solV[r][c + 1];
                 }
             }
 
@@ -289,8 +289,12 @@ bool LoopGen::solveDeductive(int8_t clues[9][9], uint8_t n, int8_t H[10][9], int
 void LoopGen::generate(LoopDifficulty difficulty) {
     _size = (difficulty == LOOP_EASY) ? 6 : ((difficulty == LOOP_HARD) ? 9 : 7);
 
-    for (uint8_t attempt = 0; attempt < 20; attempt++) {
+    for (uint8_t attempt = 0; attempt < 40; attempt++) {
+        yield();
         if (!generatePolyominoLoop(_size)) continue;
+
+        int8_t testH[10][9], testV[9][10];
+        if (!solveDeductive(_clues, _size, testH, testV)) continue;
 
         // Thin clues
         uint8_t cellCoords[81];
@@ -301,7 +305,6 @@ void LoopGen::generate(LoopDifficulty difficulty) {
         uint8_t targetClues = (uint8_t)(_size * _size * retainPct);
         uint8_t currentClues = _size * _size;
 
-        int8_t testH[10][9], testV[9][10];
         for (uint8_t i = 0; i < _size * _size; i++) {
             if (currentClues <= targetClues) break;
             uint8_t r = cellCoords[i] / _size;
@@ -315,7 +318,7 @@ void LoopGen::generate(LoopDifficulty difficulty) {
                 _clues[r][c] = saved;
             }
         }
-        return;
+        if (currentClues < _size * _size) return;
     }
 }
 
@@ -352,32 +355,24 @@ bool LoopGen::printRasterToReceipt(EscPosPrinter& printer, LoopDifficulty diff) 
     int16_t totalH = 576;
 
     ThermalCanvas canvas;
-    if (!canvas.begin(totalH)) {
-        return false;
-    }
-
-    // Draw dots (clean Nikoli style: 3px radius filled circles)
-    for (uint8_t r = 0; r <= _size; r++) {
-        int16_t py = padding + r * cellSize;
-        for (uint8_t c = 0; c <= _size; c++) {
-            int16_t px = leftMargin + c * cellSize;
-            canvas.fillCircle(px, py, 3, 1);
-        }
-    }
-
-    // Draw clue numbers
-    for (uint8_t r = 0; r < _size; r++) {
-        for (uint8_t c = 0; c < _size; c++) {
-            int8_t k = _clues[r][c];
-            if (k >= 0) {
-                int16_t tx = leftMargin + c * cellSize + (cellSize - 18) / 2;
-                int16_t ty = padding + r * cellSize + (cellSize - 21) / 2;
-                canvas.drawChar(tx, ty, '0' + k, 3, 1);
+    return canvas.renderBanded(printer, totalH, [&](ThermalCanvas& canvas) {
+        for (uint8_t r = 0; r <= _size; r++) {
+            int16_t py = padding + r * cellSize;
+            for (uint8_t c = 0; c <= _size; c++) {
+                int16_t px = leftMargin + c * cellSize;
+                canvas.fillCircle(px, py, 3, 1);
             }
         }
-    }
 
-    bool ok = canvas.printTo(printer);
-    canvas.end();
-    return ok;
+        for (uint8_t r = 0; r < _size; r++) {
+            for (uint8_t c = 0; c < _size; c++) {
+                int8_t k = _clues[r][c];
+                if (k >= 0) {
+                    int16_t tx = leftMargin + c * cellSize + (cellSize - 18) / 2;
+                    int16_t ty = padding + r * cellSize + (cellSize - 21) / 2;
+                    canvas.drawChar(tx, ty, '0' + k, 3, 1);
+                }
+            }
+        }
+    });
 }

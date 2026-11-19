@@ -156,48 +156,32 @@ bool TentsGen::printRasterToReceipt(EscPosPrinter& printer, TentsDifficulty /*di
     const int16_t totalH = gridY + gridW + padding;
 
     ThermalCanvas canvas;
-    if (!canvas.begin(totalH)) {
-        return false;
-    }
+    return canvas.renderBanded(printer, totalH, [&](ThermalCanvas& canvas) {
+        canvas.drawGrid(gridX, gridY, _size, _size, cellSize, cellSize, 4, 1);
 
-    // Outer grid border
-    canvas.drawRect(gridX, gridY, gridW, gridW, 4);
-
-    // Inner grid lines
-    for (uint8_t i = 1; i < _size; i++) {
-        canvas.drawHLine(gridX, gridY + i * cellSize, gridW, 1);
-        canvas.drawVLine(gridX + i * cellSize, gridY, gridW, 1);
-    }
-
-    // Column clues
-    for (uint8_t c = 0; c < _size; c++) {
-        char buf[4];
-        snprintf(buf, sizeof(buf), "%d", _colClues[c]);
-        int16_t cx = gridX + c * cellSize + (cellSize - 12) / 2;
-        canvas.drawText(cx, gridY - 24, buf, 2);
-    }
-
-    // Row clues
-    for (uint8_t r = 0; r < _size; r++) {
-        char buf[4];
-        snprintf(buf, sizeof(buf), "%d", _rowClues[r]);
-        int16_t cy = gridY + r * cellSize + (cellSize - 14) / 2;
-        canvas.drawText(padding + 16, cy, buf, 2);
-    }
-
-    // Trees ('T')
-    for (uint8_t r = 0; r < _size; r++) {
         for (uint8_t c = 0; c < _size; c++) {
-            if (_puzzle[r][c] == 1) {
-                int16_t tx = gridX + c * cellSize + (cellSize - 18) / 2;
-                int16_t ty = gridY + r * cellSize + (cellSize - 21) / 2;
-                canvas.drawChar(tx, ty, 'T', 3);
+            char buf[4];
+            snprintf(buf, sizeof(buf), "%d", _colClues[c]);
+            int16_t cx = gridX + c * cellSize + (cellSize - 12) / 2;
+            canvas.drawText(cx, gridY - 24, buf, 2);
+        }
+
+        for (uint8_t r = 0; r < _size; r++) {
+            char buf[4];
+            snprintf(buf, sizeof(buf), "%d", _rowClues[r]);
+            int16_t cy = gridY + r * cellSize + (cellSize - 14) / 2;
+            canvas.drawText(padding + 16, cy, buf, 2);
+        }
+
+        for (uint8_t r = 0; r < _size; r++) {
+            for (uint8_t c = 0; c < _size; c++) {
+                if (_puzzle[r][c] == 1) {
+                    int16_t tx = gridX + c * cellSize + (cellSize - 18) / 2;
+                    int16_t ty = gridY + r * cellSize + (cellSize - 21) / 2;
+                    canvas.drawChar(tx, ty, 'T', 3);
+                }
             }
         }
-    }
-
-    bool ok = canvas.printTo(printer);
-    canvas.end();
-    return ok;
+    });
 }
 

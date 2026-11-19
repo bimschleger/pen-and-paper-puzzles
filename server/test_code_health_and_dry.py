@@ -26,8 +26,10 @@ Enforces:
 """
 
 import ast
+import json
 import os
 import re
+import subprocess
 import sys
 import time
 from typing import Dict, List, Tuple
@@ -36,34 +38,41 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.puzzles.base import BasePuzzle
 from app.puzzles.registry import DEFAULT_REGISTRY
+from app.puzzles.wheel import FALLBACK_PUZZLES as WHEEL_FALLBACK_PUZZLES, WheelPuzzle
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 PY_PUZZLES_DIR = os.path.join(ROOT_DIR, "server", "app", "puzzles")
+CANVAS_PY = os.path.join(ROOT_DIR, "server", "app", "renderer", "canvas.py")
 CPP_GEN_DIR = os.path.join(ROOT_DIR, "esp32-firmware", "src", "generators")
 SKETCH_DIR = os.path.join(ROOT_DIR, "PenAndPaperPuzzles")
 SIMULATOR_HTML = os.path.join(ROOT_DIR, "simulator", "receipt_simulator.html")
 BUILD_DATASETS_PY = os.path.join(ROOT_DIR, "tools", "datasets", "build_all_datasets.py")
+SYNC_SKETCH_SH = os.path.join(ROOT_DIR, "scripts", "sync_arduino_sketch.sh")
 
 
 def test_bounded_loops_and_mrv_guards():
     print("Test 1: Auditing Loop Iteration Bounds & MRV Backtracking Guards (Python, C++, JS)...")
     violations: List[str] = []
 
-    # 1A. Python puzzle plugins: ban unguarded `while changed:`
-    for fname in sorted(os.listdir(PY_PUZZLES_DIR)):
-        if not fname.endswith(".py"):
-            continue
-        fpath = os.path.join(PY_PUZZLES_DIR, fname)
+    # 1A. Python puzzle plugins & renderer canvas: ban unguarded `while changed:` / `while True:`
+    py_scan_files = [
+        (f"server/app/puzzles/{fname}", os.path.join(PY_PUZZLES_DIR, fname))
+        for fname in sorted(os.listdir(PY_PUZZLES_DIR))
+        if fname.endswith(".py")
+    ]
+    if os.path.exists(CANVAS_PY):
+        py_scan_files.append(("server/app/renderer/canvas.py", CANVAS_PY))
+    for rel_path, fpath in py_scan_files:
         with open(fpath, "r", encoding="utf-8") as f:
             for line_no, line in enumerate(f, 1):
                 stripped = line.strip()
                 if re.match(r"^while\s+changed\s*:", stripped):
                     violations.append(
-                        f"server/app/puzzles/{fname}:{line_no}: Unguarded `while changed:` without iteration bound"
+                        f"{rel_path}:{line_no}: Unguarded `while changed:` without iteration bound"
                     )
                 if re.match(r"^while\s+True\s*:", stripped):
                     violations.append(
-                        f"server/app/puzzles/{fname}:{line_no}: Prohibited `while True:` in puzzle plugin"
+                        f"{rel_path}:{line_no}: Prohibited `while True:` without explicit bound"
                     )
 
     # 1B. C++ generators: ban unguarded `while (changed)` and `while (cur != 0xFFFF)`
@@ -233,7 +242,24 @@ def test_dry_and_shared_utilities():
         if "select_seeded_d4" not in src:
             violations.append(f"server/app/puzzles/{d4_file}: Must use `select_seeded_d4` from base.py (Rule 17)")
 
-    # 3D. C++ Rule 17: Ban manual Fisher-Yates shuffles (`random(i + 1)`) and inline nibble unpacking outside GeneratorUtils.h
+    # 3D. Rule 6: Ban hardcoded per-game `puzzle_id ==` / `puzzle_id in` routing branches outside plugins
+    for rel_dir, fname in (
+        ("server/app/puzzles", "registry.py"),
+        ("server/app/renderer", "composer.py"),
+        ("server/app", "main.py"),
+        ("server/app/renderer", "text_formatter.py"),
+    ):
+        fpath = os.path.join(ROOT_DIR, rel_dir, fname)
+        if not os.path.exists(fpath):
+            continue
+        with open(fpath, "r", encoding="utf-8") as f:
+            for line_no, line in enumerate(f, 1):
+                if re.search(r"\bpuzzle_id\s*(?:==|!=)\s*['\"]|\bpuzzle_id\s+in\s*[\(\[\{]", line):
+                    violations.append(
+                        f"{rel_dir}/{fname}:{line_no}: Hardcoded `puzzle_id` branch violates Rule 6 dynamic routing"
+                    )
+
+    # 3E. C++ Rule 17: Ban manual Fisher-Yates shuffles (`random(i + 1)`) and inline nibble unpacking outside GeneratorUtils.h
     for fname in sorted(os.listdir(CPP_GEN_DIR)):
         if not fname.endswith((".cpp", ".h")) or fname == "GeneratorUtils.h":
             continue
@@ -263,15 +289,15 @@ def test_build_pipeline_regex_and_sketch_mirror():
         r'update_simulator_js\(\s*r["\']\s*this\\\.puzzles', pipeline_src
     ), "Unanchored `this.puzzles` regex in build_all_datasets.py is prohibited (can clobber simulator classes)!"
 
-    # Ensure every file in esp32-firmware/src/generators/ exists in PenAndPaperPuzzles/
-    for fname in sorted(os.listdir(CPP_GEN_DIR)):
-        if fname.endswith((".h", ".cpp")):
-            sketch_file = os.path.join(SKETCH_DIR, fname)
-            assert os.path.exists(sketch_file), (
-                f"Rule 7 Violation: {fname} exists in esp32-firmware/src/generators/ but is missing in PenAndPaperPuzzles/"
-            )
+    # Verify full Arduino sketch parity (contents & transformed includes, not just filenames)
+    assert os.path.exists(SYNC_SKETCH_SH), f"Missing sketch sync script: {SYNC_SKETCH_SH}"
+    sync_res = subprocess.run([SYNC_SKETCH_SH, "--check"], cwd=ROOT_DIR, capture_output=True, text=True)
+    assert sync_res.returncode == 0, (
+        "Rule 7 Violation: PenAndPaperPuzzles/ is out of sync with esp32-firmware/:\n"
+        f"{sync_res.stdout}\n{sync_res.stderr}"
+    )
 
-    print("  [OK] Dataset pipeline regexes are class-scoped and all C++ generator files are mirrored in PenAndPaperPuzzles/.")
+    print("  [OK] Dataset pipeline regexes are class-scoped and PenAndPaperPuzzles/ matches esp32-firmware/ bit-for-bit.")
 
 
 def test_python_watchdog_and_thermal_duty_all_tiers():
@@ -283,7 +309,7 @@ def test_python_watchdog_and_thermal_duty_all_tiers():
         pid = plugin.puzzle_id
         tiers = plugin.supported_difficulties or ["medium"]
         for diff in tiers:
-            for seed in (101, 202):
+            for seed in (101, 202, 303, 404, 505):
                 t0 = time.perf_counter()
                 res = plugin.generate(difficulty=diff, seed=seed)
                 elapsed_ms = (time.perf_counter() - t0) * 1000.0
@@ -294,7 +320,12 @@ def test_python_watchdog_and_thermal_duty_all_tiers():
                 is_valid, msg = plugin.verify_accuracy(res)
                 assert is_valid, f"{pid} ({diff}, seed={seed}) failed verify_accuracy: {msg}"
 
+                t1 = time.perf_counter()
                 raster = plugin.render_raster(res)
+                raster_ms = (time.perf_counter() - t1) * 1000.0
+                assert raster_ms <= 150.0, (
+                    f"Raster timeout: {pid}.render_raster(difficulty='{diff}', seed={seed}) took {raster_ms:.2f}ms (> 150ms limit)"
+                )
                 assert raster[:3] == b"\x1d\x76\x30", f"{pid} ({diff}): Invalid ESC/POS GS v 0 header"
                 w_bytes = raster[4] | (raster[5] << 8)
                 h_dots = raster[6] | (raster[7] << 8)
@@ -309,7 +340,211 @@ def test_python_watchdog_and_thermal_duty_all_tiers():
                     f"{pid} ({diff}): Thermal duty cycle {duty_cycle:.2f}% out of safe [0.5%, 35.0%] range"
                 )
 
-        print(f"  [OK] {plugin.title:<12} ({pid:<10}) verified across {tiers} (<= 150ms, 100% accurate, <= 35% duty)")
+        # Invalid difficulty fallback must normalize safely and produce a valid puzzle & raster
+        bogus_res = plugin.generate(difficulty="BOGUS_TIER", seed=101)
+        is_bogus_valid, bogus_msg = plugin.verify_accuracy(bogus_res)
+        assert is_bogus_valid, f"{pid} normalized 'BOGUS_TIER' failed verify_accuracy: {bogus_msg}"
+        bogus_raster = plugin.render_raster(bogus_res)
+        assert bogus_raster[:3] == b"\x1d\x76\x30", f"{pid} ('BOGUS_TIER'): Invalid ESC/POS header"
+
+        print(f"  [OK] {plugin.title:<12} ({pid:<10}) verified across {tiers} + invalid fallback (<= 150ms, 100% accurate, <= 35% duty)")
+
+    # Verify WheelPuzzle fallback puzzles satisfy its own verifier
+    wheel_plugin = DEFAULT_REGISTRY.get("wheel") or WheelPuzzle()
+    fb_count = 0
+    for tier_list in WHEEL_FALLBACK_PUZZLES.values():
+        for fb in tier_list:
+            ok, msg = wheel_plugin.verify_accuracy(fb)
+            assert ok, f"Wheel FALLBACK_PUZZLES entry {fb.get('id')} failed verify_accuracy: {msg}"
+            fb_count += 1
+    print(f"  [OK] Verified all {fb_count} Wheel FALLBACK_PUZZLES entries.")
+
+
+def _extract_cpp_function_body(src: str, sig_pattern: str) -> str:
+    """Extract the brace-matched body (excluding comments and strings) for a C++ function signature."""
+    m = re.search(sig_pattern, src)
+    if not m:
+        return ""
+    i = m.end() - 1
+    depth = 0
+    out: List[str] = []
+    n = len(src)
+    while i < n:
+        ch = src[i]
+        if ch == "/" and i + 1 < n and src[i + 1] == "/":
+            nl = src.find("\n", i + 2)
+            i = n if nl == -1 else nl + 1
+            continue
+        if ch == "/" and i + 1 < n and src[i + 1] == "*":
+            end_c = src.find("*/", i + 2)
+            i = n if end_c == -1 else end_c + 2
+            continue
+        if ch in ('"', "'"):
+            q = ch
+            i += 1
+            while i < n:
+                if src[i] == "\\":
+                    i += 2
+                    continue
+                if src[i] == q:
+                    i += 1
+                    break
+                i += 1
+            continue
+        if ch == "{":
+            depth += 1
+            if depth == 1:
+                i += 1
+                continue
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                break
+        if depth >= 1:
+            out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def _collect_non_ascii(obj, path: str, out: List[str]) -> None:
+    if isinstance(obj, str):
+        for ch in obj:
+            if ord(ch) < 32 or ord(ch) >= 127:
+                out.append(f"{path}: non-ASCII/control char {ch!r} (U+{ord(ch):04X})")
+                break
+    elif isinstance(obj, list):
+        for idx, item in enumerate(obj):
+            _collect_non_ascii(item, f"{path}[{idx}]", out)
+    elif isinstance(obj, dict):
+        for k, val in obj.items():
+            _collect_non_ascii(val, f"{path}.{k}", out)
+
+
+def test_engineering_budgets_and_guardrails():
+    print("\nTest 6: Auditing Engineering Budgets, Solver Safety, ASCII Datasets & Offline Web Guardrails (Rules 19-24)...")
+    violations: List[str] = []
+
+    # Rule 19 & 20: C++ generators (banded canvas, zero String ASCII churn, iterative solvers, checked returns)
+    no_string_ascii = {"InequalityGen.cpp", "KillerGen.cpp", "MazeGen.cpp"}
+    for fname in sorted(os.listdir(CPP_GEN_DIR)):
+        if not fname.endswith(".cpp"):
+            continue
+        fpath = os.path.join(CPP_GEN_DIR, fname)
+        with open(fpath, "r", encoding="utf-8") as f:
+            src = f.read()
+
+        if re.search(r"\b(?:[a-zA-Z_]*[Cc]anvas\w*\.|ThermalCanvas::)begin\s*\(|\bprintRasterBitmap\s*\(", src):
+            violations.append(f"esp32-firmware/src/generators/{fname}: Uses prohibited full-height begin() or printRasterBitmap() (Rule 19)")
+        if "printRasterToReceipt(" in src and ".renderBanded(" not in src:
+            violations.append(f"esp32-firmware/src/generators/{fname}: printRasterToReceipt must stream via renderBanded() (Rule 19)")
+
+        if fname in no_string_ascii:
+            body = _extract_cpp_function_body(src, r"\bprintToReceipt\s*\([^)]*\)\s*\{")
+            if body and re.search(r"\bString\b", body):
+                violations.append(f"esp32-firmware/src/generators/{fname}: Arduino String used in printToReceipt(); use stack char[] buffer (Rule 19)")
+
+        for line_no, line in enumerate(src.splitlines(), 1):
+            if re.match(r"^\s*(?:generateFullBoard|fillBoard)\s*\([^)]*\)\s*;", line):
+                violations.append(f"esp32-firmware/src/generators/{fname}:{line_no}: Discarded return value from {line.strip()} (Rule 20)")
+
+        for fn_name in ("fillBoard", "countSolutions"):
+            body = _extract_cpp_function_body(src, rf"\b(?:bool|uint8_t)\s+\w+::{fn_name}\s*\([^)]*\)\s*\{{")
+            if body and re.search(rf"\b{fn_name}\s*\(", body):
+                violations.append(f"esp32-firmware/src/generators/{fname}: Direct self-recursion in {fn_name}() violates iterative stack Rule 20")
+
+    # Rule 21: Declarative diagram_ops SSoT (no hand-coded per-game guide switch/if branches)
+    for rel_path in (
+        os.path.join("esp32-firmware", "src", "generators", "OfflinePuzzleComposer.cpp"),
+        os.path.join("server", "app", "puzzles", "base.py"),
+        os.path.join("simulator", "receipt_simulator.html"),
+        "portal.html",
+    ):
+        full_path = os.path.join(ROOT_DIR, rel_path)
+        with open(full_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        if re.search(r"switch\s*\(\s*(?:gameId|puzzleId)|if\s*\(\s*gameId\s*==", content):
+            violations.append(f"{rel_path}: Prohibited per-game guide switch/branch detected (Rule 21)")
+
+    # Rule 22: Strictly printable 7-bit ASCII across C++ thermal datasets
+    for json_name in (
+        "jumbles.json",
+        "cryptograms.json",
+        "wordsearch_dataset.json",
+        "ladder_words.json",
+        "wheel_dictionary.json",
+    ):
+        jpath = os.path.join(ROOT_DIR, "server", "data", json_name)
+        with open(jpath, "r", encoding="utf-8") as f:
+            _collect_non_ascii(json.load(f), f"server/data/{json_name}", violations)
+
+    # Rule 23: Zero external URLs & web payload budgets
+    portal_html_path = os.path.join(ROOT_DIR, "portal.html")
+    portal_hdr_path = os.path.join(ROOT_DIR, "esp32-firmware", "src", "time", "PortalHtml.h")
+    for rel_path, fpath in (("simulator/receipt_simulator.html", SIMULATOR_HTML), ("portal.html", portal_html_path)):
+        with open(fpath, "r", encoding="utf-8") as f:
+            html = f.read()
+        if re.search(r"https?://", html):
+            violations.append(f"{rel_path}: Contains external http(s):// URL violating offline Rule 23")
+
+    sim_bytes = os.path.getsize(SIMULATOR_HTML)
+    if sim_bytes > 650_000:
+        violations.append(f"simulator/receipt_simulator.html size {sim_bytes} B > 650,000 B budget (Rule 23)")
+
+    with open(portal_hdr_path, "r", encoding="utf-8") as f:
+        hdr = f.read()
+    m_gz = re.search(r"Compressed size:\s*(\d+)\s*bytes", hdr)
+    if not m_gz:
+        violations.append("PortalHtml.h missing compressed size header comment (Rule 23)")
+    elif int(m_gz.group(1)) > 22_528:
+        violations.append(f"PortalHtml.h compressed size {m_gz.group(1)} B > 22,528 B (22 KiB) budget (Rule 23)")
+
+    # Rule 24: Minimal dependencies, zero PIL, Python 3.9+ AST compatibility & 20-game raster speed
+    req_path = os.path.join(ROOT_DIR, "server", "requirements.txt")
+    with open(req_path, "r", encoding="utf-8") as f:
+        req_txt = f.read().lower()
+    for banned_pkg in ("pillow", "ortools"):
+        if banned_pkg in req_txt:
+            violations.append(f"server/requirements.txt: Prohibited heavyweight package '{banned_pkg}' (Rule 24)")
+
+    app_dir = os.path.join(ROOT_DIR, "server", "app")
+    tools_dir = os.path.join(ROOT_DIR, "tools")
+    for scan_dir, check_pil in ((app_dir, True), (tools_dir, False)):
+        for dp, _, fns in os.walk(scan_dir):
+            for fn in sorted(fns):
+                if not fn.endswith(".py"):
+                    continue
+                fpath = os.path.join(dp, fn)
+                rel = os.path.relpath(fpath, ROOT_DIR)
+                with open(fpath, "r", encoding="utf-8") as f:
+                    src = f.read()
+                if check_pil:
+                    for tok in ("HAS_PILLOW", "pil_to_escpos", "from PIL", "import PIL"):
+                        if tok in src:
+                            violations.append(f"{rel}: Prohibited Pillow token '{tok}' (Rule 24)")
+                tree = ast.parse(src, filename=rel)
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Attribute) and node.attr == "bit_count":
+                        violations.append(f"{rel}:{node.lineno}: Python 3.10+-only `.bit_count()` breaks Python 3.9 compatibility (Rule 24)")
+
+    assert not violations, "Engineering budget/guardrail violations found:\n  " + "\n  ".join(violations)
+
+    # 20-game medium Python raster throughput budget (<= 150ms total)
+    samples = [
+        (plugin, plugin.generate(difficulty=("medium" if not plugin.supported_difficulties or "medium" in plugin.supported_difficulties else plugin.supported_difficulties[0]), seed=42))
+        for plugin in DEFAULT_REGISTRY.get_all()
+    ]
+    t_r0 = time.perf_counter()
+    for plugin, res in samples:
+        plugin.render_raster(res)
+    raster_total_ms = (time.perf_counter() - t_r0) * 1000.0
+    assert raster_total_ms <= 150.0, (
+        f"20-game medium Python render_raster batch took {raster_total_ms:.1f}ms (> 150.0ms budget, Rule 24)"
+    )
+
+    print(
+        f"  [OK] Rules 19-24 verified: banded C++, iterative solvers, 7-bit ASCII datasets, "
+        f"0-CDN web ({sim_bytes:,} B / Portal {int(m_gz.group(1)):,} B gz), Py3.9 AST, 20-game raster={raster_total_ms:.1f}ms."
+    )
 
 
 def run_code_health_tests():
@@ -321,6 +556,7 @@ def run_code_health_tests():
     test_dry_and_shared_utilities()
     test_build_pipeline_regex_and_sketch_mirror()
     test_python_watchdog_and_thermal_duty_all_tiers()
+    test_engineering_budgets_and_guardrails()
     print("\n======================================================================")
     print("ALL CODE HEALTH, DRY, STACK SAFETY & WATCHDOG TESTS PASSED (100%)!")
     print("======================================================================\n")

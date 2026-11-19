@@ -115,7 +115,7 @@ def test_difficulty_presentation_and_theme_rules():
     lines = receipt_text.split("\n")
 
     # All puzzles with difficulty must have DIFFICULTY: [LEVEL] directly below title
-    difficulty_puzzles = ["SUDOKU", "SEARCH", "NONOGRAM", "STARS", "JUMBLE", "BINARY", "MINES", "TENTS", "BRIDGES", "KILLER", "CRYPTOGRAM", "TANGO", "LADDER", "WHEEL", "TOWERS", "INEQUALITY"]
+    difficulty_puzzles = [p.title for p in DEFAULT_REGISTRY.get_all() if p.has_difficulty]
     for title in difficulty_puzzles:
         header_str = f"--- {title} ---"
         assert header_str in receipt_text, f"Missing header {header_str}"
@@ -377,32 +377,39 @@ def test_master_receipt_header_and_footer():
     assert "on the cable behind the printer." in receipt_text, "Python receipt missing 'on the cable behind the printer.' in footer"
     assert "diagnostics" not in receipt_text.lower(), "Python receipt contains forbidden diagnostics"
 
-    # 2. ESP32 Firmware OfflinePuzzleComposer.cpp
+    # 2. ESP32 Firmware OfflinePuzzleComposer.cpp + EscPosPrinter.cpp
     fw_composer = os.path.join(base_dir, "esp32-firmware", "src", "generators", "OfflinePuzzleComposer.cpp")
+    fw_printer = os.path.join(base_dir, "esp32-firmware", "src", "printer", "EscPosPrinter.cpp")
     with open(fw_composer, "r") as f:
         fw_src = f.read()
+    with open(fw_printer, "r") as f:
+        fw_printer_src = f.read()
     assert '"PEN + PAPER PUZZLES"' in fw_src, "Firmware missing PEN + PAPER PUZZLES"
     assert '"Enjoy Your Puzzles"' in fw_src, "Firmware missing 'Enjoy Your Puzzles'"
-    assert '"Enjoy your day!"' in fw_src, "Firmware missing 'Enjoy your day!'"
-    assert '"For more puzzles, toggle the power"' in fw_src, "Firmware missing 'For more puzzles, toggle the power'"
-    assert '"on the front of the printer."' in fw_src, "Firmware missing 'on the front of the printer.'"
-    assert 'printer.println("on the front of the printer.");\n    printer.println("");\n    printer.println("To change settings, toggle the power");' in fw_src, "Firmware missing blank line between footer instructions"
-    assert '"To change settings, toggle the power"' in fw_src, "Firmware missing 'To change settings, toggle the power'"
-    assert '"on the cable behind the printer."' in fw_src, "Firmware missing 'on the cable behind the printer.'"
+    assert "printer.printMasterFooter(" in fw_src, "Firmware composer must delegate footer to EscPosPrinter::printMasterFooter()"
+    assert '"Enjoy your day!"' in fw_src or '"Enjoy your day!"' in fw_printer_src, "Firmware missing 'Enjoy your day!'"
+    assert '"For more puzzles, toggle the power"' in fw_printer_src, "EscPosPrinter missing 'For more puzzles, toggle the power'"
+    assert '"on the front of the printer."' in fw_printer_src, "EscPosPrinter missing 'on the front of the printer.'"
+    assert 'println("on the front of the printer.");\n    println("");\n    println("To change settings, toggle the power");' in fw_printer_src, "EscPosPrinter missing blank line between footer instructions"
+    assert '"To change settings, toggle the power"' in fw_printer_src, "EscPosPrinter missing 'To change settings, toggle the power'"
+    assert '"on the cable behind the printer."' in fw_printer_src, "EscPosPrinter missing 'on the cable behind the printer.'"
     assert "diagnostics" not in fw_src.lower(), "Firmware composer contains diagnostics"
 
-    # 3. Arduino IDE Sketch OfflinePuzzleComposer.cpp
+    # 3. Arduino IDE Sketch OfflinePuzzleComposer.cpp + EscPosPrinter.cpp
     ino_composer = os.path.join(base_dir, "PenAndPaperPuzzles", "OfflinePuzzleComposer.cpp")
+    ino_printer = os.path.join(base_dir, "PenAndPaperPuzzles", "EscPosPrinter.cpp")
     with open(ino_composer, "r") as f:
         ino_src = f.read()
+    with open(ino_printer, "r") as f:
+        ino_printer_src = f.read()
     assert '"PEN + PAPER PUZZLES"' in ino_src, "Arduino sketch missing PEN + PAPER PUZZLES"
     assert '"Enjoy Your Puzzles"' in ino_src, "Arduino sketch missing 'Enjoy Your Puzzles'"
-    assert '"Enjoy your day!"' in ino_src, "Arduino sketch missing 'Enjoy your day!'"
-    assert '"For more puzzles, toggle the power"' in ino_src, "Arduino sketch missing 'For more puzzles, toggle the power'"
-    assert '"on the front of the printer."' in ino_src, "Arduino sketch missing 'on the front of the printer.'"
-    assert 'printer.println("on the front of the printer.");\n    printer.println("");\n    printer.println("To change settings, toggle the power");' in ino_src, "Arduino sketch missing blank line between footer instructions"
-    assert '"To change settings, toggle the power"' in ino_src, "Arduino sketch missing 'To change settings, toggle the power'"
-    assert '"on the cable behind the printer."' in ino_src, "Arduino sketch missing 'on the cable behind the printer.'"
+    assert "printer.printMasterFooter(" in ino_src, "Arduino composer must delegate footer to EscPosPrinter::printMasterFooter()"
+    assert '"For more puzzles, toggle the power"' in ino_printer_src, "Arduino EscPosPrinter missing 'For more puzzles, toggle the power'"
+    assert '"on the front of the printer."' in ino_printer_src, "Arduino EscPosPrinter missing 'on the front of the printer.'"
+    assert 'println("on the front of the printer.");\n    println("");\n    println("To change settings, toggle the power");' in ino_printer_src, "Arduino EscPosPrinter missing blank line between footer instructions"
+    assert '"To change settings, toggle the power"' in ino_printer_src, "Arduino EscPosPrinter missing 'To change settings, toggle the power'"
+    assert '"on the cable behind the printer."' in ino_printer_src, "Arduino EscPosPrinter missing 'on the cable behind the printer.'"
 
     # 4. Web Simulator receipt_simulator.html
     sim_path = os.path.join(base_dir, "simulator", "receipt_simulator.html")

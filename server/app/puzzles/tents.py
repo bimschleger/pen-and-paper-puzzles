@@ -9,6 +9,7 @@ import textwrap
 from typing import List, Tuple, Optional, Dict, Any, Set, Union
 
 from .base import BasePuzzle, BasePuzzleResult
+from ._grid_utils import all_neighbors, ortho_neighbors
 from ..renderer.canvas import (
     THERMAL_WIDTH_DOTS,
     ThermalBitmap,
@@ -46,12 +47,8 @@ class TentsPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs,
     ) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        diff_key = difficulty.lower()
-        if diff_key not in self.DIFFICULTY_SETTINGS:
-            diff_key = "medium"
+        rng = self.make_rng(seed)
+        diff_key = self.normalize_difficulty(difficulty)
 
         settings = self.DIFFICULTY_SETTINGS[diff_key]
         size = settings["size"]
@@ -60,7 +57,7 @@ class TentsPuzzle(BasePuzzle):
         max_attempts = 150
         for _ in range(max_attempts):
             all_cells = [(r, c) for r in range(size) for c in range(size)]
-            random.shuffle(all_cells)
+            rng.shuffle(all_cells)
 
             tent_positions: List[Tuple[int, int]] = []
             occupied_tent_influence: Set[Tuple[int, int]] = set()
@@ -87,7 +84,7 @@ class TentsPuzzle(BasePuzzle):
                 if not adj:
                     success = False
                     break
-                tree_choice = random.choice(adj)
+                tree_choice = rng.choice(adj)
                 tree_positions.append(tree_choice)
                 used_cells.add(tree_choice)
 
@@ -240,23 +237,10 @@ class TentsPuzzle(BasePuzzle):
         return tb.to_escpos()
 
     def _ortho_neighbors(self, r: int, c: int, size: int) -> List[Tuple[int, int]]:
-        res = []
-        for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < size and 0 <= nc < size:
-                res.append((nr, nc))
-        return res
+        return ortho_neighbors(r, c, size, size)
 
     def _all_neighbors(self, r: int, c: int, size: int) -> List[Tuple[int, int]]:
-        res = []
-        for dr in (-1, 0, 1):
-            for dc in (-1, 0, 1):
-                if dr == 0 and dc == 0:
-                    continue
-                nr, nc = r + dr, c + dc
-                if 0 <= nr < size and 0 <= nc < size:
-                    res.append((nr, nc))
-        return res
+        return all_neighbors(r, c, size, size)
 
     def _count_solutions(
         self,
@@ -361,7 +345,21 @@ class TentsPuzzle(BasePuzzle):
     ) -> Tuple[bool, str]:
         size = puzzle_data.get("size") or puzzle_data.get("grid_size", 8)
         trees = [tuple(p) for p in (puzzle_data.get("trees") or [])]
-        tents = [tuple(p) for p in (puzzle_data.get("tents") or puzzle_data.get("solution") or [])]
+        raw_tents = puzzle_data.get("tents")
+        if raw_tents is not None:
+            tents = [tuple(p) for p in raw_tents]
+        else:
+            sol = puzzle_data.get("solution") or []
+            if sol and isinstance(sol[0], list):
+                tents = [
+                    (r, c)
+                    for r, row in enumerate(sol)
+                    if isinstance(row, list)
+                    for c, v in enumerate(row)
+                    if v == 2
+                ]
+            else:
+                tents = [tuple(p) for p in sol]
         row_clues = puzzle_data.get("row_clues") or []
         col_clues = puzzle_data.get("col_clues") or []
 
@@ -389,7 +387,29 @@ class TentsPuzzle(BasePuzzle):
                 if max(abs(r1 - r2), abs(c1 - c2)) <= 1:
                     return False, f"Tents at ({r1},{c1}) and ({r2},{c2}) touch orthogonally or diagonally"
 
-        # 3. Check row and col clues
+        # 3. 1-to-1 orthogonal tree-to-tent matching
+        adj_tents = [
+            [p for p in self._ortho_neighbors(tr, tc, size) if p in tent_set]
+            for tr, tc in trees
+        ]
+        match_tent: Dict[Tuple[int, int], int] = {}
+
+        def _try_match(tree_idx: int, seen: Set[Tuple[int, int]]) -> bool:
+            for cand_tent in adj_tents[tree_idx]:
+                if cand_tent in seen:
+                    continue
+                seen.add(cand_tent)
+                prev_tree = match_tent.get(cand_tent)
+                if prev_tree is None or _try_match(prev_tree, seen):
+                    match_tent[cand_tent] = tree_idx
+                    return True
+            return False
+
+        for tree_idx in range(len(trees)):
+            if not _try_match(tree_idx, set()):
+                return False, "Tents do not form a 1-to-1 orthogonal pairing with trees"
+
+        # 4. Check row and col clues
         for r in range(size):
             r_cnt = sum(1 for (tr, tc) in tent_set if tr == r)
             if r_cnt != row_clues[r]:

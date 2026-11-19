@@ -362,18 +362,31 @@ void LightsGen::printToReceipt(EscPosPrinter& printer, LightsDifficulty diff) {
     printer.println(bulbsBuf);
     printer.println("");
 
-    String sep = "   ";
-    for (uint8_t c = 0; c < _size; c++) sep += "+---";
-    sep += "+";
+    bool compact = (_size >= 11); // Keep 12x12 within 48 Font-A columns
+    const char* indent = compact ? "  " : "   ";
+    const char* cellSep = compact ? "--+" : "---+";
+
+    char sep[64];
+    size_t pos = snprintf(sep, sizeof(sep), "%s+", indent);
+    for (uint8_t c = 0; c < _size && pos + 5 < sizeof(sep); c++) {
+        pos += snprintf(sep + pos, sizeof(sep) - pos, "%s", cellSep);
+    }
     printer.println(sep);
 
+    char line[64];
     for (uint8_t r = 0; r < _size; r++) {
-        String line = "   |";
-        for (uint8_t c = 0; c < _size; c++) {
+        pos = snprintf(line, sizeof(line), "%s|", indent);
+        for (uint8_t c = 0; c < _size && pos + 5 < sizeof(line); c++) {
             int8_t val = _puzzle[r][c];
-            if (val >= 0) line += String(" ") + val + " |";
-            else if (val == -2) line += " # |";
-            else line += "   |";
+            if (compact) {
+                if (val >= 0) pos += snprintf(line + pos, sizeof(line) - pos, "%d |", (int)val);
+                else if (val == -2) pos += snprintf(line + pos, sizeof(line) - pos, "# |");
+                else pos += snprintf(line + pos, sizeof(line) - pos, "  |");
+            } else {
+                if (val >= 0) pos += snprintf(line + pos, sizeof(line) - pos, " %d |", (int)val);
+                else if (val == -2) pos += snprintf(line + pos, sizeof(line) - pos, " # |");
+                else pos += snprintf(line + pos, sizeof(line) - pos, "   |");
+            }
         }
         printer.println(line);
         printer.println(sep);
@@ -389,42 +402,29 @@ bool LightsGen::printRasterToReceipt(EscPosPrinter& printer, LightsDifficulty di
     const int16_t totalH = padding + cellSize * _size + padding;
 
     ThermalCanvas canvas;
-    if (!canvas.begin(totalH)) {
-        return false;
-    }
+    return canvas.renderBanded(printer, totalH, [&](ThermalCanvas& canvas) {
+        canvas.drawGrid(padding, padding, _size, _size, cellSize, cellSize, 4, 1);
 
-    // Outer grid border
-    canvas.drawRect(padding, padding, cellSize * _size, cellSize * _size, 4);
-
-    // Inner grid lines
-    for (uint8_t i = 1; i < _size; i++) {
-        canvas.drawHLine(padding, padding + i * cellSize, cellSize * _size, 1);
-        canvas.drawVLine(padding + i * cellSize, padding, cellSize * _size, 1);
-    }
-
-    // Cell contents: Pattern 1 diagonal hatch (like Stars) + circular white badge with black scale-3 numeral
-    for (uint8_t r = 0; r < _size; r++) {
-        for (uint8_t c = 0; c < _size; c++) {
-            int8_t val = _puzzle[r][c];
-            if (val != -1) {
-                int16_t x0 = padding + c * cellSize;
-                int16_t y0 = padding + r * cellSize;
-                canvas.fillHatch(x0, y0, cellSize, cellSize, 1);
-                if (val >= 0) {
-                    int16_t midX = x0 + cellSize / 2;
-                    int16_t midY = y0 + cellSize / 2;
-                    int16_t rRad = max((int16_t)13, min((int16_t)(cellSize / 2 - 4), (int16_t)16));
-                    canvas.fillCircle(midX, midY, rRad, 0);
-                    int16_t cx = x0 + (cellSize - 18) / 2;
-                    int16_t cy = y0 + (cellSize - 21) / 2;
-                    canvas.drawChar(cx, cy, '0' + val, 3, 1);
+        // Cell contents: Pattern 1 diagonal hatch + circular white badge with black scale-3 numeral
+        for (uint8_t r = 0; r < _size; r++) {
+            for (uint8_t c = 0; c < _size; c++) {
+                int8_t val = _puzzle[r][c];
+                if (val != -1) {
+                    int16_t x0 = padding + c * cellSize;
+                    int16_t y0 = padding + r * cellSize;
+                    canvas.fillHatch(x0, y0, cellSize, cellSize, 1);
+                    if (val >= 0) {
+                        int16_t midX = x0 + cellSize / 2;
+                        int16_t midY = y0 + cellSize / 2;
+                        int16_t rRad = max((int16_t)13, min((int16_t)(cellSize / 2 - 4), (int16_t)16));
+                        canvas.fillCircle(midX, midY, rRad, 0);
+                        int16_t cx = x0 + (cellSize - 18) / 2;
+                        int16_t cy = y0 + (cellSize - 21) / 2;
+                        canvas.drawChar(cx, cy, '0' + val, 3, 1);
+                    }
                 }
             }
         }
-    }
-
-    bool ok = canvas.printTo(printer);
-    canvas.end();
-    return ok;
+    });
 }
 

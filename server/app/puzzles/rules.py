@@ -20,16 +20,20 @@ def load_game_rules() -> Dict[str, Any]:
         data = load_curated_dataset("game_rules.json")
         if data is None:
             raise FileNotFoundError(f"Canonical rules dataset not found at {DATA_PATH}")
-        _RULES_DATA = data
-        for game in _RULES_DATA.get("games", []):
-            _BY_KEY[game["key"].lower()] = game
-            _BY_KEY[game["title"].lower()] = game
-            _BY_ID[game["id"]] = game
+        by_key: Dict[str, Dict[str, Any]] = {}
+        by_id: Dict[int, Dict[str, Any]] = {}
+        for game in data.get("games", []):
+            by_key[game["key"].lower()] = game
+            by_key[game["title"].lower()] = game
+            by_id[game["id"]] = game
             # Legacy alias mappings
             if game["key"] == "search":
-                _BY_KEY["wordsearch"] = game
+                by_key["wordsearch"] = game
             elif game["key"] == "stars":
-                _BY_KEY["queens"] = game
+                by_key["queens"] = game
+        _BY_KEY = by_key
+        _BY_ID = by_id
+        _RULES_DATA = data
     return _RULES_DATA
 
 
@@ -43,6 +47,6 @@ def get_game_rule(identifier: Any) -> Optional[Dict[str, Any]]:
 
 
 def get_all_game_rules() -> List[Dict[str, Any]]:
-    """Returns all 18 canonical game rule specifications."""
+    """Returns all canonical game rule specifications."""
     data = load_game_rules()
     return data.get("games", [])

@@ -4,10 +4,12 @@ Encapsulates procedural generation, canonical instruction formatting,
 ASCII layout, solution key formatting, and 576-dot thermal raster rendering.
 """
 
+from collections import deque
 import random
 from typing import List, Tuple, Optional, Dict, Any, Set, Union
 
 from .base import BasePuzzle, BasePuzzleResult
+from ._grid_utils import ortho_neighbors
 from ..renderer.canvas import (
     THERMAL_WIDTH_DOTS,
     ThermalBitmap,
@@ -26,7 +28,7 @@ class SlitherlinkSolver:
         self.H = [[0]*n for _ in range(n + 1)]
         self.V = [[0]*(n + 1) for _ in range(n)]
 
-    def propagate(self, check_subloops: bool = False) -> bool:
+    def propagate(self) -> bool:
         n = self.n
         H = self.H
         V = self.V
@@ -119,71 +121,6 @@ class SlitherlinkSolver:
                             if V_dn is not None and V_dn[c] == 0: V_dn[c] = fill_val
                             changed = True
 
-            if changed or not check_subloops:
-                continue
-
-            # 3. Prevent premature sub-loop closure
-            adj: Dict[Tuple[int, int], Set[Tuple[int, int]]] = {}
-            for r in range(n+1):
-                for c in range(n):
-                    if self.H[r][c] == 1:
-                        adj.setdefault((r, c), set()).add((r, c+1))
-                        adj.setdefault((r, c+1), set()).add((r, c))
-            for r in range(n):
-                for c in range(n+1):
-                    if self.V[r][c] == 1:
-                        adj.setdefault((r, c), set()).add((r+1, c))
-                        adj.setdefault((r+1, c), set()).add((r, c))
-
-            visited = set()
-            for node in adj:
-                if node not in visited:
-                    comp = []
-                    q = [node]
-                    visited.add(node)
-                    edge_count = 0
-                    while q:
-                        curr = q.pop(0)
-                        comp.append(curr)
-                        for nbr in adj.get(curr, []):
-                            edge_count += 1
-                            if nbr not in visited:
-                                visited.add(nbr)
-                                q.append(nbr)
-                    edge_count //= 2
-                    if edge_count == len(comp):
-                        has_other = False
-                        for r in range(n):
-                            for c in range(n):
-                                if self.clues[r][c] > 0:
-                                    edges = [('H', r, c), ('H', r+1, c), ('V', r, c), ('V', r, c+1)]
-                                    l_cnt = sum(1 for typ, er, ec in edges if (self.H[er][ec] if typ=='H' else self.V[er][ec]) == 1)
-                                    if l_cnt < self.clues[r][c]:
-                                        has_other = True
-                                        break
-                            if has_other: break
-                        if has_other or sum(row.count(0) for row in self.H) + sum(row.count(0) for row in self.V) > 0:
-                            return False
-                    else:
-                        endpoints = [u for u in comp if len(adj[u]) == 1]
-                        if len(endpoints) == 2:
-                            u, v = endpoints
-                            has_other = any(
-                                sum(1 for typ, er, ec in [('H', r, c), ('H', r+1, c), ('V', r, c), ('V', r, c+1)]
-                                    if (self.H[er][ec] if typ=='H' else self.V[er][ec]) == 1) < self.clues[r][c]
-                                for r in range(n) for c in range(n) if self.clues[r][c] > 0
-                            )
-                            if has_other:
-                                if u[0] == v[0] and abs(u[1] - v[1]) == 1:
-                                    er, ec = u[0], min(u[1], v[1])
-                                    if self.H[er][ec] == 0:
-                                        self.H[er][ec] = -1
-                                        changed = True
-                                elif u[1] == v[1] and abs(u[0] - v[0]) == 1:
-                                    er, ec = min(u[0], v[0]), u[1]
-                                    if self.V[er][ec] == 0:
-                                        self.V[er][ec] = -1
-                                        changed = True
         return True
 
     def count_solutions(self, max_count: int = 2, max_depth: int = 64) -> int:
@@ -303,18 +240,19 @@ class LoopPuzzle(BasePuzzle):
     def supported_difficulties(self) -> List[str]:
         return ["easy", "medium", "hard"]
 
-    def _generate_loop_polyomino(self, n: int) -> Tuple[List[List[int]], List[List[int]], List[List[int]]]:
+    def _generate_loop_polyomino(self, n: int, rng: Optional[random.Random] = None) -> Tuple[List[List[int]], List[List[int]], List[List[int]]]:
         """
         Generates a ground-truth single closed loop on an (n+1)x(n+1) dot lattice
         by growing a simply connected polyomino without 2x2 diagonal checkerboards.
         """
+        r_gen = rng if rng is not None else random.Random()
         total_cells = n * n
         target_count = max(4, int(total_cells * 0.45))
 
         for _ in range(250):
             grid = [[0]*n for _ in range(n)]
-            start_r = random.randint(1, n - 2) if n > 3 else random.randint(0, n - 1)
-            start_c = random.randint(1, n - 2) if n > 3 else random.randint(0, n - 1)
+            start_r = r_gen.randint(1, n - 2) if n > 3 else r_gen.randint(0, n - 1)
+            start_c = r_gen.randint(1, n - 2) if n > 3 else r_gen.randint(0, n - 1)
             grid[start_r][start_c] = 1
             S = {(start_r, start_c)}
 
@@ -340,26 +278,25 @@ class LoopPuzzle(BasePuzzle):
 
             def complement_connected():
                 visited = [[False]*n for _ in range(n)]
-                queue = []
+                queue = deque()
+                seen = 0
                 for r in range(n):
                     for c in range(n):
                         if (r == 0 or r == n - 1 or c == 0 or c == n - 1) and grid[r][c] == 0:
                             visited[r][c] = True
                             queue.append((r, c))
-                idx = 0
-                while idx < len(queue):
-                    cr, cc = queue[idx]
-                    idx += 1
-                    for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
-                        nr, nc = cr + dr, cc + dc
-                        if 0 <= nr < n and 0 <= nc < n and not visited[nr][nc] and grid[nr][nc] == 0:
+                            seen += 1
+                while queue:
+                    cr, cc = queue.popleft()
+                    for nr, nc in ortho_neighbors(cr, cc, n, n):
+                        if not visited[nr][nc] and grid[nr][nc] == 0:
                             visited[nr][nc] = True
                             queue.append((nr, nc))
-                zero_count = sum(1 for r in range(n) for c in range(n) if grid[r][c] == 0)
-                return len(queue) == zero_count
+                            seen += 1
+                return seen == total_cells - len(S) - 1
 
             while len(S) < target_count and frontier:
-                cand = random.choice(list(frontier))
+                cand = r_gen.choice(sorted(frontier))
                 frontier.remove(cand)
                 cr, cc = cand
                 if is_valid_to_add(cr, cc):
@@ -429,23 +366,21 @@ class LoopPuzzle(BasePuzzle):
         raise RuntimeError(f"Failed to generate loop polyomino of size {n}")
 
     def generate(self, difficulty: str = "medium", **kwargs) -> BasePuzzleResult:
-        seed = kwargs.get("seed")
-        if seed is not None:
-            random.seed(seed)
-        diff = difficulty.lower()
+        rng = self.make_rng(kwargs.get("seed"))
+        diff = self.normalize_difficulty(difficulty)
         cfg = self.DIFFICULTY_SETTINGS.get(diff, self.DIFFICULTY_SETTINGS["medium"])
         n = cfg["size"]
         target_density = cfg["target_density"]
 
         for _ in range(20):
-            H, V, full_clues = self._generate_loop_polyomino(n)
+            H, V, full_clues = self._generate_loop_polyomino(n, rng=rng)
             solver = SlitherlinkSolver(n, full_clues)
             if solver.count_solutions(max_count=2, max_depth=0) != 1:
                 continue
 
             clues = [row[:] for row in full_clues]
             cells = [(r, c) for r in range(n) for c in range(n)]
-            random.shuffle(cells)
+            rng.shuffle(cells)
             min_clues = int(n * n * target_density)
 
             for r, c in cells:
@@ -486,22 +421,19 @@ class LoopPuzzle(BasePuzzle):
     def format_ascii_puzzle(self, puzzle_data: Union[BasePuzzleResult, Dict[str, Any]]) -> str:
         n = puzzle_data.get("size", 7)
         clues = puzzle_data.get("clues", [])
-        indent = "      "
+        indent = "      " if n <= 8 else "   "
+        dot_line = indent + (".   " * n) + "."
 
         lines = []
         for r in range(n):
-            # Dot row
-            dot_line = indent + " ".join([".   "] * n) + "."
             lines.append(dot_line)
-            # Clue row
             clue_parts = [indent]
             for c in range(n):
                 k = clues[r][c] if r < len(clues) and c < len(clues[r]) else -1
                 ch = str(k) if k >= 0 else " "
                 clue_parts.append(f"  {ch} ")
             lines.append("".join(clue_parts) + " ")
-        # Final dot row
-        lines.append(indent + " ".join([".   "] * n) + ".")
+        lines.append(dot_line)
         return "\n".join(lines)
 
     def format_solution_key(self, puzzle_data: Union[BasePuzzleResult, Dict[str, Any]]) -> List[str]:

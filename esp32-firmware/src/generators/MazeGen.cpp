@@ -6,13 +6,17 @@
 MazeGen::MazeGen() :
     _size(20),
     _cellSize(24),
-    _wallThickness(3),
-    _solutionMoveCount(0),
-    _solutionSolved(false) {
+    _wallThickness(3)
+#ifdef HOST_TEST
+    , _solutionMoveCount(0),
+    _solutionSolved(false)
+#endif
+{
     memset(_wallsH, 0xFF, sizeof(_wallsH));
     memset(_wallsV, 0xFF, sizeof(_wallsV));
 }
 
+#ifdef HOST_TEST
 uint16_t MazeGen::getSolutionMoveCount() const {
     if (!_solutionSolved) const_cast<MazeGen*>(this)->solvePath();
     return _solutionMoveCount;
@@ -27,6 +31,7 @@ uint8_t MazeGen::getSolutionMoveSteps(uint16_t idx) const {
     if (!_solutionSolved) const_cast<MazeGen*>(this)->solvePath();
     return (idx < _solutionMoveCount) ? _solutionMoves[idx].steps : 0;
 }
+#endif
 
 uint8_t MazeGen::getWallH(uint8_t r, uint8_t c) const {
     if (r >= _size - 1 || c >= _size) return 0;
@@ -166,10 +171,13 @@ void MazeGen::generate(MazeDifficulty diff, uint32_t seed) {
     }
 
     free(active);
+#ifdef HOST_TEST
     _solutionSolved = false;
     _solutionMoveCount = 0;
+#endif
 }
 
+#ifdef HOST_TEST
 void MazeGen::solvePath() {
     if (_solutionSolved) return;
     _solutionSolved = true;
@@ -276,8 +284,10 @@ void MazeGen::solvePath() {
     free(parent);
     free(queue);
 }
+#endif
 
 void MazeGen::printToReceipt(EscPosPrinter& printer, MazeDifficulty diff) {
+    (void)diff;
     if (_size > 20) {
         char buf[64];
         snprintf(buf, sizeof(buf), "[ Maze %dx%d requires raster graphics ]", (int)_size, (int)_size);
@@ -287,138 +297,108 @@ void MazeGen::printToReceipt(EscPosPrinter& printer, MazeDifficulty diff) {
         return;
     }
 
+    char line[96];
     const char* indent = "      ";
 
     if (_size <= 12) {
-        printer.print(indent);
-        printer.print("+   ");
-        for (uint8_t c = 1; c < _size; c++) printer.print("+---");
-        printer.println("+");
+        size_t pos = snprintf(line, sizeof(line), "%s+   ", indent);
+        for (uint8_t c = 1; c < _size && pos + 4 < sizeof(line); c++) pos += snprintf(line + pos, sizeof(line) - pos, "+---");
+        snprintf(line + pos, sizeof(line) - pos, "+");
+        printer.println(line);
 
         for (uint8_t r = 0; r < _size; r++) {
-            printer.print(indent);
-            printer.print("|");
-            for (uint8_t c = 0; c < _size; c++) {
-                printer.print("   ");
-                if (c < _size - 1) {
-                    printer.print(getWallV(r, c) ? "|" : " ");
-                } else {
-                    printer.print("|");
-                }
+            pos = snprintf(line, sizeof(line), "%s|", indent);
+            for (uint8_t c = 0; c < _size && pos + 4 < sizeof(line); c++) {
+                char sep = (c < _size - 1) ? (getWallV(r, c) ? '|' : ' ') : '|';
+                pos += snprintf(line + pos, sizeof(line) - pos, "   %c", sep);
             }
-            printer.println("");
+            printer.println(line);
 
-            printer.print(indent);
+            pos = snprintf(line, sizeof(line), "%s", indent);
             if (r < _size - 1) {
-                printer.print("+");
-                for (uint8_t c = 0; c < _size; c++) {
-                    printer.print(getWallH(r, c) ? "---" : "   ");
-                    printer.print("+");
+                line[pos++] = '+';
+                for (uint8_t c = 0; c < _size && pos + 4 < sizeof(line); c++) {
+                    pos += snprintf(line + pos, sizeof(line) - pos, "%s+", getWallH(r, c) ? "---" : "   ");
                 }
-                printer.println("");
             } else {
-                for (uint8_t c = 0; c < _size - 1; c++) printer.print("+---");
-                printer.print("+   ");
-                printer.println("+");
+                for (uint8_t c = 0; c < _size - 1 && pos + 4 < sizeof(line); c++) pos += snprintf(line + pos, sizeof(line) - pos, "+---");
+                pos += snprintf(line + pos, sizeof(line) - pos, "+   +");
             }
+            printer.println(line);
         }
     } else {
-        printer.print(indent);
-        printer.print("+ ");
-        for (uint8_t c = 1; c < _size; c++) printer.print("+-");
-        printer.println("+");
+        size_t pos = snprintf(line, sizeof(line), "%s+ ", indent);
+        for (uint8_t c = 1; c < _size && pos + 2 < sizeof(line); c++) pos += snprintf(line + pos, sizeof(line) - pos, "+-");
+        snprintf(line + pos, sizeof(line) - pos, "+");
+        printer.println(line);
 
         for (uint8_t r = 0; r < _size; r++) {
-            printer.print(indent);
-            printer.print("|");
-            for (uint8_t c = 0; c < _size; c++) {
-                printer.print(" ");
-                if (c < _size - 1) {
-                    printer.print(getWallV(r, c) ? "|" : " ");
-                } else {
-                    printer.print("|");
-                }
+            pos = snprintf(line, sizeof(line), "%s|", indent);
+            for (uint8_t c = 0; c < _size && pos + 2 < sizeof(line); c++) {
+                char sep = (c < _size - 1) ? (getWallV(r, c) ? '|' : ' ') : '|';
+                pos += snprintf(line + pos, sizeof(line) - pos, " %c", sep);
             }
-            printer.println("");
+            printer.println(line);
 
-            printer.print(indent);
+            pos = snprintf(line, sizeof(line), "%s", indent);
             if (r < _size - 1) {
-                printer.print("+");
-                for (uint8_t c = 0; c < _size; c++) {
-                    printer.print(getWallH(r, c) ? "-" : " ");
-                    printer.print("+");
+                line[pos++] = '+';
+                for (uint8_t c = 0; c < _size && pos + 2 < sizeof(line); c++) {
+                    line[pos++] = getWallH(r, c) ? '-' : ' ';
+                    line[pos++] = '+';
                 }
-                printer.println("");
+                line[pos] = '\0';
             } else {
-                for (uint8_t c = 0; c < _size - 1; c++) printer.print("+-");
-                printer.print("+ ");
-                printer.println("+");
+                for (uint8_t c = 0; c < _size - 1 && pos + 2 < sizeof(line); c++) pos += snprintf(line + pos, sizeof(line) - pos, "+-");
+                snprintf(line + pos, sizeof(line) - pos, "+ +");
             }
+            printer.println(line);
         }
     }
 }
 
 bool MazeGen::printRasterToReceipt(EscPosPrinter& printer, MazeDifficulty diff) {
-    ThermalCanvas canvas;
-    if (!canvas.begin(576)) {
-        return false;
-    }
-    canvas.clear(0);
-
+    (void)diff;
     const int16_t boardSize = 480;
-    const int16_t leftMargin = (canvas.getWidth() - boardSize) / 2; // 48
-    const int16_t topMargin = (576 - boardSize) / 2;               // 48
+    const int16_t leftMargin = (THERMAL_CANVAS_WIDTH - boardSize) / 2; // 48
+    const int16_t topMargin = (576 - boardSize) / 2;                   // 48
     const uint8_t outerT = 4;
     const uint8_t wallT = _wallThickness;
     const uint8_t halfT = wallT / 2;
 
-    // 1. Inner Walls (strictly clamped to board boundaries to prevent frame protrusion)
-    // Horizontal walls between row r and r+1
-    for (uint8_t r = 0; r < _size - 1; r++) {
-        int16_t wy = topMargin + (r + 1) * _cellSize - halfT;
-        for (uint8_t c = 0; c < _size; c++) {
-            if (getWallH(r, c)) {
-                int16_t wxStart = max(leftMargin, (int16_t)(leftMargin + c * _cellSize - halfT));
-                int16_t wxEnd = min((int16_t)(leftMargin + boardSize), (int16_t)(leftMargin + (c + 1) * _cellSize + halfT + (_wallThickness % 2)));
-                canvas.drawHLine(wxStart, wy, wxEnd - wxStart, wallT, 1);
+    ThermalCanvas canvas;
+    return canvas.renderBanded(printer, 576, [&](ThermalCanvas& canvas) {
+        for (uint8_t r = 0; r < _size - 1; r++) {
+            int16_t wy = topMargin + (r + 1) * _cellSize - halfT;
+            for (uint8_t c = 0; c < _size; c++) {
+                if (getWallH(r, c)) {
+                    int16_t wxStart = max(leftMargin, (int16_t)(leftMargin + c * _cellSize - halfT));
+                    int16_t wxEnd = min((int16_t)(leftMargin + boardSize), (int16_t)(leftMargin + (c + 1) * _cellSize + halfT + (_wallThickness % 2)));
+                    canvas.drawHLine(wxStart, wy, wxEnd - wxStart, wallT, 1);
+                }
             }
         }
-    }
 
-    // Vertical walls between col c and c+1
-    for (uint8_t r = 0; r < _size; r++) {
-        int16_t wyStart = max(topMargin, (int16_t)(topMargin + r * _cellSize - halfT));
-        int16_t wyEnd = min((int16_t)(topMargin + boardSize), (int16_t)(topMargin + (r + 1) * _cellSize + halfT + (_wallThickness % 2)));
-        for (uint8_t c = 0; c < _size - 1; c++) {
-            if (getWallV(r, c)) {
-                int16_t wx = leftMargin + (c + 1) * _cellSize - halfT;
-                canvas.drawVLine(wx, wyStart, wyEnd - wyStart, wallT, 1);
+        for (uint8_t r = 0; r < _size; r++) {
+            int16_t wyStart = max(topMargin, (int16_t)(topMargin + r * _cellSize - halfT));
+            int16_t wyEnd = min((int16_t)(topMargin + boardSize), (int16_t)(topMargin + (r + 1) * _cellSize + halfT + (_wallThickness % 2)));
+            for (uint8_t c = 0; c < _size - 1; c++) {
+                if (getWallV(r, c)) {
+                    int16_t wx = leftMargin + (c + 1) * _cellSize - halfT;
+                    canvas.drawVLine(wx, wyStart, wyEnd - wyStart, wallT, 1);
+                }
             }
         }
-    }
 
-    // 2. Outer Frame (thickness 4, rendered over inner walls for clean single-frame boundaries)
-    // Top wall: open at cell 0
-    canvas.drawHLine(leftMargin + _cellSize, topMargin, boardSize - _cellSize, outerT, 1);
-    // Left wall: solid
-    canvas.drawVLine(leftMargin, topMargin, boardSize, outerT, 1);
-    // Right wall: solid
-    canvas.drawVLine(leftMargin + boardSize - outerT, topMargin, boardSize, outerT, 1);
-    // Bottom wall: open at cell n-1
-    canvas.drawHLine(leftMargin, topMargin + boardSize - outerT, boardSize - _cellSize, outerT, 1);
+        canvas.drawHLine(leftMargin + _cellSize, topMargin, boardSize - _cellSize, outerT, 1);
+        canvas.drawVLine(leftMargin, topMargin, boardSize, outerT, 1);
+        canvas.drawVLine(leftMargin + boardSize - outerT, topMargin, boardSize, outerT, 1);
+        canvas.drawHLine(leftMargin, topMargin + boardSize - outerT, boardSize - _cellSize, outerT, 1);
 
-    // 3. Badges "IN" and "OUT"
-    int16_t inCx = leftMargin + _cellSize / 2;
-    int16_t inTx = inCx - 11;
-    int16_t inTy = 24;
-    canvas.drawText(inTx, inTy, "IN", 2, 1);
+        int16_t inCx = leftMargin + _cellSize / 2;
+        canvas.drawText(inCx - 11, 24, "IN", 2, 1);
 
-    int16_t outCx = leftMargin + boardSize - _cellSize / 2;
-    int16_t outTx = outCx - 17;
-    int16_t outTy = topMargin + boardSize + 10;
-    canvas.drawText(outTx, outTy, "OUT", 2, 1);
-
-    bool res = canvas.printTo(printer);
-    canvas.end();
-    return res;
+        int16_t outCx = leftMargin + boardSize - _cellSize / 2;
+        canvas.drawText(outCx - 17, topMargin + boardSize + 10, "OUT", 2, 1);
+    });
 }

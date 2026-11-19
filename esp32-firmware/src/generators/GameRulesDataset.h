@@ -5,6 +5,201 @@
 
 #include <Arduino.h>
 
+enum GuideOpCode : uint8_t {
+    GOP_GRID = 0,
+    GOP_RECT = 1,
+    GOP_FRECT = 2,
+    GOP_HATCH = 3,
+    GOP_HLINE = 4,
+    GOP_VLINE = 5,
+    GOP_DHLINE = 6,
+    GOP_LINE = 7,
+    GOP_CIRC = 8,
+    GOP_TEXT = 9
+};
+
+struct GuideOp {
+    const char* text;
+    int16_t a, b, c, d, e;
+    uint8_t panel;
+    uint8_t op;
+};
+
+static const size_t TOTAL_GUIDE_OPS = 171;
+static const GuideOp GUIDE_OPS_TABLE[TOTAL_GUIDE_OPS] PROGMEM = {
+    { nullptr, -48, 46, 3, 3, 32, 0, GOP_GRID },
+    { "5", -6, 84, 3, 0, 0, 0, GOP_TEXT },
+    { nullptr, -48, 46, 3, 3, 32, 1, GOP_GRID },
+    { "5", -38, 52, 3, 0, 0, 1, GOP_TEXT },
+    { "5", -6, 84, 3, 0, 0, 1, GOP_TEXT },
+    { nullptr, -42, 46, 3, 3, 28, 0, GOP_GRID },
+    { "C", -34, 50, 3, 0, 0, 0, GOP_TEXT },
+    { "A", -6, 78, 3, 0, 0, 0, GOP_TEXT },
+    { "T", 22, 106, 3, 0, 0, 0, GOP_TEXT },
+    { nullptr, -38, 50, 38, 126, 2, 0, GOP_LINE },
+    { nullptr, -42, 46, 3, 3, 28, 1, GOP_GRID },
+    { "C", -34, 50, 3, 0, 0, 1, GOP_TEXT },
+    { "A", -6, 50, 3, 0, 0, 1, GOP_TEXT },
+    { "T", -6, 78, 3, 0, 0, 1, GOP_TEXT },
+    { nullptr, -38, 60, 0, 60, 2, 1, GOP_LINE },
+    { nullptr, 0, 60, 0, 94, 2, 1, GOP_LINE },
+    { nullptr, -48, 70, 4, 1, 24, 0, GOP_GRID },
+    { nullptr, -46, 72, 20, 20, 1, 0, GOP_FRECT },
+    { nullptr, 2, 72, 20, 20, 1, 0, GOP_FRECT },
+    { "1 1", -76, 74, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, -48, 70, 4, 1, 24, 1, GOP_GRID },
+    { nullptr, -46, 72, 44, 20, 1, 1, GOP_FRECT },
+    { "1 1", -76, 74, 2, 0, 0, 1, GOP_TEXT },
+    { nullptr, -48, 46, 64, 32, 1, 0, GOP_HATCH },
+    { nullptr, -48, 46, 3, 3, 32, 0, GOP_GRID },
+    { "*", -38, 52, 3, 0, 0, 0, GOP_TEXT },
+    { "*", 26, 84, 3, 0, 0, 0, GOP_TEXT },
+    { nullptr, -48, 46, 64, 32, 1, 1, GOP_HATCH },
+    { nullptr, -48, 46, 3, 3, 32, 1, GOP_GRID },
+    { "*", -38, 52, 3, 0, 0, 1, GOP_TEXT },
+    { "*", -6, 84, 3, 0, 0, 1, GOP_TEXT },
+    { nullptr, -20, 74, -12, 82, 2, 1, GOP_LINE },
+    { nullptr, -48, 70, 4, 1, 24, 0, GOP_GRID },
+    { "B", -42, 74, 2, 0, 0, 0, GOP_TEXT },
+    { "O", -18, 74, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, -12, 82, 10, 1, 0, 0, GOP_CIRC },
+    { "A", 6, 74, 2, 0, 0, 0, GOP_TEXT },
+    { "T", 30, 74, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, -48, 70, 4, 1, 24, 1, GOP_GRID },
+    { "B", -42, 74, 2, 0, 0, 1, GOP_TEXT },
+    { "T", -18, 74, 2, 0, 0, 1, GOP_TEXT },
+    { "O", 6, 74, 2, 0, 0, 1, GOP_TEXT },
+    { "A", 30, 74, 2, 0, 0, 1, GOP_TEXT },
+    { nullptr, -52, 70, 4, 1, 26, 0, GOP_GRID },
+    { "1", -44, 74, 2, 0, 0, 0, GOP_TEXT },
+    { "0", -18, 74, 2, 0, 0, 0, GOP_TEXT },
+    { "1", 8, 74, 2, 0, 0, 0, GOP_TEXT },
+    { "0", 34, 74, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, -52, 70, 4, 1, 26, 1, GOP_GRID },
+    { "0", -44, 74, 2, 0, 0, 1, GOP_TEXT },
+    { "1", -18, 74, 2, 0, 0, 1, GOP_TEXT },
+    { "1", 8, 74, 2, 0, 0, 1, GOP_TEXT },
+    { "1", 34, 74, 2, 0, 0, 1, GOP_TEXT },
+    { nullptr, -34, 60, 2, 2, 34, 0, GOP_GRID },
+    { "1", -24, 100, 3, 0, 0, 0, GOP_TEXT },
+    { "*", -24, 66, 3, 0, 0, 0, GOP_TEXT },
+    { nullptr, -34, 60, 2, 2, 34, 1, GOP_GRID },
+    { "1", -24, 100, 3, 0, 0, 1, GOP_TEXT },
+    { "*", -24, 66, 3, 0, 0, 1, GOP_TEXT },
+    { "*", 10, 66, 3, 0, 0, 1, GOP_TEXT },
+    { nullptr, -48, 60, 3, 2, 32, 0, GOP_GRID },
+    { "T", -38, 66, 3, 0, 0, 0, GOP_TEXT },
+    { "^", -6, 66, 3, 0, 0, 0, GOP_TEXT },
+    { nullptr, -48, 60, 3, 2, 32, 1, GOP_GRID },
+    { "T", -38, 66, 3, 0, 0, 1, GOP_TEXT },
+    { "^", -6, 66, 3, 0, 0, 1, GOP_TEXT },
+    { "^", 26, 98, 3, 0, 0, 1, GOP_TEXT },
+    { nullptr, -44, 82, 16, 2, 0, 0, GOP_CIRC },
+    { "3", -49, 74, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, 44, 82, 16, 2, 0, 0, GOP_CIRC },
+    { "2", 39, 74, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, -28, 78, 56, 2, 0, 0, GOP_HLINE },
+    { nullptr, -28, 86, 56, 2, 0, 0, GOP_HLINE },
+    { nullptr, -44, 82, 16, 2, 0, 1, GOP_CIRC },
+    { "4", -49, 74, 2, 0, 0, 1, GOP_TEXT },
+    { nullptr, 44, 82, 16, 2, 0, 1, GOP_CIRC },
+    { "3", 39, 74, 2, 0, 0, 1, GOP_TEXT },
+    { nullptr, -28, 76, 56, 1, 0, 1, GOP_HLINE },
+    { nullptr, -28, 82, 56, 1, 0, 1, GOP_HLINE },
+    { nullptr, -28, 88, 56, 1, 0, 1, GOP_HLINE },
+    { nullptr, -34, 60, 68, 34, 1, 0, GOP_RECT },
+    { nullptr, -34, 60, 68, 2, 0, 0, GOP_DHLINE },
+    { nullptr, -34, 94, 68, 2, 0, 0, GOP_DHLINE },
+    { "3", -32, 62, 1, 0, 0, 0, GOP_TEXT },
+    { "1", -24, 68, 2, 0, 0, 0, GOP_TEXT },
+    { "2", 10, 68, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, -34, 60, 68, 34, 1, 1, GOP_RECT },
+    { nullptr, -34, 60, 68, 2, 0, 1, GOP_DHLINE },
+    { nullptr, -34, 94, 68, 2, 0, 1, GOP_DHLINE },
+    { "4", -32, 62, 1, 0, 0, 1, GOP_TEXT },
+    { "2", -24, 68, 2, 0, 0, 1, GOP_TEXT },
+    { "2", 10, 68, 2, 0, 0, 1, GOP_TEXT },
+    { "T H E", -44, 66, 2, 0, 0, 0, GOP_TEXT },
+    { "W Z K", -44, 90, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, -48, 86, 96, 1, 0, 0, GOP_HLINE },
+    { "T O", -42, 66, 2, 0, 0, 1, GOP_TEXT },
+    { "W K", -42, 90, 2, 0, 0, 1, GOP_TEXT },
+    { nullptr, -46, 86, 64, 1, 0, 1, GOP_HLINE },
+    { nullptr, -42, 66, 28, 28, 2, 0, GOP_RECT },
+    { "O", -34, 70, 2, 0, 0, 0, GOP_TEXT },
+    { "=", -6, 70, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, 14, 66, 28, 28, 2, 0, GOP_RECT },
+    { "O", 22, 70, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, -42, 66, 3, 1, 28, 1, GOP_GRID },
+    { "O", -34, 70, 2, 0, 0, 1, GOP_TEXT },
+    { "O", -6, 70, 2, 0, 0, 1, GOP_TEXT },
+    { "O", 22, 70, 2, 0, 0, 1, GOP_TEXT },
+    { "C A R T", -44, 62, 2, 0, 0, 0, GOP_TEXT },
+    { "D A R T", -44, 90, 2, 0, 0, 0, GOP_TEXT },
+    { "|", -20, 76, 1, 0, 0, 0, GOP_TEXT },
+    { "C A R T", -44, 62, 2, 0, 0, 1, GOP_TEXT },
+    { "D A R K", -44, 90, 2, 0, 0, 1, GOP_TEXT },
+    { "|", -20, 76, 1, 0, 0, 1, GOP_TEXT },
+    { nullptr, 0, 82, 28, 2, 0, 0, GOP_CIRC },
+    { nullptr, 0, 82, 12, 1, 0, 0, GOP_CIRC },
+    { "O", -5, 74, 2, 0, 0, 0, GOP_TEXT },
+    { "GLOW (USES O)", -40, 116, 1, 0, 0, 0, GOP_TEXT },
+    { nullptr, 0, 82, 28, 2, 0, 1, GOP_CIRC },
+    { nullptr, 0, 82, 12, 1, 0, 1, GOP_CIRC },
+    { "O", -5, 74, 2, 0, 0, 1, GOP_TEXT },
+    { "WING (NO O)", -40, 116, 1, 0, 0, 1, GOP_TEXT },
+    { nullptr, -42, 66, 84, 28, 2, 0, GOP_RECT },
+    { nullptr, -14, 66, 28, 28, 1, 0, GOP_HATCH },
+    { "*", -34, 70, 2, 0, 0, 0, GOP_TEXT },
+    { "*", 22, 70, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, -42, 66, 84, 28, 2, 1, GOP_RECT },
+    { "*", -34, 70, 2, 0, 0, 1, GOP_TEXT },
+    { nullptr, -26, 80, 26, 80, 1, 1, GOP_LINE },
+    { "*", 22, 70, 2, 0, 0, 1, GOP_TEXT },
+    { "3", -6, 72, 3, 0, 0, 0, GOP_TEXT },
+    { nullptr, -16, 66, 32, 3, 0, 0, GOP_HLINE },
+    { nullptr, -16, 66, 32, 3, 0, 0, GOP_VLINE },
+    { nullptr, -16, 98, 32, 3, 0, 0, GOP_HLINE },
+    { nullptr, -26, 82, 52, 3, 0, 1, GOP_HLINE },
+    { nullptr, 0, 56, 52, 3, 0, 1, GOP_VLINE },
+    { "1", -60, 74, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, -36, 70, 72, 24, 2, 0, GOP_RECT },
+    { "5", -30, 74, 2, 0, 0, 0, GOP_TEXT },
+    { "4", -6, 74, 2, 0, 0, 0, GOP_TEXT },
+    { "3", 18, 74, 2, 0, 0, 0, GOP_TEXT },
+    { "1", -60, 74, 2, 0, 0, 1, GOP_TEXT },
+    { nullptr, -36, 70, 72, 24, 2, 1, GOP_RECT },
+    { "2", -30, 74, 2, 0, 0, 1, GOP_TEXT },
+    { "5", -6, 74, 2, 0, 0, 1, GOP_TEXT },
+    { "1", 18, 74, 2, 0, 0, 1, GOP_TEXT },
+    { nullptr, -42, 66, 28, 28, 2, 0, GOP_RECT },
+    { "2", -34, 70, 2, 0, 0, 0, GOP_TEXT },
+    { "<", -6, 70, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, 14, 66, 28, 28, 2, 0, GOP_RECT },
+    { "4", 22, 70, 2, 0, 0, 0, GOP_TEXT },
+    { nullptr, -42, 66, 28, 28, 2, 1, GOP_RECT },
+    { "5", -34, 70, 2, 0, 0, 1, GOP_TEXT },
+    { "<", -6, 70, 2, 0, 0, 1, GOP_TEXT },
+    { nullptr, 14, 66, 28, 28, 2, 1, GOP_RECT },
+    { "3", 22, 70, 2, 0, 0, 1, GOP_TEXT },
+    { nullptr, -42, 66, 84, 2, 0, 0, GOP_HLINE },
+    { nullptr, -42, 94, 84, 2, 0, 0, GOP_HLINE },
+    { nullptr, -38, 80, 76, 3, 0, 0, GOP_HLINE },
+    { nullptr, -42, 66, 84, 2, 0, 1, GOP_HLINE },
+    { nullptr, -42, 94, 84, 2, 0, 1, GOP_HLINE },
+    { nullptr, 0, 66, 28, 4, 0, 1, GOP_VLINE },
+    { nullptr, -38, 80, 76, 3, 0, 1, GOP_HLINE },
+    { nullptr, -48, 62, 3, 2, 32, 0, GOP_GRID },
+    { "1", -38, 68, 3, 0, 0, 0, GOP_TEXT },
+    { "2", 26, 68, 3, 0, 0, 0, GOP_TEXT },
+    { "3", -6, 100, 3, 0, 0, 0, GOP_TEXT },
+    { nullptr, -48, 62, 3, 2, 32, 1, GOP_GRID },
+    { "1", -38, 68, 3, 0, 0, 1, GOP_TEXT },
+    { "3", -6, 68, 3, 0, 0, 1, GOP_TEXT },
+    { "2", 26, 68, 3, 0, 0, 1, GOP_TEXT },
+    { "3", -6, 100, 3, 0, 0, 1, GOP_TEXT }
+};
+
 struct GameFaqItem {
     const char* question;
     const char* answer;
@@ -24,6 +219,8 @@ struct GameRuleDef {
     uint8_t anchorCount;
     GameFaqItem faq[2];
     uint8_t faqCount;
+    uint16_t opsOffset;
+    uint8_t opsCount;
 };
 
 static const size_t TOTAL_GAME_RULES = 20;
@@ -41,7 +238,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Scan rows, columns, and 3x3 boxes that already have 6 or 7 numbers filled; only 2 or 3 candidates remain.", "Use cross-hatching: trace a common digit (like 1 or 7) across perpendicular lines into an empty 3x3 box to eliminate squares." },
         2,
         { {"Do the numbers in a line need to be in numerical order?", "No. Digits can appear in any order as long as each number from 1 to 9 appears exactly once."}, {"Do arithmetic or mathematical sums matter in classic Sudoku?", "No. Sudoku is purely deductive placement. The numbers could just as easily be 9 letters or symbols."} },
-        2
+        2,
+        0,
+        5
     },
     {
         1,
@@ -56,7 +255,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Search for rare letters in the word list (like Z, X, Q, or K) first, as they appear rarely in the grid.", "Scan the word list for consecutive double letters (like EE, LL, or OO) and skim the grid for those pairs." },
         2,
         { {"Can words run backwards from right to left or bottom to top?", "Yes. Words can be oriented in any of the 8 standard compass directions."}, {"Can one letter belong to more than one word?", "Yes. Crossing words frequently share an intersecting common letter."} },
-        2
+        2,
+        5,
+        11
     },
     {
         2,
@@ -71,7 +272,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Look for full-line clues: if a line clue equals the grid width, shade the entire line immediately.", "Use clue overlap: when a clue number is greater than half the grid width, the middle cells must always be shaded regardless of alignment." },
         2,
         { {"Must there be an empty space between two shaded blocks?", "Yes. Separate numbers in a clue always require at least one blank cell between their blocks."}, {"Do the clues specify the order of the blocks?", "Yes. Row clues read left-to-right; column clues read top-to-bottom."} },
-        2
+        2,
+        16,
+        7
     },
     {
         3,
@@ -86,7 +289,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Find anchor regions with only 1 or 2 total cells. A 1-cell region requiring 1 star must immediately hold a star!", "Whenever a star is placed, immediately dot all 8 surrounding cells—none of them can ever hold a star." },
         2,
         { {"Can two stars be in the same row if they belong to different regions?", "No. The row quota is strict; every row across the entire board has the exact same limit."}, {"Does 'not touching diagonally' apply across the whole board?", "No. It applies only to immediate neighboring squares that share a corner point."} },
-        2
+        2,
+        23,
+        9
     },
     {
         4,
@@ -101,7 +306,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Unscramble the shortest clue words first to quickly secure your first circled mystery letters.", "Read the punchline riddle carefully; humor and puns usually reveal the theme of the bonus answer." },
         2,
         { {"Are the circled letters in order when copied to the final answer?", "No. The circled letters form an anagram pool and must be unscrambled to solve the pun."}, {"What if an anagram word has multiple valid English solutions?", "Only one solution will yield the exact letters needed to solve the final riddle pun."} },
-        2
+        2,
+        32,
+        11
     },
     {
         5,
@@ -116,7 +323,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Look for pairs: whenever you see two identical digits ('00' or '11'), the cells on both ends must be the opposite digit.", "Look for sandwiches: whenever two identical digits are separated by one blank ('0_0' or '1_1'), the middle cell must be the opposite." },
         2,
         { {"Can diagonal lines have three identical digits?", "Yes. The 'no three in a row' rule applies strictly to horizontal rows and vertical columns."}, {"What does equal balance mean?", "On an 8x8 board, every single row and column must contain exactly four 0s and four 1s."} },
-        2
+        2,
+        43,
+        10
     },
     {
         6,
@@ -131,7 +340,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Zero clues ('0') are instant safe zones: all 8 surrounding neighbor cells are completely mine-free.", "Corner clues: a '1' in a corner cell with only one hidden neighbor must have the mine in that single neighbor." },
         2,
         { {"Do diagonal cells count toward a number clue?", "Yes. Clue numbers count all 8 neighboring cells (orthogonal and diagonal)."}, {"Can a numbered cell contain a mine?", "No. Numbered cells are always safe revealed territory; mines are hidden in blank cells."} },
-        2
+        2,
+        53,
+        7
     },
     {
         7,
@@ -146,7 +357,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Check rows and columns with a clue of '0': immediately eliminate and cross out all cells in that line.", "Trees with only one available empty orthogonal neighbor must pitch their tent into that single spot." },
         2,
         { {"Can a tent be attached diagonally to its tree?", "No. A tent must connect to its tree orthogonally (sharing a flat side, not a corner)."}, {"Can a tent touch a tree that belongs to another tent?", "Yes. Tents can touch other trees, but tents can NEVER touch another tent."} },
-        2
+        2,
+        60,
+        7
     },
     {
         8,
@@ -161,7 +374,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Look for high-value corner islands: a corner island marked '4' with only 2 directions available must send 2 bridges each way.", "An island marked '1' that only has one possible neighbor must immediately connect its single bridge." },
         2,
         { {"Can bridges be drawn diagonally?", "No. Bridges must run strictly horizontal or vertical."}, {"Can the completed puzzle have isolated subnetworks?", "No. All islands must link together into a single unified continuous group."} },
-        2
+        2,
+        67,
+        13
     },
     {
         9,
@@ -176,7 +391,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Look for unique sum combinations: a 2-cell sum of 3 must be [1, 2]; a 2-cell sum of 4 must be [1, 3]; a 2-cell sum of 17 must be [8, 9].", "Use the Rule of 45: every row, column, and 3x3 block always sums up to exactly 45." },
         2,
         { {"Can a digit repeat in a cage if it spans across different 3x3 boxes?", "No. Digits can NEVER repeat within any cage, regardless of boundaries."}, {"Are starting clues printed as regular Sudoku numbers?", "Usually Killer Sudoku boards begin completely empty, relying entirely on cage sums."} },
-        2
+        2,
+        80,
+        12
     },
     {
         10,
@@ -191,7 +408,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Identify single-letter words: in English, single-letter words are almost always 'A' or 'I'.", "Look for common short words like 'THE', 'AND', 'THAT', and letters following apostrophes ('T, 'S, 'LL)." },
         2,
         { {"Can a ciphertext letter stand for itself?", "No. In standard cryptograms, a letter never encodes to itself."}, {"What is the most common letter in English text?", "The letter 'E' is by far the most frequent, followed by 'T', 'A', 'O', and 'I'."} },
-        2
+        2,
+        92,
+        6
     },
     {
         11,
@@ -206,7 +425,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Satisfy 'x' (opposite) clues: if one cell is given, the adjacent cell is immediately known.", "Watch for symbol pairs: two adjacent suns ('☀️☀️') must be flanked on both sides by moons ('🌙')." },
         2,
         { {"What does the 'x' mark between cells mean?", "It means the two cells must have opposite symbols (one sun and one moon)."}, {"Does the two-in-a-row limit apply diagonally?", "No. The adjacency restriction applies strictly to horizontal and vertical lines."} },
-        2
+        2,
+        98,
+        9
     },
     {
         12,
@@ -221,7 +442,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Compare the start and target words to count how many letters they already share in identical positions.", "Work bidirectionally: if stuck moving downward from the start, try working upward from the target word." },
         2,
         { {"Can I rearrange the letters while changing one?", "No. All unchanged letters must remain in their exact same positions."}, {"Are proper nouns like names allowed as intermediate words?", "No. Every step must be a standard dictionary English word."} },
-        2
+        2,
+        107,
+        6
     },
     {
         13,
@@ -236,7 +459,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Look for common prefixes (like RE-, UN-, DE-) and suffixes (like -ING, -ED, -TION) among the rim letters.", "Keep hunting for the 9-letter master word that utilizes every letter on the wheel." },
         2,
         { {"Can I use letters more than once in a single word?", "Only if that letter appears multiple times on the wheel rim."}, {"Do words without the center letter count?", "No. Any word that omits the central hub letter is strictly invalid."} },
-        2
+        2,
+        113,
+        8
     },
     {
         14,
@@ -251,7 +476,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Locate '0' barrier blocks: place small dots or crosses on all 4 adjacent cells; no bulbs can go there.", "Locate '4' barrier blocks (or corner '2's): all available orthogonal spaces around them must immediately hold bulbs." },
         2,
         { {"Can light beams shine diagonally?", "No. Light travels strictly in orthogonal horizontal and vertical straight lines."}, {"Can light pass through black barrier blocks?", "No. Black blocks completely obstruct and stop light beams."} },
-        2
+        2,
+        121,
+        8
     },
     {
         15,
@@ -266,7 +493,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Clue '0' is an absolute barrier: cross out all four edges around every 0 cell immediately.", "Adjacent '3' clues: two neighboring 3s always share an outer line pattern and have their common divider filled." },
         2,
         { {"Can there be multiple small loops on the board?", "No. There must be exactly one single closed loop incorporating all satisfied clues."}, {"Can the loop line connect dots diagonally?", "No. Lines run strictly horizontally or vertically between adjacent grid dots."} },
-        2
+        2,
+        129,
+        6
     },
     {
         16,
@@ -281,7 +510,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Clues of '1': the very first building in that line must be the maximum height (e.g., 5).", "Clues of '5' (on a 5x5): the buildings in that line must ascend in strict sequential order: 1, 2, 3, 4, 5." },
         2,
         { {"Does a taller building hide buildings that are further down the line?", "Yes. Any building shorter than a preceding building in the line of sight is hidden."}, {"Can heights repeat in a row or column?", "No. Each row and column forms a Latin square where each height appears exactly once."} },
-        2
+        2,
+        135,
+        10
     },
     {
         17,
@@ -296,7 +527,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Look for chains of inequality signs: a chain of A < B < C < D on a 5x5 grid heavily restricts the possible values.", "The cell at the largest end of multiple inequality signs can never be 1; the smallest end can never be N." },
         2,
         { {"Do inequality signs apply to non-adjacent cells?", "No. They apply strictly to the two adjacent squares directly bordering the sign."}, {"Can digits repeat in the same row if they satisfy the inequality?", "No. Every digit must be unique within its row and within its column."} },
-        2
+        2,
+        145,
+        10
     },
     {
         18,
@@ -311,7 +544,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Trace backwards from the exit (OUT) towards the start (IN); dead-end false trails often branch forward and are easier to spot in reverse.", "Look for corridor bottlenecks: narrow single passages that must be traversed to transition between quadrants." },
         2,
         { {"Is there always a unique solution path through the maze?", "Yes. Every procedural maze contains exactly one continuous open route connecting the entrance to the exit."}, {"Do I ever need to retrace or loop back?", "No. The true solution path is a direct acyclic route without circular loops or backtracking."} },
-        2
+        2,
+        155,
+        7
     },
     {
         19,
@@ -326,7 +561,9 @@ static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {
         { "Scan 2x3 boxes that already contain 4 or 5 given numbers; only 1 or 2 candidate digits remain.", "Use cross-hatching: trace a known digit across adjacent boxes and rows to pinpoint its only valid location in an unfilled 2x3 region." },
         2,
         { {"How does Sudokito differ from classic Sudoku?", "Sudokito uses a smaller 6x6 grid with digits 1-6 and six 2x3 rectangular regions instead of 9x9 with 3x3 squares, offering faster, punchy gameplay."}, {"Does every Sudokito puzzle have a guaranteed unique solution?", "Yes. Each generated puzzle is verified by a uniqueness solver to ensure exactly one logical solution exists without guessing."} },
-        2
+        2,
+        162,
+        9
     },
 };
 

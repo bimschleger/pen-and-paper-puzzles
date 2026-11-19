@@ -272,117 +272,103 @@ bool JumbleGen::printRasterToReceipt(EscPosPrinter& printer) {
     totalH = ((totalH + 7) / 8) * 8;
 
     ThermalCanvas canvas;
-    if (!canvas.begin(totalH)) {
-        return false;
-    }
+    return canvas.renderBanded(printer, totalH, [&](ThermalCanvas& canvas) {
+        int16_t curY = 12;
 
-    int16_t curY = 12;
+        for (uint8_t i = 0; i < count; i++) {
+            const JumbleItem& item = _words[i];
+            int16_t len = item.scrambled.length();
+            if (len <= 0) continue;
+            int16_t blockW = len * clueSize;
 
-    // 1. Scrambled words and answer boxes (connected 2-row grid, left-aligned)
-    for (uint8_t i = 0; i < count; i++) {
-        const JumbleItem& item = _words[i];
-        int16_t len = item.scrambled.length();
-        if (len <= 0) continue;
-        int16_t blockW = len * clueSize;
+            canvas.drawRect(padding, curY, blockW, 132, 2);
+            canvas.drawHLine(padding, curY + 66, blockW, 2);
 
-        // Outer frame and middle horizontal divider
-        canvas.drawRect(padding, curY, blockW, 132, 2);
-        canvas.drawHLine(padding, curY + 66, blockW, 2);
+            for (int16_t c = 1; c < len; c++) {
+                canvas.drawVLine(padding + c * clueSize, curY, 132, 1);
+            }
 
-        // Vertical dividers between columns
-        for (int16_t c = 1; c < len; c++) {
-            canvas.drawVLine(padding + c * clueSize, curY, 132, 1);
-        }
+            for (int16_t c = 0; c < len; c++) {
+                int16_t cx0 = padding + c * clueSize;
+                int16_t charX = cx0 + (clueSize - 18) / 2;
+                int16_t charY = curY + (clueSize - 21) / 2;
+                canvas.drawChar(charX, charY, item.scrambled[c], 3);
 
-        // Draw scrambled letters (top row) and circles for marked indices (bottom row)
-        for (int16_t c = 0; c < len; c++) {
-            int16_t cx0 = padding + c * clueSize;
-            int16_t charX = cx0 + (clueSize - 18) / 2;
-            int16_t charY = curY + (clueSize - 21) / 2;
-            canvas.drawChar(charX, charY, item.scrambled[c], 3);
-
-            bool isCircled = false;
-            for (uint8_t k = 0; k < item.numCircles; k++) {
-                if (item.circleIndices[k] == c) {
-                    isCircled = true;
-                    break;
+                bool isCircled = false;
+                for (uint8_t k = 0; k < item.numCircles; k++) {
+                    if (item.circleIndices[k] == c) {
+                        isCircled = true;
+                        break;
+                    }
+                }
+                if (isCircled) {
+                    canvas.drawCircle(cx0 + 33, curY + 66 + 33, 26, 2);
                 }
             }
-            if (isCircled) {
-                canvas.drawCircle(cx0 + 33, curY + 66 + 33, 26, 2);
+
+            curY += 132 + wordGap;
+        }
+
+        canvas.drawDashedHLine(padding, curY + 2, innerWidth, 6, 6, 2);
+        curY += 16;
+
+        canvas.drawText(padding, curY, "RIDDLE QUESTION:", 2);
+        curY += 20;
+        for (uint8_t r = 0; r < numRiddleLines; r++) {
+            canvas.drawText(padding + 4, curY, riddleLines[r].c_str(), 3);
+            curY += 28;
+        }
+        curY += 22;
+
+        canvas.drawText(padding, curY, "SCRATCHPAD:", 2);
+        curY += 20 + 192;
+
+        canvas.drawText(padding, curY, "ANSWER:", 2);
+        curY += 22;
+
+        for (uint8_t l = 0; l < numAnsLines; l++) {
+            const JumbleLineSpan& span = ansLines[l];
+            int16_t lineTotalW = 0;
+            for (uint8_t i = 0; i < span.count; i++) {
+                lineTotalW += measureWordW(ansWords[span.startIdx + i]);
+                if (i > 0) lineTotalW += wordSpacing;
             }
-        }
+            int16_t startX = padding + (innerWidth - lineTotalW) / 2;
+            int16_t ax = startX;
 
-        curY += 132 + wordGap;
-    }
-
-    // 2. Dashed tear divider
-    canvas.drawDashedHLine(padding, curY + 2, innerWidth, 6, 6, 2);
-    curY += 16;
-
-    // 3. Riddle Question (scale=3 for quote text)
-    canvas.drawText(padding, curY, "RIDDLE QUESTION:", 2);
-    curY += 20;
-    for (uint8_t r = 0; r < numRiddleLines; r++) {
-        canvas.drawText(padding + 4, curY, riddleLines[r].c_str(), 3);
-        curY += 28;
-    }
-    curY += 22;
-
-    // 4. Scratchpad (192-dot blank writing area without dashed lines)
-    canvas.drawText(padding, curY, "SCRATCHPAD:", 2);
-    curY += 20 + 192;
-
-    // 5. Answer layout with unified word frames and thin 1px inner dividers
-    canvas.drawText(padding, curY, "ANSWER:", 2);
-    curY += 22;
-
-    for (uint8_t l = 0; l < numAnsLines; l++) {
-        const JumbleLineSpan& span = ansLines[l];
-        int16_t lineTotalW = 0;
-        for (uint8_t i = 0; i < span.count; i++) {
-            lineTotalW += measureWordW(ansWords[span.startIdx + i]);
-            if (i > 0) lineTotalW += wordSpacing;
-        }
-        int16_t startX = padding + (innerWidth - lineTotalW) / 2;
-        int16_t ax = startX;
-
-        for (uint8_t i = 0; i < span.count; i++) {
-            const String& w = ansWords[span.startIdx + i];
-            int16_t boxW = getWordBoxW(w);
-            size_t c = 0;
-            while (c < w.length()) {
-                char ch = w[c];
-                if (ch >= 'A' && ch <= 'Z') {
-                    size_t start = c;
-                    while (c < w.length() && w[c] >= 'A' && w[c] <= 'Z') {
+            for (uint8_t i = 0; i < span.count; i++) {
+                const String& w = ansWords[span.startIdx + i];
+                int16_t boxW = getWordBoxW(w);
+                size_t c = 0;
+                while (c < w.length()) {
+                    char ch = w[c];
+                    if (ch >= 'A' && ch <= 'Z') {
+                        size_t start = c;
+                        while (c < w.length() && w[c] >= 'A' && w[c] <= 'Z') {
+                            c++;
+                        }
+                        int16_t k = c - start;
+                        int16_t segW = k * boxW;
+                        canvas.drawRect(ax, curY, segW, ansH, 2);
+                        for (int16_t seg = 1; seg < k; seg++) {
+                            canvas.drawVLine(ax + seg * boxW, curY, ansH, 1);
+                        }
+                        ax += segW;
+                    } else if (ch == '"' || ch == '\'') {
+                        canvas.drawChar(ax + 2, curY + (ansH - 14) / 2, ch, 2);
+                        ax += 12;
+                        c++;
+                    } else if (ch == '-') {
+                        canvas.drawChar(ax + 3, curY + (ansH - 14) / 2, '-', 2);
+                        ax += 14;
+                        c++;
+                    } else {
                         c++;
                     }
-                    int16_t k = c - start;
-                    int16_t segW = k * boxW;
-                    canvas.drawRect(ax, curY, segW, ansH, 2);
-                    for (int16_t seg = 1; seg < k; seg++) {
-                        canvas.drawVLine(ax + seg * boxW, curY, ansH, 1);
-                    }
-                    ax += segW;
-                } else if (ch == '"' || ch == '\'') {
-                    canvas.drawChar(ax + 2, curY + (ansH - 14) / 2, ch, 2);
-                    ax += 12;
-                    c++;
-                } else if (ch == '-') {
-                    canvas.drawChar(ax + 3, curY + (ansH - 14) / 2, '-', 2);
-                    ax += 14;
-                    c++;
-                } else {
-                    c++;
                 }
+                ax += wordSpacing;
             }
-            ax += wordSpacing;
+            curY += ansH + lineGap;
         }
-        curY += ansH + lineGap;
-    }
-
-    bool ok = canvas.printTo(printer);
-    canvas.end();
-    return ok;
+    });
 }

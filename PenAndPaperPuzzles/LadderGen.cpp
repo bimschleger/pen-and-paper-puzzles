@@ -110,41 +110,31 @@ bool LadderGen::printRasterToReceipt(EscPosPrinter& printer) {
     totalHeight = (totalHeight + 7) & ~7;
 
     ThermalCanvas canvas;
-    if (!canvas.begin(totalHeight)) {
-        return false;
-    }
-    canvas.clear(0);
+    return canvas.renderBanded(printer, totalHeight, [&](ThermalCanvas& canvas) {
+        for (uint8_t r = 0; r < _totalWords; r++) {
+            uint16_t ry = marginTop + r * (tileSize + gapY);
 
-    for (uint8_t r = 0; r < _totalWords; r++) {
-        uint16_t ry = marginTop + r * (tileSize + gapY);
+            char numText[8];
+            snprintf(numText, sizeof(numText), "%d.", r + 1);
+            int textW = strlen(numText) * 12;
+            int textX = boxX - gapX - textW;
+            int textY = ry + (tileSize - 14) / 2;
+            canvas.drawText(textX, textY, numText, 2);
 
-        // Step number on left (scale=2, right-aligned)
-        char numText[8];
-        snprintf(numText, sizeof(numText), "%d.", r + 1);
-        int textW = strlen(numText) * 12;
-        int textX = boxX - gapX - textW;
-        int textY = ry + (tileSize - 14) / 2;
-        canvas.drawText(textX, textY, numText, 2);
+            canvas.drawRect(boxX, ry, boxWidth, tileSize, 2);
 
-        // 2px outer rectangle for word box
-        canvas.drawRect(boxX, ry, boxWidth, tileSize, 2);
+            for (uint8_t c = 1; c < _wordLen; c++) {
+                canvas.drawVLine(boxX + c * tileSize, ry, tileSize, 1);
+            }
 
-        // 1px internal vertical cell dividers
-        for (uint8_t c = 1; c < _wordLen; c++) {
-            uint16_t divX = boxX + c * tileSize;
-            canvas.drawVLine(divX, ry, tileSize, 1);
-        }
-
-        // Start and target word glyphs (scale=3)
-        if (r == 0 || r == _totalWords - 1) {
-            const char* word = _words[r];
-            for (uint8_t c = 0; c < _wordLen; c++) {
-                uint16_t charX = boxX + c * tileSize + (tileSize - 15) / 2;
-                uint16_t charY = ry + (tileSize - 21) / 2;
-                canvas.drawChar(charX, charY, word[c], 3);
+            if (r == 0 || r == _totalWords - 1) {
+                const char* word = _words[r];
+                for (uint8_t c = 0; c < _wordLen; c++) {
+                    uint16_t charX = boxX + c * tileSize + (tileSize - 15) / 2;
+                    uint16_t charY = ry + (tileSize - 21) / 2;
+                    canvas.drawChar(charX, charY, word[c], 3);
+                }
             }
         }
-    }
-
-    return canvas.printTo(printer);
+    });
 }

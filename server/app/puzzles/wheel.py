@@ -29,16 +29,23 @@ FALLBACK_PUZZLES: Dict[str, List[Dict[str, Any]]] = {
             "center_letter": "E",
             "outer_letters": ["A", "N", "P", "R", "S", "T"],
             "root_word": "PARENTS",
-            "pangrams": ["PARENTS", "PASTERN", "TREPANS"],
+            "pangrams": [
+                "APARTNESS", "APERTNESS", "ENTREPAS", "PARENTS", "PASTERN",
+                "PEARTNESS", "PRESTANT", "RAPTNESS", "SEPTENAR", "STEPPARENT",
+                "TAPERNESS", "TRANSEPT", "TRANSPEER"
+            ],
             "words": [
-                "EARN", "EATEN", "EATER", "ENTER", "ERASER", "NESTS", "PAPERS",
-                "PARENT", "PARENTS", "PASTERN", "PEAS", "PEER", "PEPPER", "PETER",
-                "RANT", "RATE", "RATES", "REAP", "REAR", "RENT", "RENTS", "RESET",
-                "REST", "SEAT", "SEATS", "SEEN", "SENSE", "STEEP", "STEER", "STEP",
-                "STEPS", "STREET", "TAPE", "TAPES", "TEAR", "TEARS", "TEEN", "TEENS"
+                "AENEAN", "AERATE", "ANAPAEST", "ANAPNEA", "ANARETA", "ANASTATE",
+                "ANATASE", "ANEAR", "ANENST", "ANENT", "ANES", "ANNATES", "ANNET",
+                "ANSATE", "ANTE", "ANTEATER", "ANTENNA", "ANTENNAE", "ANTENNATE",
+                "ANTEPAST", "ANTES", "ANTRE", "APARTNESS", "APER", "APEREA", "APERT",
+                "APERTNESS", "ENTREPAS", "PARENTS", "PASTERN", "PEARTNESS",
+                "PRESTANT", "RAPTNESS", "SEPTENAR", "STEPPARENT", "TAPERNESS",
+                "TRANSEPT", "TRANSPEER"
             ],
             "word_count": 38,
-            "benchmarks": {"good": 13, "great": 24, "genius": 32}
+            "benchmarks": {"good": 13, "great": 24, "genius": 32},
+            "length_counts": {"4": 3, "5": 6, "6": 5, "7+": 24},
         }
     ],
     "medium": [
@@ -48,15 +55,20 @@ FALLBACK_PUZZLES: Dict[str, List[Dict[str, Any]]] = {
             "center_letter": "A",
             "outer_letters": ["G", "I", "L", "N", "P", "Y"],
             "root_word": "PLAYING",
-            "pangrams": ["PLAYING"],
+            "pangrams": [
+                "APPLYINGLY", "GAPINGLY", "PAININGLY", "PLAYING", "PLAYINGLY",
+                "PYLANGIAL", "YAPPINGLY"
+            ],
             "words": [
-                "AGING", "ALIGN", "ALLY", "APING", "APPLY", "GAILY", "GAIN",
-                "GALA", "GANG", "GLAD", "LAIN", "LILY", "NAIL", "PAIN",
-                "PALE", "PANG", "PLAN", "PLAY", "PLAYING", "PRAY", "PRAYING",
-                "RING", "SAIL", "SLANG", "SPAN", "SPAY"
+                "AALII", "AGAIN", "AGAL", "AGING", "AGLA", "AGNAIL", "AILING",
+                "ALALA", "ALAN", "ALANGIN", "ALANI", "ALANYL", "ALGA", "ALGAL",
+                "ALGALIA", "ALGIN", "ALIGN", "ALIN", "ALLAN", "APPLYINGLY",
+                "GAPINGLY", "PAININGLY", "PLAYING", "PLAYINGLY", "PYLANGIAL",
+                "YAPPINGLY"
             ],
             "word_count": 26,
-            "benchmarks": {"good": 9, "great": 16, "genius": 22}
+            "benchmarks": {"good": 9, "great": 16, "genius": 22},
+            "length_counts": {"4": 5, "5": 9, "6": 3, "7+": 9},
         }
     ],
     "hard": [
@@ -66,16 +78,17 @@ FALLBACK_PUZZLES: Dict[str, List[Dict[str, Any]]] = {
             "center_letter": "H",
             "outer_letters": ["D", "I", "L", "N", "O", "P"],
             "root_word": "DOLPHIN",
-            "pangrams": ["DOLPHIN"],
+            "pangrams": ["DOLPHIN", "IODINOPHIL", "PINHOLD"],
             "words": [
-                "DILTH", "DOLPHIN", "HOLD", "HOLDING", "HOLE", "HOOD",
-                "HOOK", "HOOP", "HORN", "LION", "LOIN", "OPAL",
-                "POND", "POLE", "SHIP", "SHOP"
+                "DHONI", "DHOON", "DOLLHOOD", "DOLPHIN", "HILL", "HIND", "HINOID",
+                "HIPPO", "HIPPOID", "HIPPOPOD", "HOIN", "HOLD", "HOLL", "HOLLIN",
+                "IODINOPHIL", "PINHOLD"
             ],
             "word_count": 16,
-            "benchmarks": {"good": 5, "great": 10, "genius": 13}
+            "benchmarks": {"good": 5, "great": 10, "genius": 13},
+            "length_counts": {"4": 5, "5": 3, "6": 2, "7+": 6},
         }
-    ]
+    ],
 }
 
 
@@ -117,7 +130,7 @@ class WheelGenerator:
             "hard": []
         }
         self.dictionary: List[str] = []
-        self._dict_masks: List[Tuple[str, int]] = []
+        self._dict_masks: Optional[List[Tuple[str, int]]] = None
         self._load_data()
 
     def _load_data(self):
@@ -129,14 +142,20 @@ class WheelGenerator:
                 if diff in self.puzzles_by_diff:
                     self.puzzles_by_diff[diff].append(p)
             self.dictionary = data.get("dictionary", [])
-            if self.data_path not in _WHEEL_MASKS_CACHE:
-                _WHEEL_MASKS_CACHE[self.data_path] = [(w, word_to_mask(w)) for w in self.dictionary]
-            self._dict_masks = _WHEEL_MASKS_CACHE[self.data_path]
 
         # Ensure fallbacks if empty
         for diff in ("easy", "medium", "hard"):
             if not self.puzzles_by_diff[diff]:
                 self.puzzles_by_diff[diff] = list(FALLBACK_PUZZLES[diff])
+
+    def _get_dict_masks(self) -> List[Tuple[str, int]]:
+        if self._dict_masks is None:
+            cached = _WHEEL_MASKS_CACHE.get(self.data_path)
+            if cached is None:
+                cached = [(w, word_to_mask(w)) for w in self.dictionary]
+                _WHEEL_MASKS_CACHE[self.data_path] = cached
+            self._dict_masks = cached
+        return self._dict_masks
 
     def solve(self, letters: str, center: str) -> List[str]:
         """
@@ -144,12 +163,14 @@ class WheelGenerator:
         against the internal dictionary. Runs in < 1ms.
         """
         letters_upper = letters.upper()
-        center_upper = center.upper()
+        center_upper = center.strip().upper()
+        if len(center_upper) != 1 or not ("A" <= center_upper <= "Z"):
+            raise ValueError(f"Center letter must be a single A-Z character, got {center!r}")
         p_mask = word_to_mask(letters_upper)
         c_mask = 1 << (ord(center_upper) - ord("A"))
 
         valid = []
-        for w, m in self._dict_masks:
+        for w, m in self._get_dict_masks():
             if (m & ~p_mask) == 0 and (m & c_mask) != 0 and len(w) >= 4:
                 valid.append(w)
         return sorted(valid)
@@ -167,7 +188,7 @@ class WheelGenerator:
         if diff_clean not in self.puzzles_by_diff:
             diff_clean = "medium"
 
-        rng = random.Random(seed) if seed is not None else random
+        rng = random.Random(seed) if seed is not None else random.Random()
 
         # Custom letters provided?
         if "letters" in kwargs and "center" in kwargs:
@@ -249,9 +270,7 @@ class WheelPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs
     ) -> BasePuzzleResult:
-        diff_clean = difficulty.lower()
-        if diff_clean not in self.supported_difficulties:
-            diff_clean = "medium"
+        diff_clean = self.normalize_difficulty(difficulty)
 
         raw_data = self.generator.generate(difficulty=diff_clean, seed=seed, **kwargs)
         instruction = self.get_instruction(raw_data)
@@ -303,8 +322,8 @@ class WheelPuzzle(BasePuzzle):
             "                  +---+---+",
             "",
             "   TARGET BENCHMARKS:",
-            f"     Good: {b_good} words  |  Great: {b_great} words  |  Genius: {b_genius}+ words",
-            f"     4L: {c4}  |  5L: {c5}  |  6L: {c6}  |  7+: {c7}",
+            f"   Good: {b_good} | Great: {b_great} | Genius: {b_genius}+",
+            f"   4L: {c4}  |  5L: {c5}  |  6L: {c6}  |  7+: {c7}",
             "",
             f"   WORDS FOUND (Must include central letter {center}):",
             "   _________________        _________________",

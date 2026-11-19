@@ -48,24 +48,30 @@ When the user runs `/pr` (or asks to create a pull request), execute this exact 
 ---
 
 ### 3. Pre-Flight Verification & Hygiene (Rule Enforcement)
-Before committing, ensure repository integrity across all 4 tiers (Standards, Logic/Watchdogs, Raster/Simulator/Visual Parity, and Firmware/Stack Safety):
-1. **Arduino Sketch Synchronization (Rule 7)**:
+Before committing, ensure repository integrity across all 5 tiers (Standards, Logic/Watchdogs, Raster/Simulator/Visual Parity, Firmware/Stack/Budget Safety, and Randomized Stress):
+1. **Compiled Datasets & Portal Sync (Rules 15, 18, 21, 22)**:
+   If any file under `server/data/`, `portal.html`, or `tools/datasets/` changed, recompile and stage all generated headers, simulator datasets, portal header, and guide docs:
+   ```bash
+   python3 tools/datasets/build_all_datasets.py
+   ```
+2. **Arduino Sketch Synchronization (Rule 7)**:
    ```bash
    chmod +x ./scripts/sync_arduino_sketch.sh
    ./scripts/sync_arduino_sketch.sh
    ```
    If `PenAndPaperPuzzles/` files were updated by the sync script, ensure they are staged.
-2. **Full Unified PR Verification Gate (`run_tests.py`)**:
+3. **Full Unified PR Verification Gate (`run_tests.py` + Stress)**:
    ```bash
    python3 run_tests.py
+   python3 run_tests.py --tier stress --iterations 3
    ```
-   This single gate executes and enforces:
+   These gates execute and enforce:
    - **Puzzle Presentation, Onboarding & Rules (Rules 1–4, 6, 18)**: `server/test_puzzle_standards.py`, `server/test_game_onboarding.py`, `server/test_game_rules.py`
-   - **Code Health, DRY, Loop Watchdogs & Stack Bounds (Rules 6, 15, 17)**: `server/test_code_health_and_dry.py` ($\le 150\text{ms}$ per-puzzle generation limit, bounded loops, MRV solvers, $\le 1\text{KB}$ C++ stack arrays, build script regex safety)
+   - **Code Health, DRY, Budgets & Safety Guardrails (Rules 6, 15, 17, 19–24)**: `server/test_code_health_and_dry.py` ($\le 150\text{ms}$ per-puzzle watchdog, bounded iterative solvers with return checks, 7-bit ASCII datasets, zero-CDN/size budgets, Python 3.9+ AST compatibility, $\le 150\text{ms}$ 20-game Python raster batch)
    - **Deductive Solvability & Opening Anchors (Rule 10)**: `server/test_stars_deduction.py`, `server/test_towers_deduction.py`, `server/test_inequality_deduction.py`, `server/test_killer_deduction.py`
-   - **Thermal Raster Safety, Golden Snapshots & 100.00% Bit-for-Bit Visual Parity (Rules 8, 11–13)**: `server/test_thermal_format.py`, `server/test_thermal_snapshots.py`, `server/test_visual_consistency.py`
-   - **Web Simulator Headless Runtime & Hardware Emulation (Rule 16)**: `server/test_simulator_runtime.py` (all 20 `*Simulator` classes, `renderOffline<Game>` 1-bit canvases, and `drawSimGuideCanvas` diagrams)
-   - **ESP32 Firmware Parity, Stack Frame Audit & Host Compilation (Rules 7, 14, 17)**: `server/test_firmware_parity.py` (`sizeof(<Game>Gen) <= 4096` and all 20 games $\times$ 4 grades C++ execution)
+   - **Thermal Raster Safety, Golden Snapshots & 100.00% Bit-for-Bit Visual Parity (Rules 8, 11–13, 21, 25)**: `server/test_thermal_format.py`, `server/test_thermal_snapshots.py`, `server/test_visual_consistency.py` (all registered boards & guides)
+   - **Web Simulator Headless Runtime & Hardware Emulation (Rules 16, 23)**: `server/test_simulator_runtime.py` (all 20 `*Simulator` classes, `renderOffline<Game>` 1-bit canvases, `drawSimGuideCanvas` diagrams, real `change` event dispatch, and Portal API error handling)
+   - **ESP32 Firmware Parity, RAM/`.rodata` Budgets & Tri-Profile Compilation (Rules 7, 14, 17, 19)**: `server/test_firmware_parity.py` (`<= 18,432 B` band RAM, `<= 38,000 B` prod `.rodata`, Production + `-DHOST_TEST` + ESP32-S3 syntax profiles)
 
    If any check fails, halt and fix the issue before proceeding.
 
@@ -84,7 +90,13 @@ Analyze the diffs and conversation context to produce high-quality metadata:
 - Provide a clear, bulleted summary:
   - **Summary**: What was added, changed, or fixed.
   - **Motivation**: Why the change was made.
-  - **Testing**: What local tests passed (e.g., standards suite, visual consistency, sketch sync).
+  - **Testing**: What local tests passed (`python3 run_tests.py`, `--tier stress --iterations 3`, `test_visual_consistency.py`, `build_all_datasets.py`, `sync_arduino_sketch.sh --check`).
+  - **Coverage Checklist (Rules 18–25)** (when adding/modifying features or games):
+    - [ ] 3-way visual parity (`C++ == Python == JS`) verified for board + `guide:<id>`
+    - [ ] Golden snapshots (`golden_registry.json`) updated & verified
+    - [ ] Simulator runtime (`cachedBundle`/events) & Portal 1-bit/HTTP error checks pass
+    - [ ] Curated datasets & `PenAndPaperPuzzles/` synchronized with zero drift
+    - [ ] Firmware compiles across Production, `-DHOST_TEST`, and ESP32-S3 profiles within RAM/`.rodata` budgets
 
 ---
 

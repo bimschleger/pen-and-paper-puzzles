@@ -9,8 +9,11 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional, Union, Tuple
 import collections.abc
 import json
+import logging
 import os
 import random
+
+logger = logging.getLogger(__name__)
 
 _DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data"))
 _CURATED_DATASET_CACHE: Dict[str, Any] = {}
@@ -35,19 +38,27 @@ def load_curated_dataset(filename_or_path: str) -> Any:
                 data = json.load(f)
             _CURATED_DATASET_CACHE[resolved] = data
             return data
-        except Exception:
+        except Exception as exc:
+            logger.warning("Failed to load curated dataset '%s': %s", resolved, exc)
             return None
     return None
 
 
-def select_seeded_d4(puzzles: List[Any], seed: Optional[int] = None) -> Tuple[int, int]:
+def select_seeded_d4(
+    puzzles: List[Any],
+    seed: Optional[int] = None,
+    rng: Optional[random.Random] = None,
+) -> Tuple[int, int]:
     """
     Selects a base puzzle index and D4 dihedral transform (0..7) deterministically
-    from seed, or randomly if seed is None.
+    from seed, or via a local PRNG when unseeded.
     """
+    if not puzzles:
+        raise ValueError("Cannot select from an empty curated dataset")
     if seed is not None:
         return (seed // 8) % len(puzzles), seed % 8
-    return random.randint(0, len(puzzles) - 1), random.randint(0, 7)
+    local_rng = rng if rng is not None else random.Random()
+    return local_rng.randint(0, len(puzzles) - 1), local_rng.randint(0, 7)
 
 
 def transform_coord_d4(
@@ -207,6 +218,30 @@ class BasePuzzle(ABC):
         """List of supported difficulty levels."""
         return ["easy", "medium", "hard"]
 
+    def normalize_difficulty(self, difficulty: Optional[str]) -> str:
+        """Validates and maps any difficulty string to a supported tier."""
+        if not difficulty:
+            return self.default_difficulty
+        d = str(difficulty).strip().lower()
+        supported = self.supported_difficulties
+        if d in supported:
+            return d
+        if d == "extreme":
+            if "master" in supported:
+                return "master"
+            if "hard" in supported:
+                return "hard"
+        return self.default_difficulty
+
+    def resolve_bundle_difficulty(self, target_tier: str) -> str:
+        """Maps a requested daily bundle tier to this plugin's supported difficulty."""
+        return self.normalize_difficulty(target_tier)
+
+    @staticmethod
+    def make_rng(seed: Optional[int] = None) -> random.Random:
+        """Creates a thread-local isolated Random instance instead of mutating global RNG state."""
+        return random.Random(seed) if seed is not None else random.Random()
+
     @abstractmethod
     def generate(self, difficulty: str = "medium", **kwargs) -> BasePuzzleResult:
         """Generates a puzzle instance with the given difficulty."""
@@ -267,58 +302,57 @@ class BasePuzzle(ABC):
 
     def render_guide_raster(self, target_width: int = 576) -> bytes:
         """
-        Renders an authentic 1-bit thermal raster graphic (576 dots wide) demonstrating
-        a VALID move versus an INVALID move side-by-side.
+        Renders an authentic 1-bit thermal raster graphic (576x216) demonstrating
+        a VALID move versus an INVALID move side-by-side from diagram_ops.
         """
         from .rules import get_game_rule
         from ..renderer.canvas import ThermalBitmap
 
         rule = get_game_rule(self.puzzle_id) or get_game_rule(self.title)
-        height = 240
+        height = 216
         tb = ThermalBitmap(target_width, height)
-
-        # Outer border & vertical column divider
-        tb.draw_rect(10, 8, target_width - 20, height - 16, thickness=2)
         mid_x = target_width // 2
-        tb.draw_dashed_hline(mid_x, 8, 1, dash_len=4, gap_len=4, thickness=1)
-        for y in range(8, height - 8, 8):
+
+        # Outer border & vertical dashed center divider
+        tb.draw_rect(10, 8, target_width - 20, height - 16, thickness=2)
+        for y in range(10, height - 10, 8):
             tb.draw_vline(mid_x, y, 4, thickness=1)
 
-        # Headers
-        valid_hdr = "[ VALID MOVE ]"
-        invalid_hdr = "[ INVALID MOVE ]"
-        tb.draw_text(mid_x // 2 - (len(valid_hdr) * 6), 18, valid_hdr, scale=2)
-        tb.draw_text(mid_x + (mid_x // 2) - (len(invalid_hdr) * 6), 18, invalid_hdr, scale=2)
+        # Panel headers & footers matching firmware OfflinePuzzleComposer
+        tb.draw_text(84, 16, "VALID MOVE", scale=2)
+        tb.draw_text(360, 16, "INVALID MOVE", scale=2)
+        tb.draw_text(108, height - 28, "[ OK ]", scale=2)
+        tb.draw_text(384, height - 28, "[ ERROR ]", scale=2)
 
-        # Mini grids from rule definition if present
         if rule:
-            valid_spec = rule.get("valid_move", {})
-            invalid_spec = rule.get("invalid_move", {})
-
-            def _draw_mini_matrix(spec, offset_x):
-                grid = spec.get("grid", [])
-                if not grid:
-                    return
-                rows = len(grid)
-                cols = max(len(r) for r in grid) if rows > 0 else 0
-                if rows == 0 or cols == 0:
-                    return
-                cell_sz = min(36, 160 // max(rows, cols))
-                start_x = offset_x + (mid_x - (cols * cell_sz)) // 2
-                start_y = 52
-
-                tb.draw_rect(start_x, start_y, cols * cell_sz, rows * cell_sz, thickness=2)
-                for r in range(rows):
-                    for c in range(len(grid[r])):
-                        cx = start_x + c * cell_sz
-                        cy = start_y + r * cell_sz
-                        tb.draw_rect(cx, cy, cell_sz, cell_sz, thickness=1)
-                        val = str(grid[r][c])
-                        if val not in ("·", " ", ""):
-                            tb.draw_text(cx + (cell_sz - 12) // 2, cy + (cell_sz - 14) // 2, val[:1], scale=2)
-
-            _draw_mini_matrix(valid_spec, 0)
-            _draw_mini_matrix(invalid_spec, mid_x)
+            for item in rule.get("diagram_ops", []):
+                panel, kind = item[0], item[1]
+                cx = 144 if panel == 0 else 432
+                if kind == "grid":
+                    gx, gy, cols, rows, sz = cx + item[2], item[3], item[4], item[5], item[6]
+                    tb.draw_rect(gx, gy, cols * sz, rows * sz, thickness=2)
+                    for c in range(1, cols):
+                        tb.draw_vline(gx + c * sz, gy, rows * sz, thickness=1)
+                    for r in range(1, rows):
+                        tb.draw_hline(gx, gy + r * sz, cols * sz, thickness=1)
+                elif kind == "rect":
+                    tb.draw_rect(cx + item[2], item[3], item[4], item[5], thickness=item[6])
+                elif kind == "frect":
+                    tb.fill_rect(cx + item[2], item[3], item[4], item[5], color=item[6])
+                elif kind == "hatch":
+                    tb.fill_hatch(cx + item[2], item[3], item[4], item[5], pattern_id=item[6])
+                elif kind == "hline":
+                    tb.draw_hline(cx + item[2], item[3], item[4], thickness=item[5])
+                elif kind == "vline":
+                    tb.draw_vline(cx + item[2], item[3], item[4], thickness=item[5])
+                elif kind == "dhline":
+                    tb.draw_dashed_hline(cx + item[2], item[3], item[4], dash_len=4, gap_len=3, thickness=item[5])
+                elif kind == "line":
+                    tb.draw_line(cx + item[2], item[3], cx + item[4], item[5], thickness=item[6])
+                elif kind == "circ":
+                    tb.draw_circle(cx + item[2], item[3], item[4], thickness=item[5])
+                elif kind == "text":
+                    tb.draw_text(cx + item[2], item[3], item[5], scale=item[4])
 
         return tb.to_escpos()
 

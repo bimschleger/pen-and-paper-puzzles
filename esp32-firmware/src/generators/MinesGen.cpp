@@ -300,43 +300,27 @@ bool MinesGen::printRasterToReceipt(EscPosPrinter& printer, MinesDifficulty /*di
     const int16_t boardH = cellSize * 8;
     const int16_t badgeH = 36;
     const int16_t totalH = 12 + badgeH + 12 + boardH + 12;
+    const int16_t boardY = 12 + badgeH + 12;
 
-    ThermalCanvas canvas;
-    if (!canvas.begin(totalH)) {
-        return false;
-    }
-
-    // Badge
-    canvas.drawRect(padding, 12, innerWidth, badgeH, 3);
     char badgeBuf[32];
     snprintf(badgeBuf, sizeof(badgeBuf), "TOTAL MINES: %d", _totalMines);
-    canvas.drawCenteredText(23, badgeBuf, 2);
 
-    int16_t boardY = 12 + badgeH + 12;
+    ThermalCanvas canvas;
+    return canvas.renderBanded(printer, totalH, [&](ThermalCanvas& canvas) {
+        canvas.drawRect(padding, 12, innerWidth, badgeH, 3);
+        canvas.drawCenteredText(23, badgeBuf, 2);
+        canvas.drawGrid(padding, boardY, 8, 8, cellSize, cellSize, 4, 1);
 
-    // Outer grid
-    canvas.drawRect(padding, boardY, cellSize * 8, cellSize * 8, 4);
-
-    // Inner lines
-    for (uint8_t i = 1; i < 8; i++) {
-        canvas.drawHLine(padding, boardY + i * cellSize, cellSize * 8, 1);
-        canvas.drawVLine(padding + i * cellSize, boardY, cellSize * 8, 1);
-    }
-
-    // Numbers
-    for (uint8_t r = 0; r < 8; r++) {
-        for (uint8_t c = 0; c < 8; c++) {
-            int8_t val = _puzzle[r][c];
-            if (val >= 0) {
-                int16_t cx = padding + c * cellSize + (cellSize - 18) / 2;
-                int16_t cy = boardY + r * cellSize + (cellSize - 21) / 2;
-                canvas.drawChar(cx, cy, '0' + val, 3);
+        for (uint8_t r = 0; r < 8; r++) {
+            for (uint8_t c = 0; c < 8; c++) {
+                int8_t val = _puzzle[r][c];
+                if (val >= 0) {
+                    int16_t cx = padding + c * cellSize + (cellSize - 18) / 2;
+                    int16_t cy = boardY + r * cellSize + (cellSize - 21) / 2;
+                    canvas.drawChar(cx, cy, '0' + val, 3);
+                }
             }
         }
-    }
-
-    bool ok = canvas.printTo(printer);
-    canvas.end();
-    return ok;
+    });
 }
 

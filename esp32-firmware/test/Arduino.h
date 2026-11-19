@@ -101,6 +101,7 @@ inline void randomSeed(unsigned long seed) { std::srand(seed); }
 inline unsigned long millis() { return (unsigned long)(clock() * 1000 / CLOCKS_PER_SEC); }
 inline unsigned long micros() { return (unsigned long)(clock() * 1000000 / CLOCKS_PER_SEC); }
 inline void delay(int ms) {}
+inline void yield() {}
 
 #define HIGH 1
 #define LOW 0

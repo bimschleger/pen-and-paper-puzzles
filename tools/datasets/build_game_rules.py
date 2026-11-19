@@ -9,22 +9,35 @@ Reads canonical JSON from server/data/game_rules.json and:
 5. Synchronizes Arduino IDE sketch via scripts/sync_arduino_sketch.sh
 """
 
-import gzip
 import json
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(ROOT_DIR / "scripts"))
+from build_portal_header import build_portal_header  # noqa: E402
+
 RULES_JSON_PATH = ROOT_DIR / "server" / "data" / "game_rules.json"
 GAME_RULES_H_PATH = ROOT_DIR / "esp32-firmware" / "src" / "generators" / "GameRulesDataset.h"
 DOCS_MD_PATH = ROOT_DIR / "docs" / "GAME_RULES_FAQ.md"
 PORTAL_HTML_PATH = ROOT_DIR / "portal.html"
-PORTAL_HEADER_PATH = ROOT_DIR / "esp32-firmware" / "src" / "time" / "PortalHtml.h"
 SIMULATOR_HTML_PATH = ROOT_DIR / "simulator" / "receipt_simulator.html"
 SYNC_SCRIPT = ROOT_DIR / "scripts" / "sync_arduino_sketch.sh"
+
+OP_CODE_ENUM = {
+    "grid": "GOP_GRID",
+    "rect": "GOP_RECT",
+    "frect": "GOP_FRECT",
+    "hatch": "GOP_HATCH",
+    "hline": "GOP_HLINE",
+    "vline": "GOP_VLINE",
+    "dhline": "GOP_DHLINE",
+    "line": "GOP_LINE",
+    "circ": "GOP_CIRC",
+    "text": "GOP_TEXT",
+}
 
 
 def escape_cpp_string(s: str) -> str:
@@ -32,9 +45,43 @@ def escape_cpp_string(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
+def compact_games_for_html(games: list) -> list:
+    """Strips legacy ASCII move grid/highlight bloat while keeping captions and diagram_ops."""
+    compacted = []
+    for g in games:
+        gc = {k: v for k, v in g.items() if k not in ("valid_move", "invalid_move")}
+        gc["valid_move"] = {"caption": g.get("valid_move", {}).get("caption", "")}
+        gc["invalid_move"] = {"caption": g.get("invalid_move", {}).get("caption", "")}
+        compacted.append(gc)
+    return compacted
+
+
+def _encode_guide_op(op_item: list) -> str:
+    panel = int(op_item[0])
+    kind = op_item[1]
+    enum_name = OP_CODE_ENUM[kind]
+    if kind == "text":
+        # [panel, "text", dx, y, scale, "STR"]
+        a, b, c = int(op_item[2]), int(op_item[3]), int(op_item[4])
+        txt = escape_cpp_string(str(op_item[5]))
+        return f'{{ "{txt}", {a}, {b}, {c}, 0, 0, {panel}, {enum_name} }}'
+    ints = [int(v) for v in op_item[2:]]
+    while len(ints) < 5:
+        ints.append(0)
+    return f'{{ nullptr, {ints[0]}, {ints[1]}, {ints[2]}, {ints[3]}, {ints[4]}, {panel}, {enum_name} }}'
+
+
 def generate_cpp_header(data: dict) -> None:
     print(f"Generating C++ GameRulesDataset.h -> {GAME_RULES_H_PATH}...")
     games = data.get("games", [])
+    flat_ops = []
+    op_spans = []
+    for g in games:
+        ops = g.get("diagram_ops", [])
+        op_spans.append((len(flat_ops), len(ops)))
+        for item in ops:
+            flat_ops.append(_encode_guide_op(item))
+
     lines = [
         "// Automatically generated from server/data/game_rules.json by tools/datasets/build_game_rules.py",
         "// Do not edit directly!",
@@ -42,6 +89,35 @@ def generate_cpp_header(data: dict) -> None:
         "#define GAME_RULES_DATASET_H",
         "",
         "#include <Arduino.h>",
+        "",
+        "enum GuideOpCode : uint8_t {",
+        "    GOP_GRID = 0,",
+        "    GOP_RECT = 1,",
+        "    GOP_FRECT = 2,",
+        "    GOP_HATCH = 3,",
+        "    GOP_HLINE = 4,",
+        "    GOP_VLINE = 5,",
+        "    GOP_DHLINE = 6,",
+        "    GOP_LINE = 7,",
+        "    GOP_CIRC = 8,",
+        "    GOP_TEXT = 9",
+        "};",
+        "",
+        "struct GuideOp {",
+        "    const char* text;",
+        "    int16_t a, b, c, d, e;",
+        "    uint8_t panel;",
+        "    uint8_t op;",
+        "};",
+        "",
+        f"static const size_t TOTAL_GUIDE_OPS = {len(flat_ops)};",
+        "static const GuideOp GUIDE_OPS_TABLE[TOTAL_GUIDE_OPS] PROGMEM = {",
+    ]
+    for i, op_line in enumerate(flat_ops):
+        comma = "," if i + 1 < len(flat_ops) else ""
+        lines.append(f"    {op_line}{comma}")
+    lines.extend([
+        "};",
         "",
         "struct GameFaqItem {",
         "    const char* question;",
@@ -62,13 +138,15 @@ def generate_cpp_header(data: dict) -> None:
         "    uint8_t anchorCount;",
         "    GameFaqItem faq[2];",
         "    uint8_t faqCount;",
+        "    uint16_t opsOffset;",
+        "    uint8_t opsCount;",
         "};",
         "",
         f"static const size_t TOTAL_GAME_RULES = {len(games)};",
         "static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {",
-    ]
+    ])
 
-    for g in games:
+    for g, (ops_off, ops_cnt) in zip(games, op_spans):
         rules_strs = [f'"{escape_cpp_string(r)}"' for r in g.get("rules", [])[:4]]
         rule_count = len(rules_strs)
         while len(rules_strs) < 4:
@@ -102,7 +180,9 @@ def generate_cpp_header(data: dict) -> None:
         lines.append(f'        {{ {", ".join(anchors)} }},')
         lines.append(f"        {anchor_count},")
         lines.append(f'        {{ {", ".join(faq_strs)} }},')
-        lines.append(f"        {faq_count}")
+        lines.append(f"        {faq_count},")
+        lines.append(f"        {ops_off},")
+        lines.append(f"        {ops_cnt}")
         lines.append("    },")
 
     lines.append("};")
@@ -130,7 +210,7 @@ def generate_markdown_docs(data: dict) -> None:
     lines = [
         "# Pen and Paper Puzzles: Comprehensive Game Rules & How-to-Play Guide",
         "",
-        "This authoritative guide contains complete rules, core objectives, opening deduction anchors, and visual move specifications for all 18 games in Pen and Paper Puzzles.",
+        f"This authoritative guide contains complete rules, core objectives, opening deduction anchors, and visual move specifications for all {len(games)} games in Pen and Paper Puzzles.",
         "",
         "---",
         "",
@@ -199,7 +279,7 @@ def inject_portal_html(data: dict) -> None:
         raise FileNotFoundError(f"portal.html not found at {PORTAL_HTML_PATH}")
 
     content = PORTAL_HTML_PATH.read_text(encoding="utf-8")
-    games_json = json.dumps(data.get("games", []), indent=2)
+    games_json = json.dumps(compact_games_for_html(data.get("games", [])), separators=(",", ":"))
     start_tag = "/* [[START_GAME_RULES_DATA]] */"
     end_tag = "/* [[END_GAME_RULES_DATA]] */"
     rules_block = f"{start_tag}\nconst GAME_RULES = {games_json};\n{end_tag}"
@@ -216,6 +296,8 @@ def inject_portal_html(data: dict) -> None:
             content = content[:start_idx] + rules_block + "\n\n" + content[end_idx:]
     elif "/* [[GAME_RULES_DATA]] */" in content:
         content = content.replace("/* [[GAME_RULES_DATA]] */", rules_block)
+    else:
+        raise ValueError("Missing GAME_RULES marker in portal.html")
 
     PORTAL_HTML_PATH.write_text(content, encoding="utf-8")
     print(f"  Injected canonical GAME_RULES into {PORTAL_HTML_PATH}")
@@ -227,7 +309,7 @@ def inject_simulator_html(data: dict) -> None:
         return
 
     content = SIMULATOR_HTML_PATH.read_text(encoding="utf-8")
-    games_json = json.dumps(data.get("games", []), indent=2)
+    games_json = json.dumps(compact_games_for_html(data.get("games", [])), separators=(",", ":"))
     start_tag = "/* [[START_GAME_RULES_DATA]] */"
     end_tag = "/* [[END_GAME_RULES_DATA]] */"
     rules_block = f"{start_tag}\n    const GAME_RULES = {games_json};\n    {end_tag}"
@@ -239,44 +321,7 @@ def inject_simulator_html(data: dict) -> None:
         SIMULATOR_HTML_PATH.write_text(content, encoding="utf-8")
         print(f"  Injected canonical GAME_RULES into {SIMULATOR_HTML_PATH}")
     else:
-        print("  Warning: markers not found in simulator HTML, skipping.")
-
-
-def build_portal_header() -> None:
-    if not PORTAL_HTML_PATH.exists():
-        raise FileNotFoundError(f"portal.html not found at {PORTAL_HTML_PATH}")
-
-    raw_bytes = PORTAL_HTML_PATH.read_bytes()
-    compressed = gzip.compress(raw_bytes, compresslevel=9, mtime=0)
-
-    lines = [
-        "// Automatically generated from portal.html by tools/datasets/build_game_rules.py",
-        "// Do not edit directly!",
-        "#ifndef PORTAL_HTML_H",
-        "#define PORTAL_HTML_H",
-        "",
-        "#include <Arduino.h>",
-        "",
-        f"// Original size: {len(raw_bytes)} bytes | Compressed size: {len(compressed)} bytes",
-        "static const uint8_t PORTAL_HTML_GZ[] PROGMEM = {",
-    ]
-
-    for i in range(0, len(compressed), 16):
-        chunk = compressed[i : i + 16]
-        hex_str = ", ".join(f"0x{b:02X}" for b in chunk)
-        if i + 16 < len(compressed):
-            lines.append(f"    {hex_str},")
-        else:
-            lines.append(f"    {hex_str}")
-
-    lines.append("};")
-    lines.append("")
-    lines.append("#endif // PORTAL_HTML_H")
-    lines.append("")
-
-    PORTAL_HEADER_PATH.parent.mkdir(parents=True, exist_ok=True)
-    PORTAL_HEADER_PATH.write_text("\n".join(lines), encoding="utf-8")
-    print(f"  Generated {PORTAL_HEADER_PATH} ({len(compressed)} bytes compressed from {len(raw_bytes)} bytes).")
+        raise ValueError("Missing GAME_RULES markers in simulator HTML")
 
 
 def sync_arduino() -> None:
@@ -289,7 +334,7 @@ def sync_arduino() -> None:
             print(f"  Warning: sync_arduino_sketch.sh returned {res.returncode}: {res.stderr}")
 
 
-def main() -> None:
+def main(sync_sketch: bool = True) -> None:
     if not RULES_JSON_PATH.exists():
         raise FileNotFoundError(f"Rules JSON not found at {RULES_JSON_PATH}")
 
@@ -301,7 +346,8 @@ def main() -> None:
     inject_portal_html(data)
     build_portal_header()
     inject_simulator_html(data)
-    sync_arduino()
+    if sync_sketch:
+        sync_arduino()
     print("Game rules compiler pipeline completed successfully!")
 
 

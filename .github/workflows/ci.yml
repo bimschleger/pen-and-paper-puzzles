@@ -8,17 +8,26 @@ on:
 
 jobs:
   puzzle-standards-and-deductions:
-    name: Standards, Thermal & Deduction Suites
+    name: Standards, Logic, Thermal, Web & Stress Suites (Py ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10"]
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: ${{ matrix.python-version }}
           cache: "pip"
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
       - name: Install dependencies
         run: |
@@ -32,17 +41,20 @@ jobs:
       - name: Verify Game Onboarding, Setup Portal & README Parity (Rule 18)
         run: python3 server/test_game_onboarding.py
 
-      - name: Verify Game Rules, Guides & FAQs
+      - name: Verify Game Rules, Guides & FAQs (Rule 21)
         run: python3 server/test_game_rules.py
 
-      - name: Verify Code Health, DRY Utilities, Loop Bounds & Watchdogs (Rules 6, 15, 17)
+      - name: Verify Code Health, Budgets, Safety & Performance (Rules 6, 15, 17, 19-24)
         run: python3 server/test_code_health_and_dry.py
 
-      - name: Verify Web Simulator Headless Runtime & Rule 16 Emulation
+      - name: Verify Web Simulator Headless Runtime & Portal (Rules 16, 23)
         run: python3 server/test_simulator_runtime.py
 
       - name: Verify 80mm Thermal Receipt Format & Specifications (Rule 11)
         run: python3 server/test_thermal_format.py
+
+      - name: Verify Golden Raster Snapshots & Thermal Safety (Rule 25)
+        run: python3 server/test_thermal_snapshots.py
 
       - name: Verify Stars Deduction Anchors & Solvability (Rule 10)
         run: python3 server/test_stars_deduction.py
@@ -56,8 +68,14 @@ jobs:
       - name: Verify Killer Deduction & Solvability (Rule 10)
         run: python3 server/test_killer_deduction.py
 
+      - name: Verify Full Game Logic & Accuracy Across All Tiers (Rule 25)
+        run: python3 run_tests.py --tier logic
+
+      - name: Verify Monte Carlo Convergence & Thermal Stress (Rule 25)
+        run: python3 run_tests.py --tier stress --iterations 3
+
   visual-parity-and-firmware:
-    name: Tri-Target Visual Parity & Firmware Consistency
+    name: Tri-Target Visual Parity & Firmware Budgets
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -69,36 +87,48 @@ jobs:
           python-version: "3.10"
           cache: "pip"
 
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
           if [ -f server/requirements.txt ]; then pip install -r server/requirements.txt; fi
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Verify Tri-Target Bit-for-Bit Visual Consistency (Rule 8)
+      - name: Verify Tri-Target Bit-for-Bit Visual Consistency (Rules 8, 21, 25)
         run: python3 server/test_visual_consistency.py
 
-      - name: Verify Firmware Parity
+      - name: Verify Firmware Parity, RAM/Flash Budgets & Tri-Profile Build (Rules 7, 14, 19)
         run: python3 server/test_firmware_parity.py
 
   arduino-sketch-synchronization:
-    name: Arduino IDE Sketch Sync Verification (Rule 7)
+    name: Compiled Datasets, Portal & Sketch Drift Verification (Rules 7, 15, 18, 22)
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Run Arduino IDE Synchronization Script
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Rebuild Datasets, Portal Header & Arduino Sketch
         run: |
           chmod +x ./scripts/sync_arduino_sketch.sh
-          ./scripts/sync_arduino_sketch.sh
+          python3 tools/datasets/build_all_datasets.py
+          ./scripts/sync_arduino_sketch.sh --check
 
-      - name: Assert No Uncommitted Sketch Drift
+      - name: Assert Zero Compiled Dataset, Portal or Sketch Drift
         run: |
-          if [ -n "$(git status --porcelain PenAndPaperPuzzles/)" ]; then
-            echo "::error::PenAndPaperPuzzles/ Arduino IDE sketch is out of sync with esp32-firmware/!"
-            echo "Run './scripts/sync_arduino_sketch.sh' locally and commit the mirrored files."
-            git status --porcelain PenAndPaperPuzzles/
+          DRIFT=$(git status --porcelain esp32-firmware/ PenAndPaperPuzzles/ simulator/receipt_simulator.html portal.html docs/GAME_RULES_FAQ.md)
+          if [ -n "$DRIFT" ]; then
+            echo "::error::Generated datasets, PortalHtml.h, simulator, docs, or PenAndPaperPuzzles/ are out of sync!"
+            echo "Run 'python3 tools/datasets/build_all_datasets.py' locally and commit the updated files."
+            echo "$DRIFT"
             exit 1
           fi
-          echo "PenAndPaperPuzzles Arduino IDE sketch is perfectly synchronized."
+          echo "All compiled datasets, portal headers, docs, and Arduino IDE sketch files are synchronized."

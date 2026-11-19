@@ -22,6 +22,7 @@ public:
 
     uint8_t getSize() const { return _size; }
     int8_t  getClue(uint8_t r, uint8_t c) const { return _clues[r][c]; }
+    bool    verifySolvable() { int8_t H[10][9], V[9][10]; return solveDeductive(_clues, _size, H, V); }
 
 private:
     uint8_t _size;

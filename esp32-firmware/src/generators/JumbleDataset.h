@@ -75,28 +75,28 @@ static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {
         4,
         {0x05, 0x0C, 0x05, 0x02, 0x00, 0x00},
         "COLT PAST OATS RAIL",
-        "The pirate had trouble learning the alphabet because he was —",
+        "The pirate had trouble learning the alphabet because he was -",
         "LOST AT \"C\""
     },
     {
         4,
         {0x0C, 0x05, 0x05, 0x01, 0x00, 0x00},
         "GAME PEAR GEAR RING",
-        "When the sheep took over the farm, the neighbors called it a —",
+        "When the sheep took over the farm, the neighbors called it a -",
         "\"RAM-PAGE\""
     },
     {
         4,
         {0x03, 0x09, 0x0C, 0x04, 0x00, 0x00},
         "GOAT HOST ROAD ICON",
-        "The dog sat by the fireplace all winter because he was —",
+        "The dog sat by the fireplace all winter because he was -",
         "A HOT DOG"
     },
     {
         4,
         {0x0C, 0x0C, 0x06, 0x02, 0x00, 0x00},
         "RAMP BATH RUIN SALT",
-        "When the pig won the jackpot, all his barn friends told him to —",
+        "When the pig won the jackpot, all his barn friends told him to -",
         "HAM IT UP"
     },
     {
@@ -187,49 +187,49 @@ static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {
         4,
         {0x13, 0x13, 0x12, 0x04, 0x00, 0x00},
         "PRONE ENEMY HORSE THEME",
-        "The optician gave his patient a discount, which was a real —",
+        "The optician gave his patient a discount, which was a real -",
         "EYE OPENER"
     },
     {
         4,
         {0x13, 0x03, 0x16, 0x02, 0x00, 0x00},
         "TRICK HIDE SEDAN CAKE",
-        "When the electricity failed during class, the students were —",
+        "When the electricity failed during class, the students were -",
         "IN THE DARK"
     },
     {
         4,
         {0x19, 0x07, 0x05, 0x08, 0x00, 0x00},
         "VALUE TABLE CLOSE BREAD",
-        "The barber was thrilled with his successful shop because it was —",
+        "The barber was thrilled with his successful shop because it was -",
         "A CUT ABOVE"
     },
     {
         4,
         {0x0B, 0x0B, 0x03, 0x01, 0x00, 0x00},
         "ZEBRA BEING DIRTY ELECT",
-        "When the meteorologist arrived on time, everyone said he —",
+        "When the meteorologist arrived on time, everyone said he -",
         "BREEZED IN"
     },
     {
         4,
         {0x19, 0x15, 0x09, 0x04, 0x00, 0x00},
         "WAGON ALLOW BABY FRAME",
-        "When the quarterback gave an interview, the reporters were —",
+        "When the quarterback gave an interview, the reporters were -",
         "BLOWN AWAY"
     },
     {
         4,
         {0x19, 0x0E, 0x09, 0x04, 0x00, 0x00},
         "WOMAN SIGMA PROUD HORN",
-        "The author loved working near the campfire because the plot was —",
+        "The author loved working near the campfire because the plot was -",
         "WARMING UP"
     },
     {
         4,
         {0x09, 0x07, 0x1A, 0x04, 0x00, 0x00},
         "SWIM SHIFT FAITH CHART",
-        "The tennis champion won the final set with —",
+        "The tennis champion won the final set with -",
         "A SMASH HIT"
     },
     {
@@ -341,42 +341,42 @@ static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {
         4,
         {0x16, 0x1C, 0x16, 0x08, 0x00, 0x00},
         "SWEET POEMS ASIDE CREST",
-        "When the tailor was asked how business was going, he said —",
+        "When the tailor was asked how business was going, he said -",
         "\"SEW\" IT SEEMS"
     },
     {
         4,
         {0x0E, 0x09, 0x07, 0x09, 0x00, 0x00},
         "WHEEL CART CRASH ANGLE",
-        "The fisherman was very popular with the town because he was —",
+        "The fisherman was very popular with the town because he was -",
         "A REEL CATCH"
     },
     {
         4,
         {0x0D, 0x09, 0x13, 0x03, 0x00, 0x00},
         "BASIS HOSE FOCUS FAULT",
-        "When the baseball player struck out, his coach told him —",
+        "When the baseball player struck out, his coach told him -",
         "OFF HIS BASE"
     },
     {
         4,
         {0x1A, 0x13, 0x19, 0x04, 0x00, 0x00},
         "UPSET SLOPE OFTEN SHAKE",
-        "The pilot didn't want to argue about the flight plan because it was —",
+        "The pilot didn't want to argue about the flight plan because it was -",
         "PLANE TO SEE"
     },
     {
         4,
         {0x07, 0x09, 0x0A, 0x1A, 0x00, 0x00},
         "WHEEL LEND FEEL JEWEL",
-        "The shoemaker's new assistant was learning fast and was —",
+        "The shoemaker's new assistant was learning fast and was -",
         "WELL-HEELED"
     },
     {
         4,
         {0x0D, 0x1A, 0x19, 0x08, 0x00, 0x00},
         "DECAY EARLY STARE GREAT",
-        "The window cleaner loved his tall job because it was —",
+        "The window cleaner loved his tall job because it was -",
         "CLEAR AS DAY"
     },
     {
@@ -495,98 +495,98 @@ static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {
         4,
         {0x1A, 0x0D, 0x0B, 0x05, 0x00, 0x00},
         "WHOSE TULIP LOOSE SHOOT",
-        "When the cobbler lost his favorite tools, he felt like he —",
+        "When the cobbler lost his favorite tools, he felt like he -",
         "LOST HIS \"SOLE\""
     },
     {
         4,
         {0x13, 0x0E, 0x1A, 0x0C, 0x00, 0x00},
         "QUOTA WORSE HORSE DIRT",
-        "The math teacher went to the farm looking for —",
+        "The math teacher went to the farm looking for -",
         "SQUARE ROOTS"
     },
     {
         4,
         {0x07, 0x0D, 0x0B, 0x14, 0x00, 0x00},
         "PHOTO PROUD TOUCH APART",
-        "The lazy kangaroo spent all afternoon being a —",
+        "The lazy kangaroo spent all afternoon being a -",
         "\"POUCH\" POTATO"
     },
     {
         4,
         {0x1A, 0x1C, 0x1A, 0x18, 0x00, 0x00},
         "EVENT PEACE EAGLE WHOSE",
-        "When the skunk couldn't pay the bill, he told the waiter to —",
+        "When the skunk couldn't pay the bill, he told the waiter to -",
         "LEAVE A \"SCENT\""
     },
     {
         4,
         {0x0E, 0x15, 0x0D, 0x03, 0x00, 0x00},
         "AGAIN STAIN SHIRT TREAT",
-        "When the baker's apprentice made great sourdough, he was —",
+        "When the baker's apprentice made great sourdough, he was -",
         "A RISING STAR"
     },
     {
         4,
         {0x0D, 0x1A, 0x16, 0x12, 0x00, 0x00},
         "WASTE TEACH FAULT NOISE",
-        "When the bee landed on the rose, the gardener said it was —",
+        "When the bee landed on the rose, the gardener said it was -",
         "A SWEET TOUCH"
     },
     {
         4,
         {0x07, 0x0B, 0x16, 0x0A, 0x00, 0x00},
         "FIBER SHELL GLIDE STATE",
-        "The tailor made a pair of trousers with two pockets and said —",
+        "The tailor made a pair of trousers with two pockets and said -",
         "FITS THE BILL"
     },
     {
         4,
         {0x07, 0x13, 0x0B, 0x0A, 0x00, 0x00},
         "MOVIE GIANT FOUND ESSAY",
-        "When the cow jumped over the moon, the calf said it was —",
+        "When the cow jumped over the moon, the calf said it was -",
         "\"MOO\"-VING FAST"
     },
     {
         4,
         {0x0E, 0x0E, 0x0B, 0x14, 0x00, 0x00},
         "CROWD UNDER TOPIC FROST",
-        "The gardener won the giant pumpkin contest because he was —",
+        "The gardener won the giant pumpkin contest because he was -",
         "ROOTED TO WIN"
     },
     {
         4,
         {0x0B, 0x16, 0x16, 0x05, 0x00, 0x00},
         "MINER SIGHT THORN TORN",
-        "When the clock struck midnight, the night watchman said —",
+        "When the clock struck midnight, the night watchman said -",
         "RIGHT ON TIME"
     },
     {
         4,
         {0x13, 0x13, 0x19, 0x09, 0x00, 0x00},
         "PLATE FIFTH FLOAT ALLOW",
-        "When the frog leaped across the lily pads, he took a —",
+        "When the frog leaped across the lily pads, he took a -",
         "LEAP OF FAITH"
     },
     {
         4,
         {0x0D, 0x1A, 0x15, 0x09, 0x00, 0x00},
         "MEDIA MANGO FRAME FOUND",
-        "The jeweler polished the emerald until it was —",
+        "The jeweler polished the emerald until it was -",
         "A GEM OF A FIND"
     },
     {
         4,
         {0x07, 0x0B, 0x1C, 0x18, 0x00, 0x00},
         "WEIGH CHASE PLACE RATIO",
-        "When the owl gave advice in the forest, everyone said —",
+        "When the owl gave advice in the forest, everyone said -",
         "A WISE CHOICE"
     },
     {
         4,
         {0x03, 0x1A, 0x15, 0x07, 0x00, 0x00},
         "BITE FIXED FLEET TOTAL",
-        "When the tailor finished three custom suits in one day, he was —",
+        "When the tailor finished three custom suits in one day, he was -",
         "FIT TO BE TIED"
     },
     {
@@ -635,161 +635,161 @@ static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {
         4,
         {0x0E, 0x1A, 0x0D, 0x16, 0x00, 0x00},
         "LOWER FLUID TRADE ONION",
-        "The carpenter finished building the table and proudly said —",
+        "The carpenter finished building the table and proudly said -",
         "NAILED IT DOWN"
     },
     {
         4,
         {0x1A, 0x07, 0x1C, 0x0B, 0x00, 0x00},
         "DROWN THOSE SEDAN DIVER",
-        "The plumber had to retire early because all his plans went —",
+        "The plumber had to retire early because all his plans went -",
         "DOWN THE DRAIN"
     },
     {
         4,
         {0x07, 0x13, 0x19, 0x1C, 0x00, 0x00},
         "WINDY PLATE GUILD FRAUD",
-        "When the snake passed the math quiz, the teacher said it was —",
+        "When the snake passed the math quiz, the teacher said it was -",
         "\"ADD-ING\" UP WELL"
     },
     {
         4,
         {0x13, 0x0E, 0x0E, 0x07, 0x00, 0x00},
         "MIGHT THIGH CHASE SNACK",
-        "When the tennis star won the championship, his serve was —",
+        "When the tennis star won the championship, his serve was -",
         "A SMASHING HIT"
     },
     {
         4,
         {0x1A, 0x19, 0x15, 0x19, 0x00, 0x00},
         "AGREE REACH FRAME FAVOR",
-        "The battery was never worried about debt because it was —",
+        "The battery was never worried about debt because it was -",
         "FREE OF CHARGE"
     },
     {
         4,
         {0x19, 0x07, 0x07, 0x0D, 0x00, 0x00},
         "REALM AGAIN FIRST ICING",
-        "The bell ringer loved his morning routine because it had a —",
+        "The bell ringer loved his morning routine because it had a -",
         "FAMILIAR RING"
     },
     {
         4,
         {0x0D, 0x15, 0x1A, 0x0B, 0x00, 0x00},
         "QUEEN STACK SUNNY CLEAR",
-        "When the pig entered the clean pen, he said it was —",
+        "When the pig entered the clean pen, he said it was -",
         "SQUEAKY CLEAN"
     },
     {
         4,
         {0x19, 0x19, 0x16, 0x0E, 0x00, 0x00},
         "DIGIT SHELF GRIEF LINER",
-        "When the farmer looked over his wheat crop, he said it was —",
+        "When the farmer looked over his wheat crop, he said it was -",
         "FIRST IN FIELD"
     },
     {
         4,
         {0x1A, 0x19, 0x1A, 0x13, 0x00, 0x00},
         "CRACK TRASH FRAUD CARGO",
-        "The violinist was praised by the critics because his playing —",
+        "The violinist was praised by the critics because his playing -",
         "STRUCK A CHORD"
     },
     {
         4,
         {0x1A, 0x0D, 0x0D, 0x0E, 0x00, 0x00},
         "SPELL GRAIN SWING GIANT",
-        "When the sailor navigated into port without a map, he said —",
+        "When the sailor navigated into port without a map, he said -",
         "PLAIN SAILING"
     },
     {
         4,
         {0x16, 0x1C, 0x07, 0x13, 0x00, 0x00},
         "ALLOW QUICK FOUND FOCUS",
-        "The candle was very popular because it was always —",
+        "The candle was very popular because it was always -",
         "SO FULL OF WICK"
     },
     {
         4,
         {0x13, 0x1C, 0x16, 0x19, 0x00, 0x00},
         "TIRED PROOF GUESS SHORT",
-        "When the runner crossed the finish line, he said he was —",
+        "When the runner crossed the finish line, he said he was -",
         "OUT OF STRIDES"
     },
     {
         4,
         {0x13, 0x16, 0x16, 0x07, 0x00, 0x00},
         "STOCK ESSAY SCENE COUNT",
-        "The locksmith was hired immediately because he had the —",
+        "The locksmith was hired immediately because he had the -",
         "KEY TO SUCCESS"
     },
     {
         4,
         {0x15, 0x1C, 0x0D, 0x16, 0x00, 0x00},
         "MODEL OTHER ALONE SAUCE",
-        "The baseball player was thrilled with his new contract because it was —",
+        "The baseball player was thrilled with his new contract because it was -",
         "A HOME RUN DEAL"
     },
     {
         4,
         {0x0D, 0x16, 0x19, 0x0E, 0x00, 0x00},
         "PILOT SHEET THIEF POINT",
-        "The carpenter admired the antique cabinet and said it was —",
+        "The carpenter admired the antique cabinet and said it was -",
         "TOP OF THE LINE"
     },
     {
         4,
         {0x15, 0x07, 0x0B, 0x07, 0x00, 0x00},
         "STOCK PATCH CLOAK ROUTE",
-        "When the ghost joined the choir, the conductor said his voice was —",
+        "When the ghost joined the choir, the conductor said his voice was -",
         "\"SPOOK\"-TACULAR"
     },
     {
         4,
         {0x16, 0x16, 0x0D, 0x0B, 0x00, 0x00},
         "FOUND SEDAN SHAFT SAINT",
-        "The fish stayed in deep water during the storm to remain —",
+        "The fish stayed in deep water during the storm to remain -",
         "SAFE AND SOUND"
     },
     {
         4,
         {0x07, 0x15, 0x0D, 0x1A, 0x00, 0x00},
         "PAPER FERRY COURT STALE",
-        "The cat chased the ball of yarn and declared it —",
+        "The cat chased the ball of yarn and declared it -",
         "\"PURR\"-FECT PLAY"
     },
     {
         4,
         {0x13, 0x16, 0x16, 0x0B, 0x00, 0x00},
         "SCOUT ELITE SONAR ROGUE",
-        "When the painter finished the wall in blue, he said —",
+        "When the painter finished the wall in blue, he said -",
         "IN TRUE COLORS"
     },
     {
         4,
         {0x13, 0x15, 0x15, 0x16, 0x00, 0x00},
         "CHAMP PHOTO ADULT COAST",
-        "The lazy kangaroo spent his entire summer vacation being a —",
+        "The lazy kangaroo spent his entire summer vacation being a -",
         "A \"POUCH\" POTATO"
     },
     {
         4,
         {0x19, 0x0D, 0x07, 0x0E, 0x00, 0x00},
         "STACK MANOR SNAKE STEEL",
-        "When the skunk entered the five star French restaurant, the maitre d' said —",
+        "When the skunk entered the five star French restaurant, the maitre d' said -",
         "MAKES NO \"SCENT\""
     },
     {
         4,
         {0x07, 0x07, 0x1C, 0x1A, 0x00, 0x00},
         "ZEBRA SHARE WAFER FEVER",
-        "When the sailboat rounded the windy cape, the crew reported —",
+        "When the sailboat rounded the windy cape, the crew reported -",
         "A FRESH BREEZE"
     },
     {
         4,
         {0x15, 0x07, 0x19, 0x0B, 0x00, 0x00},
         "WEIGH MONTH ENJOY SUPER",
-        "When the magician vanished from the locked trunk, the crowd said —",
+        "When the magician vanished from the locked trunk, the crowd said -",
         "NOW YOU SEE HIM"
     },
     {
@@ -880,196 +880,196 @@ static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {
         5,
         {0x07, 0x13, 0x09, 0x0E, 0x12, 0x00},
         "BLEED THIRD LANE PANIC PILOT",
-        "When the butcher backed into the slicer, he got —",
+        "When the butcher backed into the slicer, he got -",
         "A LITTLE BEHIND"
     },
     {
         5,
         {0x13, 0x1A, 0x16, 0x0D, 0x08, 0x00},
         "AVOID AMONG SCOPE EXIST GIVEN",
-        "The watchmaker was asked for the time, and he replied —",
+        "The watchmaker was asked for the time, and he replied -",
         "GIVE ME A SECOND"
     },
     {
         5,
         {0x1A, 0x13, 0x0B, 0x0E, 0x04, 0x00},
         "CHALK ABOUT FAINT DISCO BLOOD",
-        "When the musician fell through the floor, he was —",
+        "When the musician fell through the floor, he was -",
         "FLAT ON HIS BACK"
     },
     {
         5,
         {0x15, 0x16, 0x19, 0x16, 0x04, 0x00},
         "BOOTH ARMOR CANOE STAIN TRUCK",
-        "The tree surgeon went on vacation because he wanted to —",
+        "The tree surgeon went on vacation because he wanted to -",
         "BRANCH OUT MORE"
     },
     {
         5,
         {0x0E, 0x15, 0x0D, 0x16, 0x01, 0x00},
         "AWARD DRINK NOBLE AGAIN AGED",
-        "The artist didn't know what to paint next, so he was —",
+        "The artist didn't know what to paint next, so he was -",
         "DRAWING A BLANK"
     },
     {
         5,
         {0x03, 0x15, 0x13, 0x1A, 0x0A, 0x00},
         "WIND AMONG STING SOUND KNIFE",
-        "The elevator attendant had a bad day because business was —",
+        "The elevator attendant had a bad day because business was -",
         "GOING DOWN FAST"
     },
     {
         5,
         {0x0D, 0x1A, 0x0E, 0x05, 0x0C, 0x00},
         "PULSE BOOTH SHELF FOOD SPOON",
-        "When the frog took the stage, the audience gave him a —",
+        "When the frog took the stage, the audience gave him a -",
         "\"HOLE\" LOT OF HOPS"
     },
     {
         5,
         {0x0D, 0x1A, 0x19, 0x07, 0x10, 0x00},
         "TOWER THINK TRIBE BOOST ANGRY",
-        "The librarian was an extraordinary detective because she —",
+        "The librarian was an extraordinary detective because she -",
         "WENT BY THE BOOK"
     },
     {
         5,
         {0x03, 0x05, 0x1A, 0x19, 0x0E, 0x00},
         "BOIL MINT SPLIT TRULY BUILD",
-        "When the duck paid for dinner, he told the waiter —",
+        "When the duck paid for dinner, he told the waiter -",
         "PUT IT ON MY \"BILL\""
     },
     {
         5,
         {0x13, 0x05, 0x13, 0x0B, 0x0A, 0x00},
         "BLANK MAIN POUND CANAL WARN",
-        "When the snowman went to the gym, he worked on his —",
+        "When the snowman went to the gym, he worked on his -",
         "\"AB-DOMINAL\" PACK"
     },
     {
         5,
         {0x15, 0x0B, 0x1A, 0x0D, 0x01, 0x00},
         "STICK GRIND BLOOD CHORD IRONY",
-        "When the geologist proposed on one knee, he gave her a —",
+        "When the geologist proposed on one knee, he gave her a -",
         "ROCK SOLID RING"
     },
     {
         5,
         {0x0D, 0x1C, 0x0E, 0x06, 0x06, 0x00},
         "PIECE KNIFE WRONG TURN BRING",
-        "The chef dropped his favorite pan and said it was a —",
+        "The chef dropped his favorite pan and said it was a -",
         "RECIPE FOR RUIN"
     },
     {
         5,
         {0x0B, 0x0C, 0x0A, 0x07, 0x15, 0x00},
         "LUCKY DROP YARD DANCE FERRY",
-        "When the baker made fresh croissants, his customers said —",
+        "When the baker made fresh croissants, his customers said -",
         "FLAKY AND PROUD"
     },
     {
         5,
         {0x07, 0x0B, 0x07, 0x05, 0x0C, 0x00},
         "PEACH CANDY INNER SHORE ARISE",
-        "When the photographer took a snapshot of the cheetah, it was —",
+        "When the photographer took a snapshot of the cheetah, it was -",
         "A SNAP DECISION"
     },
     {
         5,
         {0x15, 0x16, 0x07, 0x1C, 0x01, 0x00},
         "SEVEN SCENE TUNER AFTER ROGUE",
-        "The electrician was always excited because he loved —",
+        "The electrician was always excited because he loved -",
         "CURRENT EVENTS"
     },
     {
         5,
         {0x07, 0x0A, 0x1A, 0x16, 0x0C, 0x00},
         "WHOLE STEM THEME STONE FLEET",
-        "When the bird built a sturdy nest, her mate said —",
+        "When the bird built a sturdy nest, her mate said -",
         "HOME TWEET HOME"
     },
     {
         5,
         {0x0D, 0x15, 0x15, 0x0A, 0x0C, 0x00},
         "GLOBE UNDER FORTY FOOL DRONE",
-        "The runner tied his sneakers tight and said he was —",
+        "The runner tied his sneakers tight and said he was -",
         "BOUND FOR GLORY"
     },
     {
         5,
         {0x19, 0x0B, 0x1A, 0x0E, 0x02, 0x00},
         "DOUBT PANEL ALONE HOUSE WORRY",
-        "When the bookbinder finished the leather volume, he said —",
+        "When the bookbinder finished the leather volume, he said -",
         "BOUND TO PLEASE"
     },
     {
         5,
         {0x16, 0x16, 0x0B, 0x0C, 0x0A, 0x00},
         "SHARK TIGHT IRONY POST BOAST",
-        "The photographer took a picture of the thunderstorm and said it was —",
+        "The photographer took a picture of the thunderstorm and said it was -",
         "A STRIKING SHOT"
     },
     {
         5,
         {0x15, 0x05, 0x13, 0x15, 0x06, 0x00},
         "BLOOD BEAT THORN EVENT GOAT",
-        "When the sheep sheared off all his wool for summer, his flock called him —",
+        "When the sheep sheared off all his wool for summer, his flock called him -",
         "BAA-D TO THE BONE"
     },
     {
         5,
         {0x0D, 0x19, 0x0E, 0x0E, 0x02, 0x00},
         "NOBLE SALAD REACT BOUND SADLY",
-        "When the bank teller was promoted to branch manager, her colleagues said —",
+        "When the bank teller was promoted to branch manager, her colleagues said -",
         "A SOUND BALANCE"
     },
     {
         5,
         {0x19, 0x1C, 0x15, 0x0A, 0x14, 0x00},
         "BELOW SMOKE TABLE THIN ENTRY",
-        "The librarian solved the cold case mystery because she always —",
+        "The librarian solved the cold case mystery because she always -",
         "WENT BY THE BOOK"
     },
     {
         5,
         {0x0D, 0x0A, 0x0D, 0x0E, 0x09, 0x00},
         "MIGHT TOOL SAINT COAST TRAIN",
-        "The sailor was promoted to ship captain because he was known for —",
+        "The sailor was promoted to ship captain because he was known for -",
         "SMOOTH SAILING"
     },
     {
         5,
         {0x07, 0x16, 0x1C, 0x13, 0x02, 0x00},
         "OTHER IDEAL THIEF INPUT FUDGE",
-        "When the farmer doubled his harvest yield, his happy neighbor said —",
+        "When the farmer doubled his harvest yield, his happy neighbor said -",
         "OUT IN THE FIELD"
     },
     {
         5,
         {0x19, 0x1A, 0x15, 0x1A, 0x10, 0x00},
         "NAIVE GRAVE CHEER HABIT OLIVE",
-        "The chemist loved working with helium and neon gas because they were —",
+        "The chemist loved working with helium and neon gas because they were -",
         "NEVER REACTIVE"
     },
     {
         5,
         {0x1C, 0x15, 0x09, 0x0D, 0x0C, 0x00},
         "ORBIT BRUSH GAIN REIGN CORN",
-        "When the candle shop opened three new franchises, the owner was —",
+        "When the candle shop opened three new franchises, the owner was -",
         "BURNING BRIGHT"
     },
     {
         5,
         {0x1A, 0x16, 0x15, 0x03, 0x0C, 0x00},
         "CLOTH BOOTH DRAMA FAITH SONAR",
-        "When the owl gave a late night lecture at the forest university, it was —",
+        "When the owl gave a late night lecture at the forest university, it was -",
         "A HOOT AND A HALF"
     },
     {
         5,
         {0x16, 0x13, 0x0C, 0x0D, 0x03, 0x00},
         "OPERA TULIP BEEF CLERK CREEK",
-        "When the cat curled up on the sunny window sill, she was in —",
+        "When the cat curled up on the sunny window sill, she was in -",
         "\"PURR\"-FECT PEACE"
     },
     {
@@ -1104,14 +1104,14 @@ static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {
         5,
         {0x0B, 0x0E, 0x19, 0x0E, 0x06, 0x00},
         "GRIND LODGE HELLO GUILD MINUS",
-        "When the baker won the lottery, his friends knew he was —",
+        "When the baker won the lottery, his friends knew he was -",
         "ROLLING IN DOUGH"
     },
     {
         5,
         {0x1C, 0x15, 0x07, 0x0D, 0x0A, 0x00},
         "TIGHT DOUGH FROST FLOOR POST",
-        "When the chef seasoned the soup, he told the waiter —",
+        "When the chef seasoned the soup, he told the waiter -",
         "FOOD FOR THOUGHT"
     },
     {
@@ -1125,140 +1125,140 @@ static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {
         5,
         {0x07, 0x07, 0x1C, 0x07, 0x12, 0x00},
         "LABEL CHAIN INLET SONAR VIRUS",
-        "When the banker lost his composure, his colleagues said he —",
+        "When the banker lost his composure, his colleagues said he -",
         "LOST HIS BALANCE"
     },
     {
         5,
         {0x13, 0x1C, 0x0D, 0x16, 0x14, 0x00},
         "SOUND STAFF CAUSE OCEAN ADOPT",
-        "The photographer loved developing black and white pictures because they —",
+        "The photographer loved developing black and white pictures because they -",
         "FOCUSED ON FACTS"
     },
     {
         5,
         {0x1C, 0x15, 0x13, 0x13, 0x0C, 0x00},
         "THROW TOUGH TIRED FOCUS WOOL",
-        "The astronomer loved his late night job because it was —",
+        "The astronomer loved his late night job because it was -",
         "OUT OF THIS WORLD"
     },
     {
         5,
         {0x1C, 0x0D, 0x13, 0x0B, 0x0A, 0x00},
         "CRAWL BREAK APPLE GRAPE MELT",
-        "When the spider designed a new website, the client said it had —",
+        "When the spider designed a new website, the client said it had -",
         "GREAT WEB APPEAL"
     },
     {
         5,
         {0x15, 0x0D, 0x0B, 0x1C, 0x09, 0x00},
         "GLORY FENCE LINEN NURSE ROAR",
-        "The magician had to cancel his airplane flight because he was a —",
+        "The magician had to cancel his airplane flight because he was a -",
         "FLYING \"SORCERER\""
     },
     {
         5,
         {0x1C, 0x1A, 0x13, 0x07, 0x12, 0x00},
         "ROMAN PORCH FORCE CANDY WAFER",
-        "The diver explored the coral reef and discovered —",
+        "The diver explored the coral reef and discovered -",
         "AN OCEAN OF CHARM"
     },
     {
         5,
         {0x15, 0x15, 0x19, 0x13, 0x09, 0x00},
         "SUGAR CATER COUNT NOISE ISSUE",
-        "The barber gave everyone a quick trim and said he was —",
+        "The barber gave everyone a quick trim and said he was -",
         "CUTTING CORNERS"
     },
     {
         5,
         {0x15, 0x19, 0x07, 0x13, 0x14, 0x00},
         "NIGHT HORSE FROST RADIO CHILI",
-        "When the farmer repaired his barn roof, he was —",
+        "When the farmer repaired his barn roof, he was -",
         "RAISING THE ROOF"
     },
     {
         5,
         {0x07, 0x0D, 0x1A, 0x0E, 0x0A, 0x00},
         "WHICH LABOR BRING SHINE BOAST",
-        "The musician played his trumpet so loud he was —",
+        "The musician played his trumpet so loud he was -",
         "BLOWING HIS HORN"
     },
     {
         5,
         {0x15, 0x07, 0x0D, 0x0E, 0x09, 0x00},
         "LOYAL CLASP TOAST MOTOR TEST",
-        "When the pirate captain took the reading test, he admitted he was —",
+        "When the pirate captain took the reading test, he admitted he was -",
         "TOTALLY LOST AT \"C\""
     },
     {
         5,
         {0x13, 0x1C, 0x03, 0x0B, 0x0B, 0x00},
         "WITCH PROUD FROG LOOSE TOOTH",
-        "The astronomer stared at the distant galaxy and proclaimed —",
+        "The astronomer stared at the distant galaxy and proclaimed -",
         "OUT OF THIS WORLD"
     },
     {
         5,
         {0x15, 0x0E, 0x0D, 0x15, 0x18, 0x00},
         "WORST DEPOT GREET NORTH ABOUT",
-        "The dog trainer had trouble finding his runaway pup because he was —",
+        "The dog trainer had trouble finding his runaway pup because he was -",
         "UP THE WRONG TREE"
     },
     {
         5,
         {0x13, 0x1A, 0x1A, 0x07, 0x06, 0x00},
         "QUEST SHARE DRESS SAINT LOOK",
-        "The math teacher built a fence around his square garden to protect his —",
+        "The math teacher built a fence around his square garden to protect his -",
         "HIS SQUARE ROOTS"
     },
     {
         5,
         {0x07, 0x16, 0x16, 0x0C, 0x1C, 0x00},
         "GIVEN OPERA WORTH TONE AGENT",
-        "The gardener loved growing grapes along the stone wall because he was —",
+        "The gardener loved growing grapes along the stone wall because he was -",
         "ON THE GRAPEVINE"
     },
     {
         5,
         {0x19, 0x19, 0x0B, 0x1A, 0x0A, 0x00},
         "STEAK COAST ARGUE COVER MEDIA",
-        "When the tennis star served five aces in a single game, she made —",
+        "When the tennis star served five aces in a single game, she made -",
         "A SERIOUS RACKET"
     },
     {
         5,
         {0x0D, 0x0B, 0x07, 0x15, 0x12, 0x00},
         "SNAKE BEGIN NIGHT TRULY GREET",
-        "When the bowler rolled twelve strikes in a row, the alley manager said —",
+        "When the bowler rolled twelve strikes in a row, the alley manager said -",
         "STRIKING BEAUTY"
     },
     {
         5,
         {0x13, 0x0D, 0x0B, 0x1A, 0x06, 0x00},
         "WIDTH DODGE TREND TOKEN FOAM",
-        "The plumber worked all night on the burst pipe so that his business wouldn't —",
+        "The plumber worked all night on the burst pipe so that his business wouldn't -",
         "GO DOWN THE DRAIN"
     },
     {
         5,
         {0x15, 0x1A, 0x0A, 0x0E, 0x0D, 0x00},
         "BUNCH BOARD COPY HATCH ACUTE",
-        "When the tree surgeon climbed the ancient giant redwood, he wanted to —",
+        "When the tree surgeon climbed the ancient giant redwood, he wanted to -",
         "BRANCH OUT TODAY"
     },
     {
         5,
         {0x19, 0x07, 0x16, 0x0E, 0x14, 0x00},
         "MANGO HEART RANCH THIRD LAYER",
-        "The choir sang on top of the mountain ridge and reached —",
+        "The choir sang on top of the mountain ridge and reached -",
         "A HIGHER HARMONY"
     },
     {
         5,
         {0x03, 0x16, 0x0E, 0x1A, 0x1C, 0x00},
         "WISH BRISK SHELF TOOTH CHEST",
-        "When the blacksmith forged the iron horseshoe, he told his apprentice —",
+        "When the blacksmith forged the iron horseshoe, he told his apprentice -",
         "STRIKE WHILE HOT"
     },
     {
@@ -1370,189 +1370,189 @@ static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {
         5,
         {0x07, 0x07, 0x15, 0x1A, 0x0B, 0x00},
         "NOVEL DIGIT THING WHOLE ENTER",
-        "When the tightrope walker lost his footing, he was —",
+        "When the tightrope walker lost his footing, he was -",
         "LIVING ON THE EDGE"
     },
     {
         5,
         {0x1A, 0x07, 0x0B, 0x13, 0x0B, 0x00},
         "UPSET RIDER CRUDE FUDGE NOVEL",
-        "When the cow won the ribbon at the county fair, it was —",
+        "When the cow won the ribbon at the county fair, it was -",
         "\"UDDER\" PERFECTION"
     },
     {
         5,
         {0x16, 0x0B, 0x19, 0x15, 0x13, 0x00},
         "SCRAP THOSE FAVOR ABUSE ROGUE",
-        "When the golfer made a miraculous putt, the gallery said —",
+        "When the golfer made a miraculous putt, the gallery said -",
         "PAR FOR THE COURSE"
     },
     {
         5,
         {0x07, 0x0B, 0x1A, 0x13, 0x13, 0x00},
         "BOAST DISCO STYLE ONION SIGHT",
-        "The horse was happy in the barn because he was in —",
+        "The horse was happy in the barn because he was in -",
         "STABLE CONDITION"
     },
     {
         5,
         {0x13, 0x19, 0x1C, 0x16, 0x0E, 0x00},
         "FOUND ELECT UNCLE ALTER COUNT",
-        "When the mirror fell off the wall, the owner said he —",
+        "When the mirror fell off the wall, the owner said he -",
         "COULD NOT REFLECT"
     },
     {
         5,
         {0x13, 0x1A, 0x0B, 0x1A, 0x16, 0x00},
         "PLUSH SURGE HARSH DIRTY VIRAL",
-        "When the bowler got three strikes in a row, he was —",
+        "When the bowler got three strikes in a row, he was -",
         "RIGHT UP HIS ALLEY"
     },
     {
         5,
         {0x0E, 0x19, 0x0E, 0x0E, 0x0E, 0x00},
         "TUMOR LEAFY DECOR STEEP METER",
-        "When the sheep sheared his wool, he told his pal —",
+        "When the sheep sheared his wool, he told his pal -",
         "\"FLEECE\" TO MEET YOU"
     },
     {
         5,
         {0x1C, 0x15, 0x16, 0x15, 0x0B, 0x00},
         "THINK CIGAR SHORT EARTH TASTE",
-        "The train conductor loved his morning route because it was —",
+        "The train conductor loved his morning route because it was -",
         "ON THE RIGHT TRACK"
     },
     {
         5,
         {0x13, 0x19, 0x15, 0x19, 0x0E, 0x00},
         "WOUND MONTH CLOTH SALON QUOTA",
-        "When the pilot landed safely in the fog, his copilot said —",
+        "When the pilot landed safely in the fog, his copilot said -",
         "SMOOTH TOUCH DOWN"
     },
     {
         5,
         {0x15, 0x1A, 0x0D, 0x0E, 0x0B, 0x00},
         "PLATE CRAFT CRANE GLORY TOPIC",
-        "The detective looked at the muddy boots and said —",
+        "The detective looked at the muddy boots and said -",
         "A CLEAR FOOTPRINT"
     },
     {
         5,
         {0x19, 0x13, 0x0B, 0x0D, 0x1A, 0x00},
         "PLATE CLOSE CLASP ACTOR PASTA",
-        "When the optometrist fell into the lens grinder, he made —",
+        "When the optometrist fell into the lens grinder, he made -",
         "A TOTAL SPECTACLE"
     },
     {
         5,
         {0x07, 0x13, 0x19, 0x16, 0x0E, 0x00},
         "POWER AWAKE DRINK UPPER VIRUS",
-        "When the mummy expert was buried in research papers, he was —",
+        "When the mummy expert was buried in research papers, he was -",
         "WRAPPED UP IN WORK"
     },
     {
         5,
         {0x1A, 0x19, 0x15, 0x0D, 0x15, 0x00},
         "THEME TRADE UPSET TRIAL OLIVE",
-        "When the chimney sweep tried on his custom tuxedo, it —",
+        "When the chimney sweep tried on his custom tuxedo, it -",
         "SUITED HIM TO A TEE"
     },
     {
         5,
         {0x16, 0x0E, 0x0D, 0x1A, 0x1C, 0x00},
         "EVENT REIGN GLIDE SHINE SALON",
-        "When the tightrope walker lost his footing high above, he was —",
+        "When the tightrope walker lost his footing high above, he was -",
         "LIVING ON THE EDGE"
     },
     {
         5,
         {0x1C, 0x19, 0x16, 0x1A, 0x0E, 0x00},
         "PLUME PITCH FATAL ROMAN MOTOR",
-        "The chef was overwhelmed by the holiday rush and complained that he had —",
+        "The chef was overwhelmed by the holiday rush and complained that he had -",
         "TOO MUCH ON A PLATE"
     },
     {
         5,
         {0x0D, 0x0E, 0x16, 0x1C, 0x13, 0x00},
         "SIGHT AGAIN LEARN STAIN TRAIT",
-        "The carpenter inspected the crooked bookshelf and told his apprentice —",
+        "The carpenter inspected the crooked bookshelf and told his apprentice -",
         "AGAINST THE GRAIN"
     },
     {
         5,
         {0x0E, 0x0B, 0x19, 0x07, 0x19, 0x00},
         "TOKEN MERIT TIGHT FINAL CHAIN",
-        "When the clockmaker fixed the antique grandfather clock, he did it —",
+        "When the clockmaker fixed the antique grandfather clock, he did it -",
         "IN THE NICK OF TIME"
     },
     {
         5,
         {0x0E, 0x0B, 0x16, 0x1A, 0x19, 0x00},
         "RISKY GRIEF WITCH WHITE YACHT",
-        "The author loved typing on his vintage mechanical typewriter because it —",
+        "The author loved typing on his vintage mechanical typewriter because it -",
         "HIT THE RIGHT KEYS"
     },
     {
         5,
         {0x0B, 0x13, 0x1A, 0x13, 0x15, 0x00},
         "AGREE RANCH OFFER FORCE LOCAL",
-        "When the battery was acquitted of all charges in court, the judge said it was —",
+        "When the battery was acquitted of all charges in court, the judge said it was -",
         "FREE OF ALL CHARGE"
     },
     {
         5,
         {0x1A, 0x16, 0x13, 0x1A, 0x0D, 0x00},
         "STEAK STEAM CHART DECAY CHASE",
-        "The chess grandmaster took a bite of his fresh croissant and declared —",
+        "The chess grandmaster took a bite of his fresh croissant and declared -",
         "A TASTY CHECKMATE"
     },
     {
         5,
         {0x15, 0x0D, 0x1A, 0x0B, 0x0E, 0x00},
         "ORBIT TIMER UPPER POLAR VIRUS",
-        "When the detective found the stolen diamond watch, he said it was —",
+        "When the detective found the stolen diamond watch, he said it was -",
         "ABOUT PROPER TIME"
     },
     {
         5,
         {0x15, 0x0B, 0x13, 0x15, 0x1A, 0x00},
         "SOUTH HOTEL DANCE CHILD PLANT",
-        "The pilot took off into the sunset without a single delay and had —",
+        "The pilot took off into the sunset without a single delay and had -",
         "HEAD IN THE CLOUDS"
     },
     {
         5,
         {0x07, 0x13, 0x0B, 0x13, 0x16, 0x00},
         "WATER SCENT TREND SUPER GUIDE",
-        "The baker rolled out hundred pastry crusts by hand and was —",
+        "The baker rolled out hundred pastry crusts by hand and was -",
         "IN A CRUST WE TRUST"
     },
     {
         5,
         {0x0D, 0x0B, 0x16, 0x0D, 0x0D, 0x00},
         "BRIDE GRILL ALIKE STING THANK",
-        "When the jeweler cut the fifty carat diamond into facets, it was —",
+        "When the jeweler cut the fifty carat diamond into facets, it was -",
         "BRILLIANT DESIGN"
     },
     {
         5,
         {0x0E, 0x19, 0x19, 0x16, 0x0E, 0x00},
         "GIVEN GRIEF UNCLE DINER PRESS",
-        "The bookkeeper balanced thirty accounts to the penny and said —",
+        "The bookkeeper balanced thirty accounts to the penny and said -",
         "FIGURES NEVER LIE"
     },
     {
         5,
         {0x15, 0x19, 0x1A, 0x1C, 0x13, 0x00},
         "BRUSH SPEED FORTY DRAFT ARGUE",
-        "When the weaver finished the silk tapestry on the loom, it had —",
+        "When the weaver finished the silk tapestry on the loom, it had -",
         "THREADS OF BEAUTY"
     },
     {
         5,
         {0x13, 0x16, 0x07, 0x0D, 0x1C, 0x00},
         "IVORY STOCK CEDAR TRASH ACTOR",
-        "The ice hockey team won the championship game on home ice and —",
+        "The ice hockey team won the championship game on home ice and -",
         "SKATED TO VICTORY"
     },
     {
@@ -1580,154 +1580,154 @@ static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {
         6,
         {0x1A, 0x15, 0x1C, 0x15, 0x1C, 0x04},
         "SHARP DIGIT IMAGE SWING SHINE SHIRT",
-        "When the gardener was praised for his flowers, he said —",
+        "When the gardener was praised for his flowers, he said -",
         "DIGGING THE PRAISE"
     },
     {
         6,
         {0x0E, 0x07, 0x13, 0x0D, 0x13, 0x08},
         "EXILE WRITE MINUS MANGO UNITY ARGUE",
-        "When the hotel on the beach flooded, the guests were —",
+        "When the hotel on the beach flooded, the guests were -",
         "SWIMMING IN LUXURY"
     },
     {
         6,
         {0x16, 0x07, 0x0B, 0x19, 0x1A, 0x04},
         "ABOUT ABUSE SHEET TIRED GRIND RANGE",
-        "The candle factory closed its doors because the workers were —",
+        "The candle factory closed its doors because the workers were -",
         "BURNED AT BOTH ENDS"
     },
     {
         6,
         {0x1A, 0x19, 0x1C, 0x07, 0x0E, 0x01},
         "SWEAR BREED ENEMY DENSE CRUEL SPOKE",
-        "The detective arrested the calendar maker because his —",
+        "The detective arrested the calendar maker because his -",
         "DAYS WERE NUMBERED"
     },
     {
         6,
         {0x15, 0x16, 0x13, 0x0E, 0x0D, 0x02},
         "BLEED WHOLE CLOTH MELON THING STAMP",
-        "When the ice sculptor finished his swan, he was —",
+        "When the ice sculptor finished his swan, he was -",
         "CHILLED TO THE BONE"
     },
     {
         6,
         {0x0B, 0x19, 0x15, 0x1A, 0x0B, 0x02},
         "VIRUS STEAM DRONE ONSET STONE INLET",
-        "The symphony orchestra visited the investment firm for —",
+        "The symphony orchestra visited the investment firm for -",
         "A SOUND INVESTMENT"
     },
     {
         6,
         {0x15, 0x16, 0x1C, 0x0B, 0x1A, 0x04},
         "GOING POUND SUNNY STONE QUOTA GLASS",
-        "The scarecrow was promoted to regional vice president because he was —",
+        "The scarecrow was promoted to regional vice president because he was -",
         "AN \"OUT-STANDING\" GUY"
     },
     {
         6,
         {0x07, 0x07, 0x0B, 0x0D, 0x13, 0x01},
         "SWEAR BREAD ENEMY READY DECAY URBAN",
-        "When the detective opened the calendar, he warned the crook that his —",
+        "When the detective opened the calendar, he warned the crook that his -",
         "DAYS WERE NUMBERED"
     },
     {
         6,
         {0x0B, 0x1A, 0x1A, 0x0D, 0x0B, 0x10},
         "NERVE THREE MUSIC NURSE STARE PLANT",
-        "The electrician received an award from the city council for —",
+        "The electrician received an award from the city council for -",
         "HIS CURRENT EVENTS"
     },
     {
         6,
         {0x19, 0x16, 0x0D, 0x19, 0x0D, 0x08},
         "THROW IMAGE REIGN EARTH SONAR QUERY",
-        "The meteorologist didn't mind the blizzard one bit because she was —",
+        "The meteorologist didn't mind the blizzard one bit because she was -",
         "WEATHERING A STORM"
     },
     {
         6,
         {0x1C, 0x16, 0x19, 0x1A, 0x0B, 0x04},
         "THANK FORTH DRIFT SINCE CROSS TRUNK",
-        "The musician wrote an award winning film score that really —",
+        "The musician wrote an award winning film score that really -",
         "STRUCK A FINE CHORD"
     },
     {
         6,
         {0x19, 0x1C, 0x1A, 0x1C, 0x1C, 0x08},
         "BOOST FLOOD SINCE FATAL BRAIN SPEND",
-        "The horse trotted into the newly built barn and was relieved to find —",
+        "The horse trotted into the newly built barn and was relieved to find -",
         "A STABLE CONDITION"
     },
     {
         6,
         {0x15, 0x07, 0x07, 0x07, 0x0D, 0x08},
         "PLANT EAGLE DELAY LATER SOUND ROUND",
-        "When the spider finished spinning the intricate geometric web, it had —",
+        "When the spider finished spinning the intricate geometric web, it had -",
         "SPUN A TANGLED TALE"
     },
     {
         6,
         {0x0E, 0x1A, 0x0D, 0x07, 0x13, 0x08},
         "EIGHT SHOOT ELDER CROWN STAIN BRAND",
-        "The watchmaker examined the miniature golden gears and said they were —",
+        "The watchmaker examined the miniature golden gears and said they were -",
         "RIGHT ON THE SECOND"
     },
     {
         6,
         {0x07, 0x13, 0x0D, 0x16, 0x0B, 0x10},
         "QUEST JOINT WHILE SIGMA SHINE GRAVY",
-        "When the pig won first prize at the state fair, his proud family said —",
+        "When the pig won first prize at the state fair, his proud family said -",
         "SQUEALING WITH JOY"
     },
     {
         6,
         {0x07, 0x13, 0x0D, 0x13, 0x1C, 0x10},
         "APPLE FORTY TWICE ELECT SCENE CABIN",
-        "The doctor was calm in the crowded emergency room because he had —",
+        "The doctor was calm in the crowded emergency room because he had -",
         "PLENTY OF PATIENCE"
     },
     {
         6,
         {0x13, 0x0D, 0x1A, 0x15, 0x0D, 0x04},
         "WIDTH ADMIT AGENT DRONE COAST SHAPE",
-        "The carpenter measured the mahogany plank three times because he —",
+        "The carpenter measured the mahogany plank three times because he -",
         "SAW IT COMING AHEAD"
     },
     {
         6,
         {0x0E, 0x13, 0x13, 0x13, 0x1C, 0x04},
         "HEAVY WIDTH APPLY STRIP TULIP LAYER",
-        "When the dog found his buried bone in the backyard, he was —",
+        "When the dog found his buried bone in the backyard, he was -",
         "\"PAW\"-SITIVELY HAPPY"
     },
     {
         6,
         {0x07, 0x1A, 0x0B, 0x0B, 0x16, 0x02},
         "WITCH CROWD PRICE HEDGE WHOSE CABIN",
-        "When the electric car plugged into the rapid charger, it was —",
+        "When the electric car plugged into the rapid charger, it was -",
         "CHARGED WITH POWER"
     },
     {
         6,
         {0x19, 0x13, 0x07, 0x15, 0x0E, 0x04},
         "WEIGH WHITE FIGHT TOTAL HONOR SKILL",
-        "The river guide paddled through the rapid white water and said —",
+        "The river guide paddled through the rapid white water and said -",
         "GOING WITH THE FLOW"
     },
     {
         6,
         {0x15, 0x1A, 0x15, 0x13, 0x15, 0x10},
         "BLANK ALONG ROYAL STONE OXIDE RAISE",
-        "When the actor nailed the difficult monologue on Broadway, he —",
+        "When the actor nailed the difficult monologue on Broadway, he -",
         "BROKE A LEG IN STYLE"
     },
     {
         6,
         {0x0B, 0x15, 0x0E, 0x19, 0x0B, 0x01},
         "AGREE TIGER THORN TENTH INLET TOTAL",
-        "The archer hit the center bullseye three times in a row for —",
+        "The archer hit the center bullseye three times in a row for -",
         "RIGHT ON THE TARGET"
     },
     {
@@ -1776,161 +1776,161 @@ static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {
         6,
         {0x0E, 0x0D, 0x0D, 0x1A, 0x0E, 0x09},
         "EMPTY TEMPO DECOR BELLY ISLET UPPER",
-        "When the lumberjack couldn't answer the riddle, he was —",
+        "When the lumberjack couldn't answer the riddle, he was -",
         "COMPLETELY STUMPED"
     },
     {
         6,
         {0x1A, 0x07, 0x0E, 0x19, 0x0E, 0x18},
         "CHECK DRAFT STIFF FROST DECOR AGREE",
-        "The clock was sent to the principal's office because it —",
+        "The clock was sent to the principal's office because it -",
         "TICKED OFF TEACHERS"
     },
     {
         6,
         {0x13, 0x13, 0x19, 0x13, 0x1A, 0x18},
         "WHITE BOUND DECAY TOPIC UNION HABIT",
-        "The ghost couldn't find a partner at the dance because he had —",
+        "The ghost couldn't find a partner at the dance because he had -",
         "\"NO-BODY\" TO DANCE WITH"
     },
     {
         6,
         {0x13, 0x16, 0x0E, 0x19, 0x13, 0x06},
         "PUNCH SEDAN ACTOR ARENA SNAKE WASTE",
-        "The lawyer was delighted with his new case because it was —",
+        "The lawyer was delighted with his new case because it was -",
         "AN OPEN AND SHUT CASE"
     },
     {
         6,
         {0x0B, 0x19, 0x13, 0x13, 0x0D, 0x0C},
         "POEMS MIDST PLUME DEALT YIELD PLUCK",
-        "The lumberjack couldn't solve the crossword puzzle because he was —",
+        "The lumberjack couldn't solve the crossword puzzle because he was -",
         "COMPLETELY STUMPED"
     },
     {
         6,
         {0x0B, 0x13, 0x16, 0x0B, 0x0E, 0x18},
         "SWEAR THICK RIGHT SHEER CHEER LINER",
-        "The butcher was having a tough afternoon at the counter because —",
+        "The butcher was having a tough afternoon at the counter because -",
         "THE STEAKS WERE HIGH"
     },
     {
         6,
         {0x0B, 0x07, 0x13, 0x07, 0x19, 0x0A},
         "QUEEN AWARD DRINK BENCH RELIC PIANO",
-        "When the marathon runner entered the bakery, she asked for —",
+        "When the marathon runner entered the bakery, she asked for -",
         "A QUICK BREAD WINNER"
     },
     {
         6,
         {0x16, 0x1C, 0x0B, 0x1A, 0x0B, 0x0A},
         "CABIN REIGN REACT ELECT ALTAR CANAL",
-        "When the tightrope walker fell into the safety net, the ringmaster said —",
+        "When the tightrope walker fell into the safety net, the ringmaster said -",
         "A REAL BALANCING ACT"
     },
     {
         6,
         {0x07, 0x0D, 0x1A, 0x15, 0x0E, 0x0A},
         "VENUE BROAD DEATH DRAMA RADAR JUICY",
-        "The barber was voted the best shopkeeper in town because his work was —",
+        "The barber was voted the best shopkeeper in town because his work was -",
         "A HEAD AND A CUT ABOVE"
     },
     {
         6,
         {0x0B, 0x19, 0x1A, 0x13, 0x07, 0x0C},
         "GRADE DELAY ADULT EARLY NURSE OCEAN",
-        "When the cow stepped into the dairy parlor, the herdsman declared —",
+        "When the cow stepped into the dairy parlor, the herdsman declared -",
         "AN \"UDDER\"-LY GREAT DAY"
     },
     {
         6,
         {0x07, 0x16, 0x07, 0x0E, 0x0E, 0x14},
         "JUDGE SWING SKATE URBAN SLATE LINEN",
-        "The artist was unable to paint his masterpiece portrait and was —",
+        "The artist was unable to paint his masterpiece portrait and was -",
         "JUST DRAWING A BLANK"
     },
     {
         6,
         {0x1A, 0x16, 0x13, 0x0D, 0x19, 0x05},
         "SERVE STRAW RALLY STICK CHILL AWAIT",
-        "The window washer climbed sixty stories up the skyscraper and saw —",
+        "The window washer climbed sixty stories up the skyscraper and saw -",
         "A CRYSTAL CLEAR VIEW"
     },
     {
         6,
         {0x1A, 0x13, 0x19, 0x1A, 0x16, 0x12},
         "SNACK BLOOD STORY AUDIT VOICE CARGO",
-        "The geologist took a vacation to the Grand Canyon because he found it —",
+        "The geologist took a vacation to the Grand Canyon because he found it -",
         "ROCK SOLID IN BEAUTY"
     },
     {
         6,
         {0x07, 0x0D, 0x15, 0x0E, 0x0D, 0x06},
         "CABLE UNCLE OFTEN LASER SPOIL NAIVE",
-        "The tailor sewed thirty tuxedo lapels in one evening and said it was —",
+        "The tailor sewed thirty tuxedo lapels in one evening and said it was -",
         "A SUITABLE OCCASION"
     },
     {
         6,
         {0x0B, 0x1C, 0x0B, 0x13, 0x13, 0x0A},
         "POLAR ANGRY HUMAN FOUND LUNAR BOUND",
-        "When the golfer sliced his tee shot into the woods, his caddie called it —",
+        "When the golfer sliced his tee shot into the woods, his caddie called it -",
         "A ROUGH ROUND OF PLAY"
     },
     {
         6,
         {0x07, 0x07, 0x15, 0x19, 0x0E, 0x0A},
         "CHAIR CREEK SPOON SPLIT STOOL NOVEL",
-        "When the florist created a bridal bouquet of fifty red blossoms, she —",
+        "When the florist created a bridal bouquet of fifty red blossoms, she -",
         "ROSE TO THE OCCASION"
     },
     {
         6,
         {0x13, 0x19, 0x0D, 0x15, 0x16, 0x0A},
         "AGENT NIGHT FOUND LINEN NOISE CIVIL",
-        "The baseball catcher held onto the pop fly with two strikes for —",
+        "The baseball catcher held onto the pop fly with two strikes for -",
         "THE FINAL INNING OUT"
     },
     {
         6,
         {0x15, 0x13, 0x16, 0x07, 0x07, 0x05},
         "SNACK FRONT UNCLE CROWN SCOPE STUDY",
-        "When the train conductor pulled into the grand terminal, he was —",
+        "When the train conductor pulled into the grand terminal, he was -",
         "ON TRACK FOR SUCCESS"
     },
     {
         6,
         {0x1C, 0x07, 0x1C, 0x13, 0x0B, 0x18},
         "SERVE BOAST STEEP HEART STRAW QUEST",
-        "The shoe designer created leather sneakers with gold lace and was —",
+        "The shoe designer created leather sneakers with gold lace and was -",
         "A STEP ABOVE THE REST"
     },
     {
         6,
         {0x13, 0x07, 0x0D, 0x1C, 0x19, 0x0A},
         "BRAND HABIT LIMIT THING GRANT HONOR",
-        "The farmer planted rows of giant sunflowers and said they were —",
+        "The farmer planted rows of giant sunflowers and said they were -",
         "BLOOMING AND BRIGHT"
     },
     {
         6,
         {0x15, 0x0D, 0x0D, 0x19, 0x0E, 0x09},
         "WEIGH PAPER SUGAR LINER VALUE NOBLE",
-        "The potter spun the wet clay into an elegant vase and said —",
+        "The potter spun the wet clay into an elegant vase and said -",
         "SHAPING UP REAL WELL"
     },
     {
         6,
         {0x19, 0x0D, 0x19, 0x15, 0x0B, 0x0C},
         "TENTH SLICE SAUCE OCEAN ROYAL BLOOD",
-        "When the chef baked the golden soufflé without it deflating, it —",
+        "When the chef baked the golden souffle without it deflating, it -",
         "ROSE TO THE OCCASION"
     },
     {
         6,
         {0x15, 0x0D, 0x0E, 0x1A, 0x0E, 0x09},
         "VIRAL DISCO STYLE LEASE BROAD AUDIO",
-        "The astronomer discovered a new comet in the night sky and said —",
+        "The astronomer discovered a new comet in the night sky and said -",
         "A STELLAR DISCOVERY"
     },
     {
@@ -1958,161 +1958,161 @@ static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {
         6,
         {0x07, 0x16, 0x13, 0x13, 0x19, 0x0D},
         "TIGHT PHOTO LUNCH FOUND AGENT THANK",
-        "The dentist and the manicurist fell in love and —",
+        "The dentist and the manicurist fell in love and -",
         "FOUGHT TOOTH AND NAIL"
     },
     {
         6,
         {0x0D, 0x0D, 0x15, 0x16, 0x1C, 0x07},
         "WATER BRAKE PRONE ANGER THING RURAL",
-        "When the dog barked at the oak tree, his owner said he was —",
+        "When the dog barked at the oak tree, his owner said he was -",
         "BARKING UP WRONG TREE"
     },
     {
         6,
         {0x0E, 0x0E, 0x13, 0x1A, 0x19, 0x0D},
         "SNAKE DEBUT SOLID PROOF SCARF CLOCK",
-        "The clock stopped right during dinner, so the hungry family went —",
+        "The clock stopped right during dinner, so the hungry family went -",
         "BACK FOR FOUR SECONDS"
     },
     {
         6,
         {0x19, 0x07, 0x16, 0x1C, 0x0D, 0x1A},
         "GIANT THINK DOUGH PEDAL FLOAT POINT",
-        "The dentist and the manicurist fell in love and agreed they —",
+        "The dentist and the manicurist fell in love and agreed they -",
         "FOUGHT TOOTH AND NAIL"
     },
     {
         6,
         {0x0D, 0x0E, 0x13, 0x1A, 0x16, 0x16},
         "MEDAL DEPOT THIEF SHEER LODGE BLAME",
-        "When the baseball team bought a flight to Florida, they were —",
+        "When the baseball team bought a flight to Florida, they were -",
         "HEADED FOR HOME PLATE"
     },
     {
         6,
         {0x0D, 0x0D, 0x15, 0x07, 0x15, 0x0E},
         "PRONE RIDGE ICING HEDGE EQUAL ALONE",
-        "When the baker made twenty loaves of sourdough, his accountant said he was —",
+        "When the baker made twenty loaves of sourdough, his accountant said he was -",
         "ROLLING DEEP IN DOUGH"
     },
     {
         6,
         {0x0D, 0x15, 0x1C, 0x1C, 0x0D, 0x0B},
         "NOVEL WORTH JELLY PRESS STOOL TOXIC",
-        "When the cobbler lost his favorite leather hammer, he cried that he had —",
+        "When the cobbler lost his favorite leather hammer, he cried that he had -",
         "LOST HIS VERY OWN \"SOLE\""
     },
     {
         6,
         {0x07, 0x16, 0x15, 0x1A, 0x19, 0x1A},
         "LABEL EIGHT HEART QUERY CRUEL GRACE",
-        "The deep sea fisherman had a fantastic morning on the boat and was —",
+        "The deep sea fisherman had a fantastic morning on the boat and was -",
         "A TRULY REEL BIG CATCH"
     },
     {
         6,
         {0x16, 0x1A, 0x0B, 0x0E, 0x0D, 0x1A},
         "SPEED TRACE LINEN SOLAR SONAR PAINT",
-        "When the pilot flew through the clear blue sky, he noticed that it was —",
+        "When the pilot flew through the clear blue sky, he noticed that it was -",
         "PLAIN AND CLEAR TO SEE"
     },
     {
         6,
         {0x16, 0x19, 0x19, 0x0D, 0x1A, 0x15},
         "CHILI FOCAL CANOE TUNER UNDER OLIVE",
-        "When the golfer sank the forty foot putt for eagle, he called it —",
+        "When the golfer sank the forty foot putt for eagle, he called it -",
         "A TEE-RIFIC HOLE IN ONE"
     },
     {
         6,
         {0x07, 0x15, 0x1C, 0x13, 0x16, 0x07},
         "WAFER BEGIN TRIAL TOKEN VENUE TRULY",
-        "When the frog won the gold medal in the triple jump, it was —",
+        "When the frog won the gold medal in the triple jump, it was -",
         "AN UN-FROG-ETTABLE WIN"
     },
     {
         6,
         {0x0D, 0x15, 0x15, 0x0E, 0x13, 0x0B},
         "GLOBE SEDAN DRAIN INLET ORGAN AUDIO",
-        "When the bell ringer struck the giant cathedral chime, it had —",
+        "When the bell ringer struck the giant cathedral chime, it had -",
         "A SOUND AND NOBLE RING"
     },
     {
         6,
         {0x19, 0x07, 0x1C, 0x15, 0x1C, 0x15},
         "BLOOM PRINT THING TRUTH DAILY TOTAL",
-        "When the duck paid cash for her expensive feather hat, she told them —",
+        "When the duck paid cash for her expensive feather hat, she told them -",
         "PUT IT RIGHT ON MY \"BILL\""
     },
     {
         6,
         {0x1A, 0x0D, 0x1C, 0x15, 0x0D, 0x0D},
         "STAKE DRAMA ANGER GIANT STING RAISE",
-        "When the runner finished the Boston Marathon, his proud coach said —",
+        "When the runner finished the Boston Marathon, his proud coach said -",
         "MAKING GREAT STRIDES"
     },
     {
         6,
         {0x0E, 0x16, 0x07, 0x0E, 0x16, 0x1A},
         "ADOPT SHAFT REFER GUEST STATE METER",
-        "When the diver found an oyster with five glowing pearls, it was —",
+        "When the diver found an oyster with five glowing pearls, it was -",
         "A TREASURE OF THE DEEP"
     },
     {
         6,
         {0x15, 0x0D, 0x07, 0x0D, 0x15, 0x0E},
         "WHOLE MONTH MIGHT OTHER INLET STING",
-        "When the snowman sat beside the glowing campfire, he was —",
+        "When the snowman sat beside the glowing campfire, he was -",
         "MELTING WITH EMOTION"
     },
     {
         6,
         {0x0D, 0x15, 0x16, 0x07, 0x07, 0x0D},
         "GRILL DRONE ROCKY FRONT INLET SUNNY",
-        "The painter finished the seaside landscape mural and said it was —",
+        "The painter finished the seaside landscape mural and said it was -",
         "DONE IN FLYING COLORS"
     },
     {
         6,
         {0x19, 0x13, 0x0D, 0x19, 0x1A, 0x16},
         "DOUBT BONUS REFER SMELL DRONE HOUSE",
-        "The author completed the suspenseful mystery novel and said —",
+        "The author completed the suspenseful mystery novel and said -",
         "BOUND FOR BEST SELLER"
     },
     {
         6,
         {0x1C, 0x1C, 0x07, 0x19, 0x0D, 0x07},
         "STRAP STEEP SHIFT DANCE FAINT NOTCH",
-        "The teacher loved teaching geometry because the proofs were —",
+        "The teacher loved teaching geometry because the proofs were -",
         "SHAPED IN PERFECTION"
     },
     {
         6,
         {0x16, 0x1C, 0x1A, 0x16, 0x1A, 0x0D},
         "CREEK ALIKE GROUP AGAIN CIVIL TENTH",
-        "The mechanic tuned the sports car engine until it was —",
+        "The mechanic tuned the sports car engine until it was -",
         "PURRING LIKE A KITTEN"
     },
     {
         6,
         {0x15, 0x19, 0x1A, 0x1A, 0x07, 0x1C},
         "ZEBRA GLAZE SCREW GIANT SURGE PLATE",
-        "When the bee hive produced ten gallons of clover honey, it was —",
+        "When the bee hive produced ten gallons of clover honey, it was -",
         "CREATING A SWEET BUZZ"
     },
     {
         6,
         {0x0B, 0x0E, 0x16, 0x07, 0x16, 0x1C},
         "DROWN JEWEL CLICK METAL LOYAL MELON",
-        "When the clock maker repaired the tower clock, the town council said —",
+        "When the clock maker repaired the tower clock, the town council said -",
         "TIMELY WORK WELL DONE"
     },
     {
         6,
         {0x13, 0x19, 0x1C, 0x07, 0x1A, 0x16},
         "GRACE GIVEN CLIFF ACUTE STAIN QUIET",
-        "The gardener trimmed the hedge into a green dinosaur and was —",
+        "The gardener trimmed the hedge into a green dinosaur and was -",
         "CUTTING A FINE FIGURE"
     },
 };

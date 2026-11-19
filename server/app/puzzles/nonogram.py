@@ -39,6 +39,10 @@ class NonogramPuzzle(BasePuzzle):
     def supported_difficulties(self) -> List[str]:
         return ["easy", "medium", "hard"]
 
+    def resolve_bundle_difficulty(self, target_tier: str) -> str:
+        norm = self.normalize_difficulty(target_tier)
+        return "easy" if norm == "easy" else "medium"
+
     def generate(
         self,
         difficulty: str = "medium",
@@ -46,16 +50,21 @@ class NonogramPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs,
     ) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        difficulty = difficulty.lower()
+        rng = self.make_rng(seed)
+        difficulty = self.normalize_difficulty(difficulty)
         rows, cols = self.DIFFICULTY_SIZES.get(difficulty, (10, 10))
 
         board = [[0] * cols for _ in range(rows)]
+        filled = 0
         for r in range(rows):
             for c in range(cols):
-                board[r][c] = 1 if random.random() < density else 0
+                val = 1 if rng.random() < density else 0
+                board[r][c] = val
+                filled += val
+        if filled == 0:
+            board[rng.randrange(rows)][rng.randrange(cols)] = 1
+        elif filled == rows * cols:
+            board[rng.randrange(rows)][rng.randrange(cols)] = 0
 
         row_clues = [self._extract_line_clues(board[r]) for r in range(rows)]
         col_clues = [self._extract_line_clues([board[r][c] for r in range(rows)]) for c in range(cols)]
@@ -131,7 +140,7 @@ class NonogramPuzzle(BasePuzzle):
             return []
         lines = []
         for row in sol:
-            lines.append("      " + " ".join("* " if c == 1 else ". " for c in row))
+            lines.append("      " + " ".join("*" if c == 1 else "." for c in row))
         return lines
 
     def render_raster(

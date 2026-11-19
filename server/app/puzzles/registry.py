@@ -76,15 +76,7 @@ class PuzzleRegistry:
         """Resolve a requested tier ('easy', 'medium', 'hard', 'extreme', 'random') to a plugin-supported difficulty."""
         if target_tier == "random":
             return random.choice(plugin.supported_difficulties)
-        if target_tier == "extreme":
-            if "extreme" in plugin.supported_difficulties:
-                return "extreme"
-            if "master" in plugin.supported_difficulties:
-                return "master"
-            target_tier = "hard"
-        if plugin.puzzle_id == "nonogram":
-            return "easy" if target_tier == "easy" else "medium"
-        return target_tier
+        return plugin.resolve_bundle_difficulty(target_tier)
 
     def generate_bundle(self, difficulty: str = "medium", count: Optional[int] = None) -> Dict[str, Any]:
         """

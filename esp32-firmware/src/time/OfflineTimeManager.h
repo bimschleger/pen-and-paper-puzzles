@@ -56,6 +56,7 @@ private:
     unsigned long _portalStartedMs;
     bool _pendingExit;
     unsigned long _pendingExitMs;
+    bool _routesConfigured;
 
     OfflineConfigManager* _configManager;
     EscPosPrinter*        _printer;

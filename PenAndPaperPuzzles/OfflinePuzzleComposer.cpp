@@ -37,14 +37,22 @@ PuzzleGrade OfflinePuzzleComposer::getGradeForSlot(uint8_t index, uint8_t totalC
 }
 
 bool OfflinePuzzleComposer::supportsExtreme(OfflinePuzzleType type) const {
-    return (type == PUZZLE_LIGHTS || type == PUZZLE_QUEENS || type == PUZZLE_KILLER || type == PUZZLE_TOWERS || type == PUZZLE_MAZE);
+    return (type == PUZZLE_LIGHTS || type == PUZZLE_QUEENS || type == PUZZLE_KILLER ||
+            type == PUZZLE_TOWERS || type == PUZZLE_INEQUALITY || type == PUZZLE_MAZE);
 }
 
 void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuzzleType type, bool useRaster, PuzzleGrade grade) {
+    PuzzleGrade effectiveGrade = (grade == GRADE_EXTREME && !supportsExtreme(type)) ? GRADE_HARD : grade;
+    if (effectiveGrade != GRADE_EASY && effectiveGrade != GRADE_HARD && effectiveGrade != GRADE_EXTREME) {
+        effectiveGrade = GRADE_MEDIUM;
+    }
+    const char* diffStr = OfflineConfigManager::getGradeName(effectiveGrade);
+    uint8_t tier3 = (effectiveGrade == GRADE_EASY) ? 0 : ((effectiveGrade == GRADE_HARD) ? 2 : 1);
+    uint8_t tier4 = (effectiveGrade == GRADE_EXTREME) ? 3 : tier3;
+
     switch (type) {
         case PUZZLE_SUDOKU: {
-            SudokuDifficulty diff = (grade == GRADE_EASY) ? SUDOKU_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? SUDOKU_HARD : SUDOKU_MEDIUM);
-            const char* diffStr = (diff == SUDOKU_EASY) ? "EASY" : ((diff == SUDOKU_HARD) ? "HARD" : "MEDIUM");
+            SudokuDifficulty diff = (SudokuDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Sudoku...");
             SudokuGen sudoku;
             sudoku.generate(diff);
@@ -56,8 +64,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_WORDSEARCH: {
-            WordSearchDifficulty diff = (grade == GRADE_EASY) ? WS_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? WS_HARD : WS_MEDIUM);
-            const char* diffStr = (diff == WS_EASY) ? "EASY" : ((diff == WS_HARD) ? "HARD" : "MEDIUM");
+            WordSearchDifficulty diff = (WordSearchDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Word Search...");
             WordSearchGen wordSearch;
             wordSearch.generate(diff);
@@ -70,8 +77,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_NONOGRAM: {
-            NonogramDifficulty diff = (grade == GRADE_EASY) ? NONO_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? NONO_HARD : NONO_MEDIUM);
-            const char* diffStr = (diff == NONO_EASY) ? "EASY" : ((diff == NONO_HARD) ? "HARD" : "MEDIUM");
+            NonogramDifficulty diff = (NonogramDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Nonogram...");
             NonogramGen nonogram;
             nonogram.generate(diff);
@@ -83,8 +89,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_QUEENS: {
-            QueensDifficulty diff = (grade == GRADE_EASY) ? QUEENS_EASY : ((grade == GRADE_EXTREME) ? QUEENS_MASTER : ((grade == GRADE_HARD) ? QUEENS_HARD : QUEENS_MEDIUM));
-            const char* diffStr = (diff == QUEENS_EASY) ? "EASY" : ((diff == QUEENS_MASTER) ? "EXTREME" : ((diff == QUEENS_HARD) ? "HARD" : "MEDIUM"));
+            QueensDifficulty diff = (QueensDifficulty)tier4;
             Serial.println("[COMPOSER] Generating Queens puzzle...");
             QueensGen queens;
             queens.generate(diff);
@@ -98,8 +103,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_JUMBLE: {
-            JumbleDifficulty diff = (grade == GRADE_EASY) ? JUMBLE_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? JUMBLE_HARD : JUMBLE_MEDIUM);
-            const char* diffStr = (diff == JUMBLE_EASY) ? "EASY" : ((diff == JUMBLE_HARD) ? "HARD" : "MEDIUM");
+            JumbleDifficulty diff = (JumbleDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Daily Jumble...");
             JumbleGen jumble;
             jumble.generate(diff);
@@ -111,8 +115,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_BINARY: {
-            BinaryDifficulty diff = (grade == GRADE_EASY) ? BINARY_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? BINARY_HARD : BINARY_MEDIUM);
-            const char* diffStr = (diff == BINARY_EASY) ? "EASY" : ((diff == BINARY_HARD) ? "HARD" : "MEDIUM");
+            BinaryDifficulty diff = (BinaryDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Binary...");
             BinaryGen binary;
             binary.generate(diff);
@@ -129,8 +132,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_MINES: {
-            MinesDifficulty diff = (grade == GRADE_EASY) ? MINES_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? MINES_HARD : MINES_MEDIUM);
-            const char* diffStr = (diff == MINES_EASY) ? "EASY" : ((diff == MINES_HARD) ? "HARD" : "MEDIUM");
+            MinesDifficulty diff = (MinesDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Mines...");
             MinesGen mines;
             mines.generate(diff);
@@ -143,8 +145,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_TENTS: {
-            TentsDifficulty diff = (grade == GRADE_EASY) ? TENTS_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? TENTS_HARD : TENTS_MEDIUM);
-            const char* diffStr = (diff == TENTS_EASY) ? "EASY" : ((diff == TENTS_HARD) ? "HARD" : "MEDIUM");
+            TentsDifficulty diff = (TentsDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Tents...");
             TentsGen tents;
             tents.generate(diff);
@@ -157,8 +158,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_BRIDGES: {
-            BridgesDifficulty diff = (grade == GRADE_EASY) ? BRIDGES_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? BRIDGES_HARD : BRIDGES_MEDIUM);
-            const char* diffStr = (diff == BRIDGES_EASY) ? "EASY" : ((diff == BRIDGES_HARD) ? "HARD" : "MEDIUM");
+            BridgesDifficulty diff = (BridgesDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Bridges...");
             BridgesGen bridges;
             bridges.generate(diff);
@@ -170,8 +170,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_TANGO: {
-            TangoDifficulty diff = (grade == GRADE_EASY) ? TANGO_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? TANGO_HARD : TANGO_MEDIUM);
-            const char* diffStr = (diff == TANGO_EASY) ? "EASY" : ((diff == TANGO_HARD) ? "HARD" : "MEDIUM");
+            TangoDifficulty diff = (TangoDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Tango...");
             TangoGen tango;
             tango.generate(diff);
@@ -185,8 +184,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_WHEEL: {
-            WheelDifficulty diff = (grade == GRADE_EASY) ? WHEEL_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? WHEEL_HARD : WHEEL_MEDIUM);
-            const char* diffStr = (diff == WHEEL_EASY) ? "EASY" : ((diff == WHEEL_HARD) ? "HARD" : "MEDIUM");
+            WheelDifficulty diff = (WheelDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Wheel...");
             WheelGen wheel;
             wheel.generate(diff);
@@ -200,8 +198,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_LIGHTS: {
-            LightsDifficulty diff = (grade == GRADE_EASY) ? LIGHTS_EASY : ((grade == GRADE_EXTREME) ? LIGHTS_EXTREME : ((grade == GRADE_HARD) ? LIGHTS_HARD : LIGHTS_MEDIUM));
-            const char* diffStr = (diff == LIGHTS_EASY) ? "EASY" : ((diff == LIGHTS_EXTREME) ? "EXTREME" : ((diff == LIGHTS_HARD) ? "HARD" : "MEDIUM"));
+            LightsDifficulty diff = (LightsDifficulty)tier4;
             Serial.println("[COMPOSER] Generating Lights...");
             LightsGen lights;
             lights.generate(diff);
@@ -214,8 +211,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_LOOP: {
-            LoopDifficulty diff = (grade == GRADE_EASY) ? LOOP_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? LOOP_HARD : LOOP_MEDIUM);
-            const char* diffStr = (diff == LOOP_EASY) ? "EASY" : ((diff == LOOP_HARD) ? "HARD" : "MEDIUM");
+            LoopDifficulty diff = (LoopDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Loop...");
             LoopGen loop;
             loop.generate(diff);
@@ -227,8 +223,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_KILLER: {
-            KillerDifficulty diff = (grade == GRADE_EASY) ? KILLER_EASY : ((grade == GRADE_EXTREME) ? KILLER_EXTREME : ((grade == GRADE_HARD) ? KILLER_HARD : KILLER_MEDIUM));
-            const char* diffStr = (diff == KILLER_EASY) ? "EASY" : ((diff == KILLER_EXTREME) ? "EXTREME" : ((diff == KILLER_HARD) ? "HARD" : "MEDIUM"));
+            KillerDifficulty diff = (KillerDifficulty)tier4;
             Serial.println("[COMPOSER] Generating Killer Sudoku...");
             KillerGen killer;
             killer.generate(diff);
@@ -242,8 +237,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_CRYPTOGRAM: {
-            CryptogramDifficulty diff = (grade == GRADE_EASY) ? CRYPTO_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? CRYPTO_HARD : CRYPTO_MEDIUM);
-            const char* diffStr = (diff == CRYPTO_EASY) ? "EASY" : ((diff == CRYPTO_HARD) ? "HARD" : "MEDIUM");
+            CryptogramDifficulty diff = (CryptogramDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Cryptogram...");
             CryptogramGen cryptogram;
             cryptogram.generate(diff);
@@ -258,8 +252,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_LADDER: {
-            LadderDifficulty diff = (grade == GRADE_EASY) ? LADDER_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? LADDER_HARD : LADDER_MEDIUM);
-            const char* diffStr = (diff == LADDER_EASY) ? "EASY" : ((diff == LADDER_HARD) ? "HARD" : "MEDIUM");
+            LadderDifficulty diff = (LadderDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Ladder...");
             LadderGen ladder;
             ladder.generate(diff);
@@ -280,8 +273,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_TOWERS: {
-            TowersDifficulty diff = (grade == GRADE_EASY) ? TOWERS_EASY : ((grade == GRADE_EXTREME) ? TOWERS_EXTREME : ((grade == GRADE_HARD) ? TOWERS_HARD : TOWERS_MEDIUM));
-            const char* diffStr = (diff == TOWERS_EASY) ? "EASY" : ((diff == TOWERS_EXTREME) ? "EXTREME" : ((diff == TOWERS_HARD) ? "HARD" : "MEDIUM"));
+            TowersDifficulty diff = (TowersDifficulty)tier4;
             Serial.println("[COMPOSER] Generating Towers...");
             TowersGen towers;
             towers.generate(diff);
@@ -294,8 +286,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_INEQUALITY: {
-            InequalityDifficulty diff = (grade == GRADE_EASY) ? INEQUALITY_EASY : ((grade == GRADE_EXTREME) ? INEQUALITY_EXTREME : ((grade == GRADE_HARD) ? INEQUALITY_HARD : INEQUALITY_MEDIUM));
-            const char* diffStr = (diff == INEQUALITY_EASY) ? "EASY" : ((diff == INEQUALITY_EXTREME) ? "EXTREME" : ((diff == INEQUALITY_HARD) ? "HARD" : "MEDIUM"));
+            InequalityDifficulty diff = (InequalityDifficulty)tier4;
             Serial.println("[COMPOSER] Generating Inequality...");
             InequalityGen inequality;
             inequality.generate(diff);
@@ -308,8 +299,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_MAZE: {
-            MazeDifficulty diff = (grade == GRADE_EASY) ? MAZE_EASY : ((grade == GRADE_EXTREME) ? MAZE_EXTREME : ((grade == GRADE_HARD) ? MAZE_HARD : MAZE_MEDIUM));
-            const char* diffStr = (diff == MAZE_EASY) ? "EASY" : ((diff == MAZE_EXTREME) ? "EXTREME" : ((diff == MAZE_HARD) ? "HARD" : "MEDIUM"));
+            MazeDifficulty diff = (MazeDifficulty)tier4;
             Serial.println("[COMPOSER] Generating Maze...");
             MazeGen maze;
             maze.generate(diff);
@@ -320,8 +310,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             break;
         }
         case PUZZLE_SUDOKITO: {
-            SudokitoDifficulty diff = (grade == GRADE_EASY) ? SUDOKITO_EASY : ((grade == GRADE_HARD || grade == GRADE_EXTREME) ? SUDOKITO_HARD : SUDOKITO_MEDIUM);
-            const char* diffStr = (diff == SUDOKITO_EASY) ? "EASY" : ((diff == SUDOKITO_HARD) ? "HARD" : "MEDIUM");
+            SudokitoDifficulty diff = (SudokitoDifficulty)tier3;
             Serial.println("[COMPOSER] Generating Sudokito...");
             SudokitoGen sudokito;
             sudokito.generate(diff);
@@ -413,15 +402,7 @@ bool OfflinePuzzleComposer::generateAndPrintReceipt(EscPosPrinter& printer, cons
     }
 
     // Footer
-    printer.setAlign(ALIGN_CENTER);
-    printer.println("Enjoy your day!");
-    printer.println("");
-    printer.println("For more puzzles, toggle the power");
-    printer.println("on the front of the printer.");
-    printer.println("");
-    printer.println("To change settings, toggle the power");
-    printer.println("on the cable behind the printer.");
-    printer.printHorizontalLine('-');
+    printer.printMasterFooter("Enjoy your day!", false, false);
 
     printer.feed(4);
     printer.cut(false);
@@ -455,361 +436,33 @@ void OfflinePuzzleComposer::renderGameGuideRaster(ThermalCanvas& canvas, uint8_t
     canvas.drawText(108, h - 28, "[ OK ]", 2);
     canvas.drawText(384, h - 28, "[ ERROR ]", 2);
 
-    int16_t ly = 46;
-    int16_t ry = 46;
+    const GameRuleDef* def = getGameRuleDefById(gameId);
+    if (!def) return;
+    GameRuleDef ruleCopy;
+    memcpy_P(&ruleCopy, def, sizeof(GameRuleDef));
 
-    switch (gameId) {
-        case 0: { // SUDOKU
-            int16_t sz = 32;
-            int16_t lx0 = 144 - (3 * sz) / 2;
-            int16_t rx0 = 432 - (3 * sz) / 2;
-            canvas.drawRect(lx0, ly, 3 * sz, 3 * sz, 2);
-            canvas.drawRect(rx0, ry, 3 * sz, 3 * sz, 2);
-            for (int i = 1; i < 3; i++) {
-                canvas.drawHLine(lx0, ly + i * sz, 3 * sz, 1);
-                canvas.drawVLine(lx0 + i * sz, ly, 3 * sz, 1);
-                canvas.drawHLine(rx0, ry + i * sz, 3 * sz, 1);
-                canvas.drawVLine(rx0 + i * sz, ry, 3 * sz, 1);
+    for (uint8_t i = 0; i < ruleCopy.opsCount; i++) {
+        GuideOp op;
+        memcpy_P(&op, &GUIDE_OPS_TABLE[ruleCopy.opsOffset + i], sizeof(GuideOp));
+        int16_t cx = (op.panel == 0) ? 144 : 432;
+        switch (op.op) {
+            case GOP_GRID: {
+                int16_t gx = cx + op.a, gy = op.b;
+                int16_t cols = op.c, rows = op.d, sz = op.e;
+                canvas.drawRect(gx, gy, cols * sz, rows * sz, 2);
+                for (int16_t c = 1; c < cols; c++) canvas.drawVLine(gx + c * sz, gy, rows * sz, 1);
+                for (int16_t r = 1; r < rows; r++) canvas.drawHLine(gx, gy + r * sz, cols * sz, 1);
+                break;
             }
-            canvas.drawChar(lx0 + sz + 10, ly + sz + 6, '5', 3);
-            canvas.drawChar(rx0 + 10, ry + 6, '5', 3);
-            canvas.drawChar(rx0 + sz + 10, ry + sz + 6, '5', 3);
-            break;
-        }
-        case 1: { // SEARCH
-            int16_t sz = 28;
-            int16_t lx0 = 144 - (3 * sz) / 2;
-            int16_t rx0 = 432 - (3 * sz) / 2;
-            canvas.drawRect(lx0, ly, 3 * sz, 3 * sz, 2);
-            canvas.drawRect(rx0, ry, 3 * sz, 3 * sz, 2);
-            for (int i = 1; i < 3; i++) {
-                canvas.drawHLine(lx0, ly + i * sz, 3 * sz, 1);
-                canvas.drawVLine(lx0 + i * sz, ly, 3 * sz, 1);
-                canvas.drawHLine(rx0, ry + i * sz, 3 * sz, 1);
-                canvas.drawVLine(rx0 + i * sz, ry, 3 * sz, 1);
-            }
-            canvas.drawChar(lx0 + 8, ly + 4, 'C', 3);
-            canvas.drawChar(lx0 + sz + 8, ly + sz + 4, 'A', 3);
-            canvas.drawChar(lx0 + 2 * sz + 8, ly + 2 * sz + 4, 'T', 3);
-            canvas.drawLine(lx0 + 4, ly + 4, lx0 + 3 * sz - 4, ly + 3 * sz - 4, 2);
-            canvas.drawChar(rx0 + 8, ry + 4, 'C', 3);
-            canvas.drawChar(rx0 + sz + 8, ry + 4, 'A', 3);
-            canvas.drawChar(rx0 + sz + 8, ry + sz + 4, 'T', 3);
-            canvas.drawLine(rx0 + 4, ry + 14, rx0 + sz + 14, ry + 14, 2);
-            canvas.drawLine(rx0 + sz + 14, ry + 14, rx0 + sz + 14, ry + sz + 20, 2);
-            break;
-        }
-        case 2: { // NONOGRAM
-            int16_t sz = 24;
-            int16_t lx0 = 144 - (4 * sz) / 2;
-            int16_t rx0 = 432 - (4 * sz) / 2;
-            int16_t ny = ly + 24;
-            canvas.drawRect(lx0, ny, 4 * sz, sz, 2);
-            canvas.drawRect(rx0, ny, 4 * sz, sz, 2);
-            for (int i = 1; i < 4; i++) {
-                canvas.drawVLine(lx0 + i * sz, ny, sz, 1);
-                canvas.drawVLine(rx0 + i * sz, ny, sz, 1);
-            }
-            canvas.fillRect(lx0 + 2, ny + 2, sz - 4, sz - 4, 1);
-            canvas.fillRect(lx0 + 2 * sz + 2, ny + 2, sz - 4, sz - 4, 1);
-            canvas.drawText(lx0 - 28, ny + 4, "1 1", 2);
-            canvas.fillRect(rx0 + 2, ny + 2, 2 * sz - 4, sz - 4, 1);
-            canvas.drawText(rx0 - 28, ny + 4, "1 1", 2);
-            break;
-        }
-        case 3: { // STARS
-            int16_t sz = 32;
-            int16_t lx0 = 144 - (3 * sz) / 2;
-            int16_t rx0 = 432 - (3 * sz) / 2;
-            canvas.drawRect(lx0, ly, 3 * sz, 3 * sz, 2);
-            canvas.drawRect(rx0, ry, 3 * sz, 3 * sz, 2);
-            canvas.fillHatch(lx0, ly, sz * 2, sz, 1);
-            canvas.fillHatch(rx0, ry, sz * 2, sz, 1);
-            for (int i = 1; i < 3; i++) {
-                canvas.drawHLine(lx0, ly + i * sz, 3 * sz, 1);
-                canvas.drawVLine(lx0 + i * sz, ly, 3 * sz, 1);
-                canvas.drawHLine(rx0, ry + i * sz, 3 * sz, 1);
-                canvas.drawVLine(rx0 + i * sz, ry, 3 * sz, 1);
-            }
-            canvas.drawChar(lx0 + 10, ly + 6, '*', 3);
-            canvas.drawChar(lx0 + 2 * sz + 10, ly + sz + 6, '*', 3);
-            canvas.drawChar(rx0 + 10, ry + 6, '*', 3);
-            canvas.drawChar(rx0 + sz + 10, ry + sz + 6, '*', 3);
-            canvas.drawLine(rx0 + sz - 4, ry + sz - 4, rx0 + sz + 4, ry + sz + 4, 2);
-            break;
-        }
-        case 4: { // JUMBLE
-            int16_t sz = 24;
-            int16_t lx0 = 144 - (4 * sz) / 2;
-            int16_t rx0 = 432 - (4 * sz) / 2;
-            int16_t jy = ly + 24;
-            canvas.drawRect(lx0, jy, 4 * sz, sz, 2);
-            canvas.drawRect(rx0, jy, 4 * sz, sz, 2);
-            for (int i = 1; i < 4; i++) {
-                canvas.drawVLine(lx0 + i * sz, jy, sz, 1);
-                canvas.drawVLine(rx0 + i * sz, jy, sz, 1);
-            }
-            canvas.drawChar(lx0 + 6, jy + 4, 'B', 2);
-            canvas.drawChar(lx0 + sz + 6, jy + 4, 'O', 2);
-            canvas.drawCircle(lx0 + sz + 12, jy + 12, 10, 1);
-            canvas.drawChar(lx0 + 2 * sz + 6, jy + 4, 'A', 2);
-            canvas.drawChar(lx0 + 3 * sz + 6, jy + 4, 'T', 2);
-            canvas.drawChar(rx0 + 6, jy + 4, 'B', 2);
-            canvas.drawChar(rx0 + sz + 6, jy + 4, 'T', 2);
-            canvas.drawChar(rx0 + 2 * sz + 6, jy + 4, 'O', 2);
-            canvas.drawChar(rx0 + 3 * sz + 6, jy + 4, 'A', 2);
-            break;
-        }
-        case 5: { // BINARY
-            int16_t sz = 26;
-            int16_t lx0 = 144 - (4 * sz) / 2;
-            int16_t rx0 = 432 - (4 * sz) / 2;
-            int16_t by = ly + 24;
-            canvas.drawRect(lx0, by, 4 * sz, sz, 2);
-            canvas.drawRect(rx0, by, 4 * sz, sz, 2);
-            for (int i = 1; i < 4; i++) {
-                canvas.drawVLine(lx0 + i * sz, by, sz, 1);
-                canvas.drawVLine(rx0 + i * sz, by, sz, 1);
-            }
-            canvas.drawChar(lx0 + 8, by + 4, '1', 2);
-            canvas.drawChar(lx0 + sz + 8, by + 4, '0', 2);
-            canvas.drawChar(lx0 + 2 * sz + 8, by + 4, '1', 2);
-            canvas.drawChar(lx0 + 3 * sz + 8, by + 4, '0', 2);
-            canvas.drawChar(rx0 + 8, by + 4, '0', 2);
-            canvas.drawChar(rx0 + sz + 8, by + 4, '1', 2);
-            canvas.drawChar(rx0 + 2 * sz + 8, by + 4, '1', 2);
-            canvas.drawChar(rx0 + 3 * sz + 8, by + 4, '1', 2);
-            break;
-        }
-        case 6: { // MINES
-            int16_t sz = 34;
-            int16_t lx0 = 144 - sz;
-            int16_t rx0 = 432 - sz;
-            int16_t my = ly + 14;
-            canvas.drawRect(lx0, my, 2 * sz, 2 * sz, 2);
-            canvas.drawRect(rx0, my, 2 * sz, 2 * sz, 2);
-            canvas.drawHLine(lx0, my + sz, 2 * sz, 1);
-            canvas.drawVLine(lx0 + sz, my, 2 * sz, 1);
-            canvas.drawHLine(rx0, my + sz, 2 * sz, 1);
-            canvas.drawVLine(rx0 + sz, my, 2 * sz, 1);
-            canvas.drawChar(lx0 + 10, my + sz + 6, '1', 3);
-            canvas.drawChar(lx0 + 10, my + 6, '*', 3);
-            canvas.drawChar(rx0 + 10, my + sz + 6, '1', 3);
-            canvas.drawChar(rx0 + 10, my + 6, '*', 3);
-            canvas.drawChar(rx0 + sz + 10, my + 6, '*', 3);
-            break;
-        }
-        case 7: { // TENTS
-            int16_t sz = 32;
-            int16_t lx0 = 144 - (3 * sz) / 2;
-            int16_t rx0 = 432 - (3 * sz) / 2;
-            int16_t ty = ly + 14;
-            canvas.drawRect(lx0, ty, 3 * sz, 2 * sz, 2);
-            canvas.drawRect(rx0, ty, 3 * sz, 2 * sz, 2);
-            for (int i = 1; i < 3; i++) {
-                canvas.drawVLine(lx0 + i * sz, ty, 2 * sz, 1);
-                canvas.drawVLine(rx0 + i * sz, ty, 2 * sz, 1);
-            }
-            canvas.drawHLine(lx0, ty + sz, 3 * sz, 1);
-            canvas.drawHLine(rx0, ty + sz, 3 * sz, 1);
-            canvas.drawChar(lx0 + 10, ty + 6, 'T', 3);
-            canvas.drawChar(lx0 + sz + 10, ty + 6, '^', 3);
-            canvas.drawChar(rx0 + 10, ty + 6, 'T', 3);
-            canvas.drawChar(rx0 + sz + 10, ty + 6, '^', 3);
-            canvas.drawChar(rx0 + 2 * sz + 10, ty + sz + 6, '^', 3);
-            break;
-        }
-        case 8: { // BRIDGES
-            int16_t lx1 = 100, lx2 = 188;
-            int16_t rx1 = 388, rx2 = 476;
-            int16_t by = ly + 36;
-            canvas.drawCircle(lx1, by, 16, 2);
-            canvas.drawChar(lx1 - 5, by - 8, '3', 2);
-            canvas.drawCircle(lx2, by, 16, 2);
-            canvas.drawChar(lx2 - 5, by - 8, '2', 2);
-            canvas.drawHLine(lx1 + 16, by - 4, (lx2 - 16) - (lx1 + 16), 2);
-            canvas.drawHLine(lx1 + 16, by + 4, (lx2 - 16) - (lx1 + 16), 2);
-            canvas.drawCircle(rx1, by, 16, 2);
-            canvas.drawChar(rx1 - 5, by - 8, '4', 2);
-            canvas.drawCircle(rx2, by, 16, 2);
-            canvas.drawChar(rx2 - 5, by - 8, '3', 2);
-            canvas.drawHLine(rx1 + 16, by - 6, (rx2 - 16) - (rx1 + 16), 1);
-            canvas.drawHLine(rx1 + 16, by, (rx2 - 16) - (rx1 + 16), 1);
-            canvas.drawHLine(rx1 + 16, by + 6, (rx2 - 16) - (rx1 + 16), 1);
-            break;
-        }
-        case 9: { // KILLER
-            int16_t sz = 34;
-            int16_t lx0 = 144 - sz;
-            int16_t rx0 = 432 - sz;
-            int16_t ky = ly + 14;
-            canvas.drawRect(lx0, ky, 2 * sz, sz, 1);
-            canvas.drawDashedHLine(lx0, ky, 2 * sz, 4, 3, 2);
-            canvas.drawDashedHLine(lx0, ky + sz, 2 * sz, 4, 3, 2);
-            canvas.drawRect(rx0, ky, 2 * sz, sz, 1);
-            canvas.drawDashedHLine(rx0, ky, 2 * sz, 4, 3, 2);
-            canvas.drawDashedHLine(rx0, ky + sz, 2 * sz, 4, 3, 2);
-            canvas.drawText(lx0 + 2, ky + 2, "3", 1);
-            canvas.drawChar(lx0 + 10, ky + 8, '1', 2);
-            canvas.drawChar(lx0 + sz + 10, ky + 8, '2', 2);
-            canvas.drawText(rx0 + 2, ky + 2, "4", 1);
-            canvas.drawChar(rx0 + 10, ky + 8, '2', 2);
-            canvas.drawChar(rx0 + sz + 10, ky + 8, '2', 2);
-            break;
-        }
-        case 10: { // CRYPTOGRAM
-            int16_t cy = ly + 20;
-            canvas.drawText(100, cy, "T H E", 2);
-            canvas.drawText(100, cy + 24, "W Z K", 2);
-            canvas.drawHLine(96, cy + 20, 96, 1);
-            canvas.drawText(390, cy, "T O", 2);
-            canvas.drawText(390, cy + 24, "W K", 2);
-            canvas.drawHLine(386, cy + 20, 64, 1);
-            break;
-        }
-        case 11: { // TANGO
-            int16_t sz = 28;
-            int16_t lx0 = 144 - (3 * sz) / 2;
-            int16_t rx0 = 432 - (3 * sz) / 2;
-            int16_t ty2 = ly + 20;
-            canvas.drawRect(lx0, ty2, sz, sz, 2);
-            canvas.drawChar(lx0 + 8, ty2 + 4, 'O', 2);
-            canvas.drawChar(lx0 + sz + 8, ty2 + 4, '=', 2);
-            canvas.drawRect(lx0 + 2 * sz, ty2, sz, sz, 2);
-            canvas.drawChar(lx0 + 2 * sz + 8, ty2 + 4, 'O', 2);
-            canvas.drawRect(rx0, ty2, 3 * sz, sz, 2);
-            canvas.drawVLine(rx0 + sz, ty2, sz, 1);
-            canvas.drawVLine(rx0 + 2 * sz, ty2, sz, 1);
-            canvas.drawChar(rx0 + 8, ty2 + 4, 'O', 2);
-            canvas.drawChar(rx0 + sz + 8, ty2 + 4, 'O', 2);
-            canvas.drawChar(rx0 + 2 * sz + 8, ty2 + 4, 'O', 2);
-            break;
-        }
-        case 12: { // LADDER
-            int16_t dy = ly + 16;
-            canvas.drawText(100, dy, "C A R T", 2);
-            canvas.drawText(100, dy + 28, "D A R T", 2);
-            canvas.drawText(124, dy + 14, "|", 1);
-            canvas.drawText(388, dy, "C A R T", 2);
-            canvas.drawText(388, dy + 28, "D A R K", 2);
-            canvas.drawText(412, dy + 14, "|", 1);
-            break;
-        }
-        case 13: { // WHEEL
-            int16_t wy = ly + 36;
-            canvas.drawCircle(144, wy, 28, 2);
-            canvas.drawCircle(144, wy, 12, 1);
-            canvas.drawChar(144 - 5, wy - 8, 'O', 2);
-            canvas.drawText(144 - 40, wy + 34, "GLOW (USES O)", 1);
-            canvas.drawCircle(432, wy, 28, 2);
-            canvas.drawCircle(432, wy, 12, 1);
-            canvas.drawChar(432 - 5, wy - 8, 'O', 2);
-            canvas.drawText(432 - 40, wy + 34, "WING (NO O)", 1);
-            break;
-        }
-        case 14: { // LIGHTS
-            int16_t sz = 28;
-            int16_t lx0 = 144 - (3 * sz) / 2;
-            int16_t rx0 = 432 - (3 * sz) / 2;
-            int16_t lty = ly + 20;
-            canvas.drawRect(lx0, lty, 3 * sz, sz, 2);
-            canvas.fillHatch(lx0 + sz, lty, sz, sz, 1);
-            canvas.drawChar(lx0 + 8, lty + 4, '*', 2);
-            canvas.drawChar(lx0 + 2 * sz + 8, lty + 4, '*', 2);
-            canvas.drawRect(rx0, lty, 3 * sz, sz, 2);
-            canvas.drawChar(rx0 + 8, lty + 4, '*', 2);
-            canvas.drawLine(rx0 + 16, lty + 14, rx0 + 3 * sz - 16, lty + 14, 1);
-            canvas.drawChar(rx0 + 2 * sz + 8, lty + 4, '*', 2);
-            break;
-        }
-        case 15: { // LOOP
-            int16_t sz = 32;
-            int16_t lx0 = 144 - sz / 2;
-            int16_t rx0 = 432 - sz / 2;
-            int16_t lpy = ly + 20;
-            canvas.drawChar(lx0 + 10, lpy + 6, '3', 3);
-            canvas.drawHLine(lx0, lpy, sz, 3);
-            canvas.drawVLine(lx0, lpy, sz, 3);
-            canvas.drawHLine(lx0, lpy + sz, sz, 3);
-            canvas.drawHLine(rx0 - 10, lpy + sz / 2, sz + 20, 3);
-            canvas.drawVLine(rx0 + sz / 2, lpy - 10, sz + 20, 3);
-            break;
-        }
-        case 16: { // TOWERS
-            int16_t sz = 24;
-            int16_t lx0 = 144 - (3 * sz) / 2;
-            int16_t rx0 = 432 - (3 * sz) / 2;
-            int16_t twy = ly + 24;
-            canvas.drawText(lx0 - 24, twy + 4, "1", 2);
-            canvas.drawRect(lx0, twy, 3 * sz, sz, 2);
-            canvas.drawChar(lx0 + 6, twy + 4, '5', 2);
-            canvas.drawChar(lx0 + sz + 6, twy + 4, '4', 2);
-            canvas.drawChar(lx0 + 2 * sz + 6, twy + 4, '3', 2);
-            canvas.drawText(rx0 - 24, twy + 4, "1", 2);
-            canvas.drawRect(rx0, twy, 3 * sz, sz, 2);
-            canvas.drawChar(rx0 + 6, twy + 4, '2', 2);
-            canvas.drawChar(rx0 + sz + 6, twy + 4, '5', 2);
-            canvas.drawChar(rx0 + 2 * sz + 6, twy + 4, '1', 2);
-            break;
-        }
-        case 17: { // INEQUALITY
-            int16_t sz = 28;
-            int16_t lx0 = 144 - (3 * sz) / 2;
-            int16_t rx0 = 432 - (3 * sz) / 2;
-            int16_t fy = ly + 20;
-            canvas.drawRect(lx0, fy, sz, sz, 2);
-            canvas.drawChar(lx0 + 8, fy + 4, '2', 2);
-            canvas.drawChar(lx0 + sz + 8, fy + 4, '<', 2);
-            canvas.drawRect(lx0 + 2 * sz, fy, sz, sz, 2);
-            canvas.drawChar(lx0 + 2 * sz + 8, fy + 4, '4', 2);
-            canvas.drawRect(rx0, fy, sz, sz, 2);
-            canvas.drawChar(rx0 + 8, fy + 4, '5', 2);
-            canvas.drawChar(rx0 + sz + 8, fy + 4, '<', 2);
-            canvas.drawRect(rx0 + 2 * sz, fy, sz, sz, 2);
-            canvas.drawChar(rx0 + 2 * sz + 8, fy + 4, '3', 2);
-            break;
-        }
-        case 18: { // MAZE
-            int16_t sz = 28;
-            int16_t lx0 = 144 - (3 * sz) / 2;
-            int16_t rx0 = 432 - (3 * sz) / 2;
-            int16_t fy = ly + 20;
-
-            // Valid move: open corridor with path line passing cleanly
-            canvas.drawHLine(lx0, fy, 3 * sz, 2, 1);
-            canvas.drawHLine(lx0, fy + sz, 3 * sz, 2, 1);
-            canvas.drawHLine(lx0 + 4, fy + sz / 2, 3 * sz - 8, 3, 1);
-
-            // Invalid move: vertical wall blocking corridor with path crossing through wall
-            canvas.drawHLine(rx0, fy, 3 * sz, 2, 1);
-            canvas.drawHLine(rx0, fy + sz, 3 * sz, 2, 1);
-            canvas.drawVLine(rx0 + sz + sz / 2, fy, sz, 4, 1);
-            canvas.drawHLine(rx0 + 4, fy + sz / 2, 3 * sz - 8, 3, 1);
-            break;
-        }
-        case 19: { // SUDOKITO
-            int16_t sz = 32;
-            int16_t lx0 = 144 - (3 * sz) / 2;
-            int16_t rx0 = 432 - (3 * sz) / 2;
-            int16_t gy = ly + 16;
-            canvas.drawRect(lx0, gy, 3 * sz, 2 * sz, 2);
-            canvas.drawRect(rx0, gy, 3 * sz, 2 * sz, 2);
-            canvas.drawHLine(lx0, gy + sz, 3 * sz, 1);
-            canvas.drawHLine(rx0, gy + sz, 3 * sz, 1);
-            for (int i = 1; i < 3; i++) {
-                canvas.drawVLine(lx0 + i * sz, gy, 2 * sz, 1);
-                canvas.drawVLine(rx0 + i * sz, gy, 2 * sz, 1);
-            }
-            // Valid: 1, 2 on top row; 3 placed in center bottom row
-            canvas.drawChar(lx0 + 10, gy + 6, '1', 3);
-            canvas.drawChar(lx0 + 2 * sz + 10, gy + 6, '2', 3);
-            canvas.drawChar(lx0 + sz + 10, gy + sz + 6, '3', 3);
-            // Invalid: 1, 3, 2 on top row; duplicate 3 placed in center bottom row
-            canvas.drawChar(rx0 + 10, gy + 6, '1', 3);
-            canvas.drawChar(rx0 + sz + 10, gy + 6, '3', 3);
-            canvas.drawChar(rx0 + 2 * sz + 10, gy + 6, '2', 3);
-            canvas.drawChar(rx0 + sz + 10, gy + sz + 6, '3', 3);
-            break;
+            case GOP_RECT:   canvas.drawRect(cx + op.a, op.b, op.c, op.d, (uint8_t)op.e); break;
+            case GOP_FRECT:  canvas.fillRect(cx + op.a, op.b, op.c, op.d, (uint8_t)op.e); break;
+            case GOP_HATCH:  canvas.fillHatch(cx + op.a, op.b, op.c, op.d, (uint8_t)op.e); break;
+            case GOP_HLINE:  canvas.drawHLine(cx + op.a, op.b, op.c, (uint8_t)op.d); break;
+            case GOP_VLINE:  canvas.drawVLine(cx + op.a, op.b, op.c, (uint8_t)op.d); break;
+            case GOP_DHLINE: canvas.drawDashedHLine(cx + op.a, op.b, op.c, 4, 3, (uint8_t)op.d); break;
+            case GOP_LINE:   canvas.drawLine(cx + op.a, op.b, cx + op.c, op.d, (uint8_t)op.e); break;
+            case GOP_CIRC:   canvas.drawCircle(cx + op.a, op.b, op.c, (uint8_t)op.d); break;
+            case GOP_TEXT:   canvas.drawText(cx + op.a, op.b, op.text, (uint8_t)op.c); break;
         }
     }
 }
@@ -833,11 +486,13 @@ bool OfflinePuzzleComposer::printGameGuide(EscPosPrinter& printer, uint8_t gameI
     printer.println("");
 
     // Game Title
+    printer.setAlign(ALIGN_CENTER);
     printer.setBold(true);
     printer.print("--- ");
     printer.print(def->title);
     printer.println(" ---");
     printer.setBold(false);
+    printer.setAlign(ALIGN_LEFT);
     printer.println("");
 
     // Instruction
@@ -861,13 +516,11 @@ bool OfflinePuzzleComposer::printGameGuide(EscPosPrinter& printer, uint8_t gameI
     }
     printer.println("");
 
-    // Visual Move Diagram (Thermal Canvas)
+    // Visual Move Diagram (Thermal Canvas - Banded Streaming)
     ThermalCanvas canvas;
-    if (canvas.begin(216)) {
-        renderGameGuideRaster(canvas, gameId);
-        canvas.printTo(printer);
-        canvas.end();
-    }
+    canvas.renderBanded(printer, 216, [&](ThermalCanvas& c) {
+        renderGameGuideRaster(c, gameId);
+    });
     printer.println("");
 
     // Move captions
@@ -906,16 +559,7 @@ bool OfflinePuzzleComposer::printGameGuide(EscPosPrinter& printer, uint8_t gameI
     printer.println("");
 
     // Master Footer
-    printer.setAlign(ALIGN_CENTER);
-    printer.printHorizontalLine('-');
-    printer.println("Enjoy your day!");
-    printer.println("");
-    printer.println("For more puzzles, toggle the power");
-    printer.println("on the front of the printer.");
-    printer.println("");
-    printer.println("To change settings, toggle the power");
-    printer.println("on the cable behind the printer.");
-    printer.printHorizontalLine('-');
+    printer.printMasterFooter("Enjoy your day!", false, true);
 
     printer.feed(4);
     printer.cut(false);
@@ -926,6 +570,7 @@ bool OfflinePuzzleComposer::printGameGuide(EscPosPrinter& printer, uint8_t gameI
 }
 
 bool OfflinePuzzleComposer::printGameSampler(EscPosPrinter& printer, uint8_t gameId) {
+    randomSeed(esp_random() ^ (uint32_t)micros());
     if (gameId >= OFFLINE_PUZZLE_TOTAL) {
         Serial.printf("[COMPOSER] Game ID %d out of range for sampler!\n", gameId);
         return false;
@@ -971,15 +616,7 @@ bool OfflinePuzzleComposer::printGameSampler(EscPosPrinter& printer, uint8_t gam
     }
 
     // Standard Daily Footer
-    printer.setAlign(ALIGN_CENTER);
-    printer.println("Enjoy your day!");
-    printer.println("");
-    printer.println("For more puzzles, toggle the power");
-    printer.println("on the front of the printer.");
-    printer.println("");
-    printer.println("To change settings, toggle the power");
-    printer.println("on the cable behind the printer.");
-    printer.printHorizontalLine('-');
+    printer.printMasterFooter("Enjoy your day!", false, false);
 
     printer.feed(4);
     printer.cut(false);
