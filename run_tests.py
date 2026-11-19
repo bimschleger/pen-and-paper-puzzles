@@ -43,7 +43,7 @@ def run_standards_tier(puzzle_filter: str = None) -> bool:
         test_puzzle_standards.test_solution_key_spec()
         test_puzzle_standards.test_simulator_consistency()
         test_puzzle_standards.test_plugin_contract_compliance()
-        test_game_onboarding.run_all_onboarding_checks()
+        assert test_game_onboarding.run_all_onboarding_checks(), "Game onboarding checks failed"
         test_game_rules.main()
         test_code_health_and_dry.run_code_health_tests()
         print("[TIER 1 PASSED] All presentation, authoring, onboarding, and code health standards verified.\n")
@@ -133,7 +133,7 @@ def run_raster_tier(puzzle_filter: str = None) -> bool:
         test_thermal_format.test_text_receipt_format(bundle)
         test_thermal_format.test_hybrid_receipt_format(bundle)
         test_thermal_format.test_solution_key_spec(bundle)
-        test_visual_consistency.test_visual_consistency()
+        assert test_visual_consistency.test_visual_consistency(), "Visual consistency checks failed"
         test_simulator_runtime.run_simulator_runtime_tests()
 
         print("[TIER 3 PASSED] All thermal raster specs, snapshots, visual parity, and simulator runtime verified.\n")

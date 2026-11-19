@@ -211,25 +211,18 @@ bool BridgesGen::printRasterToReceipt(EscPosPrinter& printer, BridgesDifficulty 
     const int16_t boardSize = THERMAL_CANVAS_WIDTH - padding * 2;
     const int16_t step = (_size > 1) ? (boardSize / (_size - 1)) : boardSize;
     const int16_t totalH = padding + boardSize + padding;
+    const int16_t islandRadius = max((int16_t)18, min((int16_t)24, (int16_t)(step / 3)));
 
     ThermalCanvas canvas;
-    if (!canvas.begin(totalH)) {
-        return false;
-    }
+    return canvas.renderBanded(printer, totalH, [&](ThermalCanvas& canvas) {
+        for (uint8_t i = 0; i < _islandCount; i++) {
+            int16_t cx = padding + _islands[i].c * step;
+            int16_t cy = padding + _islands[i].r * step;
 
-    // Islands
-    int16_t islandRadius = max((int16_t)18, min((int16_t)24, (int16_t)(step / 3)));
-    for (uint8_t i = 0; i < _islandCount; i++) {
-        int16_t cx = padding + _islands[i].c * step;
-        int16_t cy = padding + _islands[i].r * step;
-
-        canvas.fillCircle(cx, cy, islandRadius, 0); // clear white interior
-        canvas.drawCircle(cx, cy, islandRadius, 2, 1); // circle border
-        canvas.drawChar(cx - 5, cy - 7, '0' + _islands[i].count, 2, 1);
-    }
-
-    bool ok = canvas.printTo(printer);
-    canvas.end();
-    return ok;
+            canvas.fillCircle(cx, cy, islandRadius, 0);
+            canvas.drawCircle(cx, cy, islandRadius, 2, 1);
+            canvas.drawChar(cx - 5, cy - 7, '0' + _islands[i].count, 2, 1);
+        }
+    });
 }
 

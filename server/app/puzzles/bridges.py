@@ -46,12 +46,8 @@ class BridgesPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs,
     ) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        diff_key = difficulty.lower()
-        if diff_key not in self.DIFFICULTY_SETTINGS:
-            diff_key = "medium"
+        rng = self.make_rng(seed)
+        diff_key = self.normalize_difficulty(difficulty)
 
         settings = self.DIFFICULTY_SETTINGS[diff_key]
         size = settings["size"]
@@ -61,20 +57,8 @@ class BridgesPuzzle(BasePuzzle):
         max_attempts = 120
         for _ in range(max_attempts):
             all_cells = [(r, c) for r in range(size) for c in range(size)]
-            random.shuffle(all_cells)
-
-            islands: List[Tuple[int, int]] = []
-            for r, c in all_cells:
-                if len(islands) >= target_islands:
-                    break
-                too_close = False
-                for ir, ic in islands:
-                    if abs(ir - r) <= 0 and abs(ic - c) <= 0:
-                        too_close = True
-                        break
-                if not too_close:
-                    islands.append((r, c))
-
+            rng.shuffle(all_cells)
+            islands: List[Tuple[int, int]] = all_cells[:target_islands]
             if len(islands) < target_islands:
                 continue
 
@@ -84,7 +68,7 @@ class BridgesPuzzle(BasePuzzle):
             if len(edges) < target_islands - 1:
                 continue
 
-            random.shuffle(edges)
+            rng.shuffle(edges)
             tree_edges: List[Tuple[int, int]] = []
             parent = list(range(len(islands)))
 
@@ -124,7 +108,7 @@ class BridgesPuzzle(BasePuzzle):
             for e in tree_edges:
                 u, v = e
                 if island_degrees[u] < max_degree and island_degrees[v] < max_degree:
-                    if random.random() < 0.4:
+                    if rng.random() < 0.4:
                         edge_bridge_count[e] += 1
                         island_degrees[u] += 1
                         island_degrees[v] += 1
@@ -135,8 +119,8 @@ class BridgesPuzzle(BasePuzzle):
                     crosses = any(self._edges_cross(e, te, islands) for te in edge_bridge_count)
                     if not crosses:
                         if island_degrees[u] + 1 <= max_degree and island_degrees[v] + 1 <= max_degree:
-                            if random.random() < 0.35:
-                                added = 2 if (random.random() < 0.3 and island_degrees[u] + 2 <= max_degree and island_degrees[v] + 2 <= max_degree) else 1
+                            if rng.random() < 0.35:
+                                added = 2 if (rng.random() < 0.3 and island_degrees[u] + 2 <= max_degree and island_degrees[v] + 2 <= max_degree) else 1
                                 edge_bridge_count[e] = added
                                 island_degrees[u] += added
                                 island_degrees[v] += added
@@ -242,7 +226,6 @@ class BridgesPuzzle(BasePuzzle):
             cx = padding + c * step
             cy = padding + r * step
 
-            tb.fill_circle(cx, cy, island_radius, color=0)
             tb.draw_circle(cx, cy, island_radius, thickness=2, color=1)
             tb.draw_char(cx - 5, cy - 7, str(count), scale=2, color=1)
 
@@ -475,6 +458,7 @@ class BridgesPuzzle(BasePuzzle):
         # Parse bridges
         connected_degrees = [0] * len(islands)
         adj: List[List[int]] = [[] for _ in range(len(islands))]
+        bridge_edges: List[Tuple[int, int]] = []
 
         for b in bridges_raw:
             if isinstance(b, dict):
@@ -488,13 +472,34 @@ class BridgesPuzzle(BasePuzzle):
                 return False, f"Bridge between ({r1},{c1}) and ({r2},{c2}) is diagonal"
             if (r1, c1) not in island_lookup or (r2, c2) not in island_lookup:
                 return False, f"Bridge endpoints ({r1},{c1}) or ({r2},{c2}) are not islands"
+            if (r1, c1) == (r2, c2):
+                return False, f"Self-loop bridge at ({r1},{c1})"
+
+            # Check no intermediate island lies on this bridge segment
+            if r1 == r2:
+                c_min, c_max = min(c1, c2), max(c1, c2)
+                for rk, ck in islands:
+                    if rk == r1 and c_min < ck < c_max:
+                        return False, f"Bridge ({r1},{c1})-({r2},{c2}) passes through island ({rk},{ck})"
+            else:
+                r_min, r_max = min(r1, r2), max(r1, r2)
+                for rk, ck in islands:
+                    if ck == c1 and r_min < rk < r_max:
+                        return False, f"Bridge ({r1},{c1})-({r2},{c2}) passes through island ({rk},{ck})"
 
             u = island_lookup[(r1, c1)]
             v = island_lookup[(r2, c2)]
+            bridge_edges.append((u, v))
             connected_degrees[u] += cnt
             connected_degrees[v] += cnt
             adj[u].append(v)
             adj[v].append(u)
+
+        # Check no two bridges cross
+        for i in range(len(bridge_edges)):
+            for j in range(i + 1, len(bridge_edges)):
+                if self._edges_cross(bridge_edges[i], bridge_edges[j], islands):
+                    return False, f"Bridges {bridge_edges[i]} and {bridge_edges[j]} cross each other"
 
         # 1. Degree check
         for idx, (expected, actual) in enumerate(zip(degrees, connected_degrees)):

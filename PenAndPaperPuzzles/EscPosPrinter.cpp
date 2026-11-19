@@ -23,8 +23,14 @@ bool EscPosPrinter::begin() {
 #if (ACTIVE_PRINTER_MODE == PRINTER_MODE_W5500_ETH)
     if (_mode == PRINTER_MODE_W5500_ETH) {
         Serial.println("\n[ETH] Initializing W5500 SPI Ethernet (ESP32-S3-ETH)...");
-        Serial.printf("[ETH] Hardware SPI: SCK=%d, MISO=%d, MOSI=%d, CS=%d\n",
-                      W5500_SCK_PIN, W5500_MISO_PIN, W5500_MOSI_PIN, W5500_CS_PIN);
+        Serial.printf("[ETH] Hardware SPI: SCK=%d, MISO=%d, MOSI=%d, CS=%d, RST=%d\n",
+                      W5500_SCK_PIN, W5500_MISO_PIN, W5500_MOSI_PIN, W5500_CS_PIN, W5500_RST_PIN);
+        pinMode(W5500_RST_PIN, OUTPUT);
+        digitalWrite(W5500_RST_PIN, LOW);
+        delay(10);
+        digitalWrite(W5500_RST_PIN, HIGH);
+        delay(50);
+
         SPI.begin(W5500_SCK_PIN, W5500_MISO_PIN, W5500_MOSI_PIN, W5500_CS_PIN);
         Ethernet.init(W5500_CS_PIN);
 
@@ -179,23 +185,63 @@ bool EscPosPrinter::isPrinterOnline(uint32_t timeoutMs) {
 
     return online;
 #elif (ACTIVE_PRINTER_MODE == PRINTER_MODE_WIFI_TCP)
+    static unsigned long lastSuccessMs = 0;
+    static bool wasOnline = false;
+    unsigned long now = millis();
+
     if (_tcpClient.connected()) {
+        wasOnline = true;
+        lastSuccessMs = now;
+        return true;
+    }
+    if (wasOnline && (now - lastSuccessMs < 1000)) {
         return true;
     }
     WiFiClient probe;
     if (probe.connect(PRINTER_IP_ADDR, PRINTER_TCP_PORT, timeoutMs)) {
         probe.stop();
+        wasOnline = true;
+        lastSuccessMs = now;
         return true;
     }
+    wasOnline = false;
     return false;
 #else
     return false;
 #endif
 }
 
+bool EscPosPrinter::writeAll(const uint8_t* data, size_t len, uint32_t timeoutMs) {
+    if (!_outputStream || !data || len == 0) return (_outputStream != nullptr && len == 0);
+    size_t sent = 0;
+    unsigned long startMs = millis();
+    while (sent < len) {
+        size_t chunk = len - sent;
+        if (_mode == PRINTER_MODE_SERIAL && chunk > 512) chunk = 512;
+        else if (_mode != PRINTER_MODE_SERIAL && chunk > 2048) chunk = 2048;
+
+        size_t written = _outputStream->write(data + sent, chunk);
+        if (written > 0) {
+            sent += written;
+            startMs = millis();
+            if (_mode == PRINTER_MODE_SERIAL) {
+                delay(10); // Flow-control pacing for UART hardware buffer
+            }
+        } else {
+            if (millis() - startMs >= timeoutMs) {
+                Serial.println("[PRINTER] ERROR: Stream write timeout.");
+                return false;
+            }
+            delay(2);
+        }
+        yield();
+    }
+    return true;
+}
+
 void EscPosPrinter::sendCommand(const uint8_t* cmd, size_t length) {
     if (_outputStream) {
-        _outputStream->write(cmd, length);
+        writeAll(cmd, length);
     }
 }
 
@@ -300,16 +346,16 @@ void EscPosPrinter::printDoubleLine() {
 }
 
 void EscPosPrinter::printHeader(const String& title, const String& subtitle) {
-    setAlign(ALIGN_CENTER);
     printDoubleLine();
-    
+    setAlign(ALIGN_CENTER);
+
     setBold(true);
     setTextSize(2, 2);
     println(title);
-    
+
     setTextSize(1, 1);
     setBold(false);
-    
+
     if (subtitle.length() > 0) {
         println(subtitle);
     }
@@ -317,23 +363,49 @@ void EscPosPrinter::printHeader(const String& title, const String& subtitle) {
     setAlign(ALIGN_LEFT);
 }
 
+void EscPosPrinter::printMasterFooter(const char* closingTagline, bool includeScheduleHint, bool leadingRule) {
+    if (leadingRule) {
+        printHorizontalLine('-');
+    }
+    setAlign(ALIGN_CENTER);
+    if (closingTagline && closingTagline[0] != '\0') {
+        println(closingTagline);
+        println("");
+    }
+    println("For more puzzles, toggle the power");
+    println("on the front of the printer.");
+    println("");
+    println("To change settings, toggle the power");
+    println("on the cable behind the printer.");
+    if (includeScheduleHint) {
+        println("");
+        println("To schedule daily puzzles, go to settings.");
+    }
+    printHorizontalLine('-');
+}
+
 void EscPosPrinter::printKeyValue(const String& key, const String& value, int totalCols) {
     setAlign(ALIGN_LEFT);
     int keyLen = key.length();
     int valLen = value.length();
     int spaces = totalCols - keyLen - valLen;
-    
+
     if (spaces < 1) {
         print(key);
         print(" ");
         println(value);
         return;
     }
-    
+
     print(key);
     if (_outputStream) {
-        for (int i = 0; i < spaces; i++) {
-            _outputStream->write(' ');
+        char spaceBuf[65];
+        int rem = spaces;
+        while (rem > 0) {
+            int n = (rem > 64) ? 64 : rem;
+            memset(spaceBuf, ' ', n);
+            writeAll((const uint8_t*)spaceBuf, (size_t)n);
+            rem -= n;
         }
     }
     println(value);
@@ -341,47 +413,46 @@ void EscPosPrinter::printKeyValue(const String& key, const String& value, int to
 
 size_t EscPosPrinter::writeRaw(const uint8_t* buffer, size_t size) {
     if (_outputStream && size > 0) {
-        return _outputStream->write(buffer, size);
+        return writeAll(buffer, size) ? size : 0;
     }
     return 0;
 }
 
-void EscPosPrinter::printRasterBitmap(const uint8_t* bitmapData, uint16_t widthDots, uint16_t heightDots) {
-    if (!_outputStream || !bitmapData) return;
+bool EscPosPrinter::beginRasterBitmap(uint16_t widthDots, uint16_t totalHeightDots) {
+    if (!_outputStream || widthDots == 0 || totalHeightDots == 0) return false;
 
     // Width must be rounded up to bytes (8 bits per byte)
     uint16_t widthBytes = (widthDots + 7) / 8;
-    
+
     // Standard ESC/POS GS v 0 command:
     // Format: 0x1D, 0x76, 0x30, m, xL, xH, yL, yH, [data...]
     // m = 0 (normal density)
-    uint8_t xL = widthBytes & 0xFF;
-    uint8_t xH = (widthBytes >> 8) & 0xFF;
-    uint8_t yL = heightDots & 0xFF;
-    uint8_t yH = (heightDots >> 8) & 0xFF;
-
     const uint8_t header[] = {
         0x1D, 0x76, 0x30, 0x00,
-        xL, xH, yL, yH
+        (uint8_t)(widthBytes & 0xFF),
+        (uint8_t)((widthBytes >> 8) & 0xFF),
+        (uint8_t)(totalHeightDots & 0xFF),
+        (uint8_t)((totalHeightDots >> 8) & 0xFF)
     };
+    return writeAll(header, sizeof(header));
+}
 
-    sendCommand(header, sizeof(header));
-    
-    // Stream data in chunks to prevent network socket / UART buffer overflow
-    size_t totalBytes = (size_t)widthBytes * heightDots;
-    size_t chunkSize = (_mode == PRINTER_MODE_SERIAL) ? 512 : 2048;
-    size_t sent = 0;
+bool EscPosPrinter::writeRasterRows(const uint8_t* rowData, size_t byteLen) {
+    if (!_outputStream || !rowData || byteLen == 0) return false;
+    return writeAll(rowData, byteLen);
+}
 
-    while (sent < totalBytes) {
-        size_t toSend = (chunkSize < totalBytes - sent) ? chunkSize : (totalBytes - sent);
-        _outputStream->write(bitmapData + sent, toSend);
-        sent += toSend;
-        if (_mode == PRINTER_MODE_SERIAL) {
-            delay(10); // Flow-control pacing for UART hardware buffer
-        }
-    }
-
+void EscPosPrinter::endRasterBitmap() {
     feed(1);
+}
+
+void EscPosPrinter::printRasterBitmap(const uint8_t* bitmapData, uint16_t widthDots, uint16_t heightDots) {
+    if (!bitmapData || heightDots == 0) return;
+    if (!beginRasterBitmap(widthDots, heightDots)) return;
+    size_t totalBytes = (size_t)((widthDots + 7) / 8) * heightDots;
+    if (writeRasterRows(bitmapData, totalBytes)) {
+        endRasterBitmap();
+    }
 }
 
 void EscPosPrinter::printSelfTest(const String& ipAddress, const String& currentTimeStr) {

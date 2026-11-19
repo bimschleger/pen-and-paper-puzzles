@@ -15,6 +15,7 @@ from .base import (
     transform_coord_d4,
     transform_grid_d4,
 )
+from ._grid_utils import ortho_neighbors
 from ..renderer.canvas import (
     THERMAL_WIDTH_DOTS,
     ThermalBitmap,
@@ -53,16 +54,14 @@ class KillerPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs,
     ) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        diff_key = difficulty.lower()
+        rng = self.make_rng(seed)
+        diff_key = self.normalize_difficulty(difficulty)
         dataset = load_curated_dataset("killer_dataset.json")
         tier_key = diff_key if (dataset and diff_key in dataset) else "medium"
 
         if dataset and tier_key in dataset and len(dataset[tier_key]) > 0:
             tier_puzzles = dataset[tier_key]
-            p_idx, t = select_seeded_d4(tier_puzzles, seed)
+            p_idx, t = select_seeded_d4(tier_puzzles, seed, rng=rng)
             base_p = tier_puzzles[p_idx]
             size = base_p["size"]
             box_r = base_p["box_rows"]
@@ -74,7 +73,7 @@ class KillerPuzzle(BasePuzzle):
             raw_data = {
                 "type": "killer",
                 "title": "KILLER",
-                "difficulty": difficulty.upper(),
+                "difficulty": diff_key,
                 "size": size,
                 "box_rows": box_r,
                 "box_cols": box_c,
@@ -87,7 +86,7 @@ class KillerPuzzle(BasePuzzle):
             return BasePuzzleResult(
                 puzzle_type=self.puzzle_id,
                 title=self.title,
-                difficulty=difficulty,
+                difficulty=diff_key,
                 instruction=instruction,
                 raw_data=raw_data,
             )
@@ -104,8 +103,8 @@ class KillerPuzzle(BasePuzzle):
         cages = None
 
         for attempt in range(50):
-            cand_sol = self._generate_solved_board(size, box_r, box_c)
-            cand_cages = self._partition_into_cages(cand_sol, size, min_cage, max_cage)
+            cand_sol = self._generate_solved_board(size, box_r, box_c, rng=rng)
+            cand_cages = self._partition_into_cages(cand_sol, size, min_cage, max_cage, rng=rng)
 
             is_unique = False
             for step in range(8):
@@ -169,8 +168,8 @@ class KillerPuzzle(BasePuzzle):
 
         if solution is None or cages is None:
             fallback_cfg = self.DIFFICULTY_SETTINGS["easy"]
-            solution = self._generate_solved_board(fallback_cfg["size"], fallback_cfg["box_r"], fallback_cfg["box_c"])
-            cages = self._partition_into_cages(solution, fallback_cfg["size"], 1, 2)
+            solution = self._generate_solved_board(fallback_cfg["size"], fallback_cfg["box_r"], fallback_cfg["box_c"], rng=rng)
+            cages = self._partition_into_cages(solution, fallback_cfg["size"], 1, 2, rng=rng)
             for i, cg in enumerate(cages):
                 cg["id"] = i
                 cg["label"] = letters[i % len(letters)]
@@ -181,7 +180,7 @@ class KillerPuzzle(BasePuzzle):
         raw_data = {
             "type": "killer",
             "title": "KILLER",
-            "difficulty": difficulty,
+            "difficulty": diff_key,
             "size": size,
             "box_rows": box_r,
             "box_cols": box_c,
@@ -195,7 +194,7 @@ class KillerPuzzle(BasePuzzle):
         return BasePuzzleResult(
             puzzle_type=self.puzzle_id,
             title=self.title,
-            difficulty=difficulty,
+            difficulty=diff_key,
             instruction=instruction,
             raw_data=raw_data,
         )
@@ -346,7 +345,10 @@ class KillerPuzzle(BasePuzzle):
             })
         return new_cages, cur_sol
 
-    def _generate_solved_board(self, size: int, box_r: int, box_c: int) -> List[List[int]]:
+    def _generate_solved_board(
+        self, size: int, box_r: int, box_c: int, rng: Optional[random.Random] = None
+    ) -> List[List[int]]:
+        r_gen = rng if rng is not None else random.Random()
         board = [[0] * size for _ in range(size)]
 
         def is_valid(r: int, c: int, val: int) -> bool:
@@ -368,7 +370,7 @@ class KillerPuzzle(BasePuzzle):
             next_c = (c + 1) % size
 
             nums = list(range(1, size + 1))
-            random.shuffle(nums)
+            r_gen.shuffle(nums)
             for n in nums:
                 if is_valid(r, c, n):
                     board[r][c] = n
@@ -381,29 +383,22 @@ class KillerPuzzle(BasePuzzle):
         return board
 
     def _partition_into_cages(
-        self, solution: List[List[int]], size: int, min_cage: int, max_cage: int
+        self, solution: List[List[int]], size: int, min_cage: int, max_cage: int, rng: Optional[random.Random] = None
     ) -> List[Dict[str, Any]]:
+        r_gen = rng if rng is not None else random.Random()
         assigned = [[-1] * size for _ in range(size)]
         cages = []
         letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-        def neighbors(r: int, c: int) -> List[Tuple[int, int]]:
-            res = []
-            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                nr, nc = r + dr, c + dc
-                if 0 <= nr < size and 0 <= nc < size:
-                    res.append((nr, nc))
-            return res
-
         all_coords = [(r, c) for r in range(size) for c in range(size)]
-        random.shuffle(all_coords)
+        r_gen.shuffle(all_coords)
 
         cage_id = 0
         for r, c in all_coords:
             if assigned[r][c] != -1:
                 continue
 
-            target_size = random.randint(min_cage, max_cage)
+            target_size = r_gen.randint(min_cage, max_cage)
             current_cage_cells = [(r, c)]
             current_digits = {solution[r][c]}
             assigned[r][c] = cage_id
@@ -411,14 +406,14 @@ class KillerPuzzle(BasePuzzle):
             while len(current_cage_cells) < target_size:
                 candidates = []
                 for cr, cc in current_cage_cells:
-                    for nr, nc in neighbors(cr, cc):
+                    for nr, nc in ortho_neighbors(cr, cc, size, size):
                         if assigned[nr][nc] == -1 and solution[nr][nc] not in current_digits:
                             candidates.append((nr, nc))
 
                 if not candidates:
                     break
 
-                chosen = random.choice(candidates)
+                chosen = r_gen.choice(candidates)
                 current_cage_cells.append(chosen)
                 current_digits.add(solution[chosen[0]][chosen[1]])
                 assigned[chosen[0]][chosen[1]] = cage_id
@@ -540,8 +535,8 @@ class KillerPuzzle(BasePuzzle):
         puzzle_data: Union[BasePuzzleResult, Dict[str, Any]],
     ) -> Tuple[bool, str]:
         size = puzzle_data.get("size", 4)
-        box_r = puzzle_data.get("box_r", 2)
-        box_c = puzzle_data.get("box_c", size // 2)
+        box_r = puzzle_data.get("box_rows", puzzle_data.get("box_r", 2))
+        box_c = puzzle_data.get("box_cols", puzzle_data.get("box_c", size // 2))
         solution = puzzle_data.get("solution")
         cages = puzzle_data.get("cages")
 

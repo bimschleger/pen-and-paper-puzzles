@@ -57,24 +57,22 @@ class TangoPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs,
     ) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        difficulty = difficulty.lower()
+        rng = self.make_rng(seed)
+        difficulty = self.normalize_difficulty(difficulty)
         cfg = self.DIFFICULTY_SETTINGS.get(difficulty, self.DIFFICULTY_SETTINGS["medium"])
         size = cfg["size"]
         target_numbers = cfg["target_numbers"]
         target_edges = cfg["target_edges"]
 
         for _ in range(60):
-            solution = self._generate_full_board(size)
+            solution = self._generate_full_board(size, rng)
             if not solution:
                 continue
 
             all_h = [(r, c) for r in range(size) for c in range(size - 1)]
             all_v = [(r, c) for r in range(size - 1) for c in range(size)]
             all_edges = [('h', r, c) for r, c in all_h] + [('v', r, c) for r, c in all_v]
-            random.shuffle(all_edges)
+            rng.shuffle(all_edges)
 
             edges_h = [[0] * (size - 1) for _ in range(size)]
             edges_v = [[0] * size for _ in range(size - 1)]
@@ -87,7 +85,7 @@ class TangoPuzzle(BasePuzzle):
 
             puzzle = [row[:] for row in solution]
             coords = [(r, c) for r in range(size) for c in range(size)]
-            random.shuffle(coords)
+            rng.shuffle(coords)
 
             numbers_remaining = size * size
             for r, c in coords:
@@ -148,10 +146,10 @@ class TangoPuzzle(BasePuzzle):
         edges_v = puzzle_data.get("edges_v", [[0] * size for _ in range(size - 1)])
 
         lines = []
-        lines.append("+" + "---+" * size)
+        lines.append("   +" + "---+" * size)
 
         for r in range(size):
-            row_line = "|"
+            row_line = "   |"
             for c in range(size):
                 v = puzzle[r][c] if r < len(puzzle) and c < len(puzzle[r]) else -1
                 val_str = f" {v} " if v in (0, 1) else "   "
@@ -170,7 +168,7 @@ class TangoPuzzle(BasePuzzle):
             lines.append(row_line)
 
             if r < size - 1:
-                div_line = "+"
+                div_line = "   +"
                 for c in range(size):
                     e = edges_v[r][c] if r < len(edges_v) and c < len(edges_v[r]) else 0
                     if e == 1:
@@ -181,7 +179,7 @@ class TangoPuzzle(BasePuzzle):
                         div_line += "---+"
                 lines.append(div_line)
             else:
-                lines.append("+" + "---+" * size)
+                lines.append("   +" + "---+" * size)
 
         return "\n".join(lines)
 
@@ -252,7 +250,8 @@ class TangoPuzzle(BasePuzzle):
                 valid.append(bits)
         return valid
 
-    def _generate_full_board(self, n: int) -> Optional[List[List[int]]]:
+    def _generate_full_board(self, n: int, rng: Optional[random.Random] = None) -> Optional[List[List[int]]]:
+        r_gen = rng if rng is not None else random.Random()
         half = n // 2
         valid_lines = self._get_valid_lines(n)
         grid = [[-1] * n for _ in range(n)]
@@ -271,7 +270,7 @@ class TangoPuzzle(BasePuzzle):
             if r == n:
                 return True
             cands = list(valid_lines)
-            random.shuffle(cands)
+            r_gen.shuffle(cands)
             for cand in cands:
                 if can_place_row(r, cand):
                     grid[r] = cand[:]

@@ -27,16 +27,13 @@ public:
     uint8_t getWallH(uint8_t r, uint8_t c) const;
     uint8_t getWallV(uint8_t r, uint8_t c) const;
 
+#ifdef HOST_TEST
     uint16_t getSolutionMoveCount() const;
     char getSolutionMoveDir(uint16_t idx) const;
     uint8_t getSolutionMoveSteps(uint16_t idx) const;
+#endif
 
 private:
-    struct MoveStep {
-        char dir;
-        uint8_t steps;
-    };
-
     uint8_t _size;
     uint8_t _cellSize;
     uint8_t _wallThickness;
@@ -47,13 +44,19 @@ private:
     uint8_t _wallsH[195];
     uint8_t _wallsV[195];
 
+#ifdef HOST_TEST
+    struct MoveStep {
+        char dir;
+        uint8_t steps;
+    };
     MoveStep _solutionMoves[300];
     uint16_t _solutionMoveCount;
     bool     _solutionSolved;
+    void solvePath();
+#endif
 
     void setWallH(uint8_t r, uint8_t c, uint8_t val);
     void setWallV(uint8_t r, uint8_t c, uint8_t val);
-    void solvePath();
 };
 
 #endif // MAZE_GEN_H

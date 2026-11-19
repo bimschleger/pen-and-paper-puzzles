@@ -33,9 +33,27 @@ public:
     }
     void feed(uint8_t n = 1) override {}
     void cut(bool) override { std::cout << "[PRINTER: CUT PAPER]" << std::endl; }
-    void printRasterBitmap(const uint8_t* bitmapData, uint16_t widthDots, uint16_t heightDots) override {
-        std::cout << "[PRINTER: RASTER BITMAP " << widthDots << "x" << heightDots << " dots (" << ((widthDots + 7) / 8 * heightDots) << " bytes)]" << std::endl;
+    bool beginRasterBitmap(uint16_t widthDots, uint16_t totalHeightDots) override {
+        _streamedW = widthDots;
+        _streamedH = totalHeightDots;
+        _streamedBytes = 0;
+        return true;
     }
+    bool writeRasterRows(const uint8_t*, size_t byteLen) override {
+        _streamedBytes += byteLen;
+        return true;
+    }
+    void endRasterBitmap() override {
+        std::cout << "[PRINTER: RASTER BITMAP " << _streamedW << "x" << _streamedH << " dots (" << _streamedBytes << " bytes)]" << std::endl;
+    }
+    void printRasterBitmap(const uint8_t* bitmapData, uint16_t widthDots, uint16_t heightDots) override {
+        beginRasterBitmap(widthDots, heightDots);
+        writeRasterRows(bitmapData, ((widthDots + 7) / 8) * heightDots);
+        endRasterBitmap();
+    }
+private:
+    uint16_t _streamedW = 0, _streamedH = 0;
+    size_t _streamedBytes = 0;
 };
 
 #include "../src/printer/qrcode.h"
@@ -305,6 +323,79 @@ int main() {
         guideCanvas.end();
     }
     std::cout << "  -> All " << (int)OFFLINE_PUZZLE_TOTAL << " Game Guide visual diagrams rendered cleanly!" << std::endl;
+
+    // Test 11: LoopGen & BinaryGen Mathematical Correctness Audit
+    std::cout << "\n>>> TEST 11: LOOP & BINARY MATHEMATICAL CORRECTNESS AUDIT <<<" << std::endl;
+    {
+        LoopDifficulty loopDiffs[3] = {LOOP_EASY, LOOP_MEDIUM, LOOP_HARD};
+        for (int di = 0; di < 3; di++) {
+            for (int iter = 0; iter < 5; iter++) {
+                LoopGen lg;
+                lg.generate(loopDiffs[di]);
+                uint8_t sz = lg.getSize();
+                int clueCnt = 0;
+                for (uint8_t r = 0; r < sz; r++) {
+                    for (uint8_t c = 0; c < sz; c++) {
+                        int8_t k = lg.getClue(r, c);
+                        if (k < -1 || k > 3) {
+                            std::cerr << "FAILED: LoopGen produced invalid clue " << (int)k << std::endl;
+                            return 1;
+                        }
+                        if (k >= 0) clueCnt++;
+                    }
+                }
+                if (clueCnt >= sz * sz || !lg.verifySolvable()) {
+                    std::cerr << "FAILED: LoopGen produced unthinned or unsolvable puzzle (diff=" << di << ")" << std::endl;
+                    return 1;
+                }
+            }
+        }
+
+        BinaryDifficulty binDiffs[3] = {BINARY_EASY, BINARY_MEDIUM, BINARY_HARD};
+        for (int di = 0; di < 3; di++) {
+            for (int iter = 0; iter < 5; iter++) {
+                BinaryGen bg;
+                bg.generate(binDiffs[di]);
+                uint8_t sz = bg.getSize();
+                for (uint8_t i = 0; i < sz; i++) {
+                    int r0 = 0, r1 = 0, c0 = 0, c1 = 0;
+                    for (uint8_t j = 0; j < sz; j++) {
+                        int8_t rv = bg.getSolutionCell(i, j);
+                        int8_t cv = bg.getSolutionCell(j, i);
+                        if (rv == 0) r0++; else if (rv == 1) r1++;
+                        if (cv == 0) c0++; else if (cv == 1) c1++;
+                        if (j >= 2) {
+                            if (rv == bg.getSolutionCell(i, j - 1) && rv == bg.getSolutionCell(i, j - 2)) {
+                                std::cerr << "FAILED: BinaryGen row trio" << std::endl;
+                                return 1;
+                            }
+                            if (cv == bg.getSolutionCell(j - 1, i) && cv == bg.getSolutionCell(j - 2, i)) {
+                                std::cerr << "FAILED: BinaryGen col trio" << std::endl;
+                                return 1;
+                            }
+                        }
+                    }
+                    if (r0 != sz / 2 || r1 != sz / 2 || c0 != sz / 2 || c1 != sz / 2) {
+                        std::cerr << "FAILED: BinaryGen line balance" << std::endl;
+                        return 1;
+                    }
+                    for (uint8_t o = i + 1; o < sz; o++) {
+                        bool rowSame = true, colSame = true;
+                        for (uint8_t j = 0; j < sz; j++) {
+                            if (bg.getSolutionCell(i, j) != bg.getSolutionCell(o, j)) rowSame = false;
+                            if (bg.getSolutionCell(j, i) != bg.getSolutionCell(j, o)) colSame = false;
+                        }
+                        if (rowSame || colSame) {
+                            std::cerr << "FAILED: BinaryGen duplicate " << (rowSame ? "row" : "col")
+                                      << " at diff=" << di << std::endl;
+                            return 1;
+                        }
+                    }
+                }
+            }
+        }
+        std::cout << "  -> LoopGen (15 puzzles) & BinaryGen (15 puzzles) verified 100% mathematically valid!" << std::endl;
+    }
 
     std::cout << "\n==================================================" << std::endl;
     std::cout << ">>> SUCCESS: 100% OFFLINE CONFIG & MULTI-GRADE TESTS VERIFIED! <<<" << std::endl;

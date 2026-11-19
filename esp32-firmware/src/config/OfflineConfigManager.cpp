@@ -2,7 +2,7 @@
 #include "config.h"
 
 OfflineConfigManager::OfflineConfigManager() :
-    _gameMask(0x3FFFF),
+    _gameMask((1UL << (uint8_t)OFFLINE_PUZZLE_TOTAL) - 1UL),
     _puzzleCount(5),
     _puzzleGrade(GRADE_ESCALATING),
     _dailyScheduleEnabled(DAILY_PRINT_ENABLED_DEFAULT),
@@ -12,14 +12,24 @@ OfflineConfigManager::OfflineConfigManager() :
 
 void OfflineConfigManager::begin() {
     _prefs.begin("mp_config", false);
-    const uint8_t CONFIG_SCHEMA_VERSION = 2;
+    const uint8_t CONFIG_SCHEMA_VERSION = 3;
     uint8_t storedVersion = _prefs.getUChar("ver", 0);
+    uint8_t knownTotal = _prefs.getUChar("known_n", 18);
     const uint32_t allMask = (1UL << (uint8_t)OFFLINE_PUZZLE_TOTAL) - 1UL;
 
-    if (storedVersion < CONFIG_SCHEMA_VERSION) {
-        // Upgrade / reset mask to defaults to guarantee no legacy scrambled masks persist
+    if (storedVersion < 2) {
+        // Upgrade / reset legacy scrambled masks to defaults
         _gameMask = allMask;
         _prefs.putUChar("ver", CONFIG_SCHEMA_VERSION);
+        _prefs.putUChar("known_n", (uint8_t)OFFLINE_PUZZLE_TOTAL);
+        _prefs.putUInt("mask", _gameMask);
+    } else if (storedVersion < CONFIG_SCHEMA_VERSION || knownTotal < (uint8_t)OFFLINE_PUZZLE_TOTAL) {
+        // Preserve existing toggles while auto-enabling newly added games
+        uint32_t savedMask = _prefs.getUInt("mask", allMask);
+        uint32_t oldAllMask = (knownTotal >= 32) ? 0xFFFFFFFFUL : ((1UL << knownTotal) - 1UL);
+        _gameMask = (savedMask & allMask) | (allMask & ~oldAllMask);
+        _prefs.putUChar("ver", CONFIG_SCHEMA_VERSION);
+        _prefs.putUChar("known_n", (uint8_t)OFFLINE_PUZZLE_TOTAL);
         _prefs.putUInt("mask", _gameMask);
     } else {
         _gameMask = _prefs.getUInt("mask", allMask);
@@ -53,8 +63,9 @@ void OfflineConfigManager::begin() {
 }
 
 void OfflineConfigManager::save() {
-    const uint8_t CONFIG_SCHEMA_VERSION = 2;
+    const uint8_t CONFIG_SCHEMA_VERSION = 3;
     _prefs.putUChar("ver", CONFIG_SCHEMA_VERSION);
+    _prefs.putUChar("known_n", (uint8_t)OFFLINE_PUZZLE_TOTAL);
     _prefs.putUInt("mask", _gameMask);
     _prefs.putUChar("count", _puzzleCount);
     _prefs.putUChar("grade", (uint8_t)_puzzleGrade);

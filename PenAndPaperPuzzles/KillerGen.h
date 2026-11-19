@@ -14,7 +14,7 @@ enum KillerDifficulty {
 class KillerGen {
 public:
     static const uint8_t MAX_SIZE = 6;
-    static const uint8_t MAX_CAGES = 18;
+    static const uint8_t MAX_CAGES = 16;
 
     KillerGen();
 
@@ -28,7 +28,9 @@ public:
     uint8_t getNumCages() const { return _numCages; }
     uint8_t getCage(uint8_t r, uint8_t c) const { return (r < _size && c < _size) ? _cageMap[r][c] : 0; }
     uint8_t getCageSum(uint8_t cageId) const { return (cageId < _numCages) ? _cageSums[cageId] : 0; }
+#ifdef HOST_TEST
     uint8_t getSolution(uint8_t r, uint8_t c) const { return (r < _size && c < _size) ? _solution[r][c] : 0; }
+#endif
 
 private:
     uint8_t _size;
@@ -36,7 +38,9 @@ private:
     uint8_t _boxCols;
     uint8_t _numCages;
     uint8_t _cageMap[MAX_SIZE][MAX_SIZE];
+#ifdef HOST_TEST
     uint8_t _solution[MAX_SIZE][MAX_SIZE];
+#endif
     uint8_t _cageSums[MAX_CAGES];
 
     void applyTransform(uint8_t transform);

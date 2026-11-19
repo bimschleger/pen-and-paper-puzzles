@@ -20,21 +20,6 @@ def _get_wordsearch_dataset() -> Dict[str, List[str]]:
     return load_curated_dataset("wordsearch_dataset.json") or {}
 
 
-def get_random_words(difficulty: str = "medium", count: int = 8) -> List[str]:
-    data = _get_wordsearch_dataset()
-    diff_key = difficulty.lower()
-    pool = data.get(diff_key, data.get("medium", []))
-    if isinstance(pool, dict):
-        # Fallback if old format dictionary
-        words = []
-        for wlist in pool.values():
-            words.extend(wlist)
-        pool = words
-    if not pool:
-        pool = ["SEARCH", "PUZZLE", "FIND", "WORD", "LETTER", "HIDDEN", "DISCOVER", "SOLVE"]
-    return random.sample(pool, min(len(pool), count))
-
-
 DIRECTIONS = {
     "E":  (0, 1),    # Horizontal forward
     "W":  (0, -1),   # Horizontal backwards
@@ -71,10 +56,8 @@ class WordSearchPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs,
     ) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        difficulty = difficulty.lower()
+        rng = self.make_rng(seed)
+        difficulty = self.normalize_difficulty(difficulty)
         if difficulty == "easy":
             target_words = 6
             if grid_size is None:
@@ -98,24 +81,33 @@ class WordSearchPuzzle(BasePuzzle):
             for wlist in pool.values():
                 flattened.extend(wlist)
             pool = flattened
+        if not pool:
+            pool = ["SEARCH", "PUZZLE", "FIND", "WORD", "LETTER", "HIDDEN", "DISCOVER", "SOLVE", "GRID", "CLUE"]
+
+        if words:
+            filtered_custom = [w.strip().upper() for w in words if len(w.strip()) <= grid_size]
+            target_words = min(target_words, len(filtered_custom)) if filtered_custom else target_words
 
         best_grid = None
         best_placed = []
         best_placements = {}
         best_intersections = -1
+        fallback_grid = None
+        fallback_placed = []
+        fallback_placements = {}
 
         for restart in range(8):
             if words:
                 raw_words = [w.strip().upper() for w in words if len(w.strip()) <= grid_size]
             else:
                 sample_count = min(len(pool), target_words + 8)
-                raw_words = [w.strip().upper() for w in random.sample(pool, sample_count) if len(w.strip()) <= grid_size]
+                raw_words = [w.strip().upper() for w in rng.sample(pool, sample_count) if len(w.strip()) <= grid_size]
 
             raw_words.sort(key=len, reverse=True)
 
             if difficulty in ("hard", "extreme"):
                 dir_assignment = list(DIRECTIONS.keys())
-                random.shuffle(dir_assignment)
+                rng.shuffle(dir_assignment)
             elif difficulty == "easy":
                 dir_assignment = ["E", "S"]
             else:
@@ -134,10 +126,10 @@ class WordSearchPuzzle(BasePuzzle):
                     allowed = [d_name]
                 elif difficulty == "easy":
                     allowed = ["E", "S"]
-                    random.shuffle(allowed)
+                    rng.shuffle(allowed)
                 else:
                     allowed = list(DIRECTIONS.keys())
-                    random.shuffle(allowed)
+                    rng.shuffle(allowed)
 
                 placed = False
                 for d in allowed:
@@ -178,7 +170,7 @@ class WordSearchPuzzle(BasePuzzle):
                         candidates.sort(key=lambda x: x[0], reverse=True)
                         top_score = candidates[0][0]
                         top_tier = [c_cand for c_cand in candidates if c_cand[0] == top_score]
-                        score, r, c, d = random.choice(top_tier)
+                        score, r, c, d = rng.choice(top_tier)
 
                         for i, ch in enumerate(word):
                             grid[r + dr * i][c + dc * i] = ch
@@ -196,6 +188,11 @@ class WordSearchPuzzle(BasePuzzle):
                     cell_usage[r + dr * i][c + dc * i] += 1
             intersections = sum(1 for r in range(grid_size) for c in range(grid_size) if cell_usage[r][c] >= 2)
 
+            if len(placed_words) > len(fallback_placed):
+                fallback_grid = [row[:] for row in grid]
+                fallback_placed = list(placed_words)
+                fallback_placements = dict(placements)
+
             if len(placed_words) == target_words:
                 if intersections > best_intersections:
                     best_intersections = intersections
@@ -205,9 +202,18 @@ class WordSearchPuzzle(BasePuzzle):
                 if intersections >= min_intersections:
                     break
 
-        grid = best_grid or [[" " for _ in range(grid_size)] for _ in range(grid_size)]
-        placed_words = best_placed
-        placements = best_placements
+        if best_grid is not None:
+            grid = best_grid
+            placed_words = best_placed
+            placements = best_placements
+        elif fallback_grid is not None:
+            grid = fallback_grid
+            placed_words = fallback_placed
+            placements = fallback_placements
+        else:
+            grid = [[" " for _ in range(grid_size)] for _ in range(grid_size)]
+            placed_words = []
+            placements = {}
 
         # Solution snapshot before filling empty cells
         solution_grid = [row[:] for row in grid]
@@ -216,7 +222,7 @@ class WordSearchPuzzle(BasePuzzle):
         for r in range(grid_size):
             for c in range(grid_size):
                 if grid[r][c] == " ":
-                    grid[r][c] = random.choice(string.ascii_uppercase)
+                    grid[r][c] = rng.choice(string.ascii_uppercase)
 
         raw_data = {
             "type": "wordsearch",
@@ -288,22 +294,22 @@ class WordSearchPuzzle(BasePuzzle):
 
         checklist_rows = (len(words) + 1) // 2
         checklist_h = 40 + checklist_rows * 28
-        total_h = 12 + grid_h + 20 + checklist_h + 12
+        total_h = ((12 + grid_h + 20 + checklist_h + 12 + 7) // 8) * 8
 
         tb = ThermalBitmap(target_width, total_h)
         grid_y = 12
 
         tb.draw_rect(padding, grid_y, cell_size * cols, grid_h, thickness=4)
+        for c in range(1, cols):
+            tb.draw_vline(padding + c * cell_size, grid_y, grid_h, thickness=1)
         for r in range(rows):
+            if r > 0:
+                tb.draw_hline(padding, grid_y + r * cell_size, cell_size * cols, thickness=1)
             for c in range(cols):
                 letter = grid[r][c] if r < len(grid) and c < len(grid[r]) else " "
                 cx = padding + c * cell_size + (cell_size - 18) // 2
                 cy = grid_y + r * cell_size + (cell_size - 21) // 2
                 tb.draw_char(cx, cy, letter, scale=3)
-                if c > 0:
-                    tb.draw_vline(padding + c * cell_size, grid_y, grid_h, thickness=1)
-            if r > 0:
-                tb.draw_hline(padding, grid_y + r * cell_size, cell_size * cols, thickness=1)
 
         cur_y = grid_y + grid_h + 16
         tb.draw_hline(padding, cur_y, inner_width, thickness=2)

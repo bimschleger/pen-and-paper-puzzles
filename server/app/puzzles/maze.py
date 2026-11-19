@@ -69,9 +69,7 @@ class MazePuzzle(BasePuzzle):
         return "Draw a path from the entrance to the exit without crossing any walls."
 
     def generate(self, difficulty: str = "medium", **kwargs) -> BasePuzzleResult:
-        diff_lower = difficulty.lower()
-        if diff_lower not in self.DIFFICULTY_SETTINGS:
-            diff_lower = self.default_difficulty
+        diff_lower = self.normalize_difficulty(difficulty)
 
         cfg = self.DIFFICULTY_SETTINGS[diff_lower]
         n = cfg["size"]
@@ -165,9 +163,12 @@ class MazePuzzle(BasePuzzle):
         # Reconstruct path
         path: List[Tuple[int, int]] = [(n - 1, n - 1)]
         curr = (n - 1, n - 1)
-        while curr != (0, 0):
+        steps = 0
+        max_steps = n * n
+        while curr != (0, 0) and curr in parent and steps < max_steps:
             curr = parent[curr]
             path.append(curr)
+            steps += 1
         path.reverse()
 
         # Convert path to cardinal turn-by-turn steps

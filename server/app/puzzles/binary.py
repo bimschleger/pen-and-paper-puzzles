@@ -45,22 +45,20 @@ class BinaryPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs,
     ) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        difficulty = difficulty.lower()
+        rng = self.make_rng(seed)
+        difficulty = self.normalize_difficulty(difficulty)
         cfg = self.DIFFICULTY_SETTINGS.get(difficulty, self.DIFFICULTY_SETTINGS["medium"])
         size = cfg["size"]
         target_clues = cfg["target_clues"]
         max_rule = cfg["max_rule"]
 
-        solution = self._generate_full_board(size)
+        solution = self._generate_full_board(size, rng)
         if not solution:
             raise RuntimeError("Failed to generate full binary board")
 
         puzzle = [row[:] for row in solution]
         coords = [(r, c) for r in range(size) for c in range(size)]
-        random.shuffle(coords)
+        rng.shuffle(coords)
 
         clues_remaining = size * size
         for r, c in coords:
@@ -167,7 +165,8 @@ class BinaryPuzzle(BasePuzzle):
                 valid.append(bits)
         return valid
 
-    def _generate_full_board(self, n: int) -> Optional[List[List[int]]]:
+    def _generate_full_board(self, n: int, rng: Optional[random.Random] = None) -> Optional[List[List[int]]]:
+        r_gen = rng if rng is not None else random.Random()
         half = n // 2
         valid_lines = self._get_valid_lines(n)
         grid = [[-1] * n for _ in range(n)]
@@ -195,7 +194,7 @@ class BinaryPuzzle(BasePuzzle):
             if r == n:
                 return True
             cands = list(valid_lines)
-            random.shuffle(cands)
+            r_gen.shuffle(cands)
             for cand in cands:
                 if can_place_row(r, cand):
                     grid[r] = cand[:]

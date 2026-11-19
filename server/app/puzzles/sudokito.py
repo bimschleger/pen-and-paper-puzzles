@@ -14,6 +14,9 @@ from ..renderer.canvas import (
 )
 
 
+_MASK6_POPCOUNT = tuple(bin(i).count("1") for i in range(64))
+
+
 class SudokitoPuzzle(BasePuzzle):
     """Sudokito 6x6 mini-sudoku puzzle plugin with 2x3 regions and unique solution guarantees."""
 
@@ -40,15 +43,13 @@ class SudokitoPuzzle(BasePuzzle):
         return ["easy", "medium", "hard"]
 
     def generate(self, difficulty: str = "medium", seed: Optional[int] = None, **kwargs) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        difficulty = difficulty.lower()
+        rng = self.make_rng(seed)
+        difficulty = self.normalize_difficulty(difficulty)
         target_clues = self.DIFFICULTY_CLUES.get(difficulty, 14)
 
         # 1. Generate full solved 6x6 board
         solution_board = [[0] * 6 for _ in range(6)]
-        self._fill_board(solution_board)
+        self._fill_board(solution_board, rng)
 
         # 2. Clone board to create puzzle by removing numbers
         puzzle_board = [row[:] for row in solution_board]
@@ -65,7 +66,7 @@ class SudokitoPuzzle(BasePuzzle):
                     visited.add((r, c))
                     visited.add((sym_r, sym_c))
 
-        random.shuffle(pairs)
+        rng.shuffle(pairs)
 
         clues_remaining = 36
         # First pass: symmetric pair removal
@@ -87,7 +88,7 @@ class SudokitoPuzzle(BasePuzzle):
         # Second pass: if target is odd (e.g. 11), try single cell removals
         if clues_remaining > target_clues:
             single_cells = [(r, c) for r in range(6) for c in range(6) if puzzle_board[r][c] != 0]
-            random.shuffle(single_cells)
+            rng.shuffle(single_cells)
             for r, c in single_cells:
                 if clues_remaining <= target_clues:
                     break
@@ -126,14 +127,14 @@ class SudokitoPuzzle(BasePuzzle):
         lines = []
         for r in range(6):
             if r in (2, 4):
-                lines.append("------+------")
+                lines.append("   ------+------")
             row_chars = []
             for c in range(6):
                 if c == 3:
                     row_chars.append("|")
                 val = board[r][c] if r < len(board) and c < len(board[r]) else 0
                 row_chars.append(str(val) if val != 0 else ".")
-            lines.append(" ".join(row_chars))
+            lines.append("   " + " ".join(row_chars))
         return "\n".join(lines)
 
     def render_raster(
@@ -181,35 +182,79 @@ class SudokitoPuzzle(BasePuzzle):
                     return False
         return True
 
-    def _fill_board(self, board: List[List[int]]) -> bool:
+    def _fill_board(self, board: List[List[int]], rng: Optional[random.Random] = None) -> bool:
+        r_gen = rng if rng is not None else random.Random()
         for r in range(6):
             for c in range(6):
                 if board[r][c] == 0:
                     nums = list(range(1, 7))
-                    random.shuffle(nums)
+                    r_gen.shuffle(nums)
                     for num in nums:
                         if self._is_valid(board, r, c, num):
                             board[r][c] = num
-                            if self._fill_board(board):
+                            if self._fill_board(board, r_gen):
                                 return True
                             board[r][c] = 0
                     return False
         return True
 
     def _count_solutions(self, board: List[List[int]], max_count: int = 2) -> int:
+        row_mask = [0] * 6
+        col_mask = [0] * 6
+        box_mask = [0] * 6
+        empties: List[Tuple[int, int, int]] = []
         for r in range(6):
+            br = (r // 2) * 2
             for c in range(6):
+                v = board[r][c]
+                b = br + (c // 3)
+                if v == 0:
+                    empties.append((r, c, b))
+                else:
+                    bit = 1 << (v - 1)
+                    if (row_mask[r] & bit) or (col_mask[c] & bit) or (box_mask[b] & bit):
+                        return 0
+                    row_mask[r] |= bit
+                    col_mask[c] |= bit
+                    box_mask[b] |= bit
+
+        def search(rem_limit: int) -> int:
+            best_cnt = 7
+            best_r = best_c = best_b = best_avail = 0
+            for r, c, b in empties:
                 if board[r][c] == 0:
-                    count = 0
-                    for num in range(1, 7):
-                        if self._is_valid(board, r, c, num):
-                            board[r][c] = num
-                            count += self._count_solutions(board, max_count)
-                            board[r][c] = 0
-                            if count >= max_count:
-                                return count
+                    avail = 0x3F & ~(row_mask[r] | col_mask[c] | box_mask[b])
+                    if avail == 0:
+                        return 0
+                    cnt = _MASK6_POPCOUNT[avail]
+                    if cnt < best_cnt:
+                        best_cnt = cnt
+                        best_r, best_c, best_b, best_avail = r, c, b, avail
+                        if cnt == 1:
+                            break
+            if best_cnt == 7:
+                return 1
+
+            count = 0
+            cand = best_avail
+            board[best_r][best_c] = 1
+            while cand:
+                bit = cand & -cand
+                cand ^= bit
+                row_mask[best_r] |= bit
+                col_mask[best_c] |= bit
+                box_mask[best_b] |= bit
+                count += search(rem_limit - count)
+                row_mask[best_r] ^= bit
+                col_mask[best_c] ^= bit
+                box_mask[best_b] ^= bit
+                if count >= rem_limit:
+                    board[best_r][best_c] = 0
                     return count
-        return 1
+            board[best_r][best_c] = 0
+            return count
+
+        return search(max_count)
 
     def verify_accuracy(
         self,

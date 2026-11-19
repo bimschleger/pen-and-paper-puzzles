@@ -8,10 +8,8 @@ from typing import Dict, Any, Optional
 from .canvas import (
     THERMAL_WIDTH_DOTS,
     THERMAL_WIDTH_BYTES,
-    HAS_PILLOW,
     image_to_escpos_raster,
     calculate_duty_cycle,
-    pil_to_escpos,
     ThermalBitmap,
     FONT_5X7,
 )

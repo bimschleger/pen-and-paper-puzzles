@@ -15,20 +15,21 @@ bool BinaryGen::generateFullBoard() {
     const uint8_t numValids = (_size == 6) ? 14 : 34;
     const uint8_t half = _size / 2;
 
-    uint8_t rowOrder[34];
-    for (uint8_t i = 0; i < numValids; i++) rowOrder[i] = i;
-
     struct State {
         uint8_t candIdx;
         uint8_t order[34];
     } stack[8];
 
+    memset(_solution, -1, sizeof(_solution));
     int r = 0;
     for (uint8_t i = 0; i < numValids; i++) stack[0].order[i] = i;
     mp_shuffle(stack[0].order, numValids);
     stack[0].candIdx = 0;
 
-    while (r >= 0 && r < _size) {
+    uint16_t iters = 0;
+    const uint16_t MAX_ITERS = 4000;
+    while (r >= 0 && r < _size && iters++ < MAX_ITERS) {
+        if ((iters & 0xFF) == 0) yield();
         if (stack[r].candIdx >= numValids) {
             // Backtrack
             for (uint8_t c = 0; c < _size; c++) _solution[r][c] = -1;
@@ -75,7 +76,7 @@ bool BinaryGen::generateFullBoard() {
                         for (int pr = 0; pr < _size - 1; pr++) {
                             if (_solution[pr][pc] != _solution[pr][c]) { colSame = false; break; }
                         }
-                        if (colSame && _solution[r][pc] == val) {
+                        if (colSame && cand[pc] == val) {
                             valid = false; break;
                         }
                     }
@@ -164,48 +165,54 @@ bool BinaryGen::solveDeductive(int8_t grid[8][8], uint8_t maxRule) {
         }
         if (changed) continue;
 
-        // Rule 3: Line uniqueness (Rule 4 from binarypuzzle.com)
+        // Rule 3: Line uniqueness (Rule 4 from binarypuzzle.com) for both rows and columns
         if (maxRule >= 3) {
-            for (uint8_t r = 0; r < _size; r++) {
-                int emptyIdx[2];
-                uint8_t emptyCount = 0, c0 = 0, c1 = 0;
-                for (uint8_t c = 0; c < _size; c++) {
-                    if (g[r][c] == -1) {
-                        if (emptyCount < 2) emptyIdx[emptyCount] = c;
-                        emptyCount++;
-                    } else if (g[r][c] == 0) c0++;
-                    else if (g[r][c] == 1) c1++;
-                }
-                if (emptyCount == 2 && c0 == half - 1 && c1 == half - 1) {
-                    int8_t ta[8];
-                    memcpy(ta, g[r], _size);
-                    ta[emptyIdx[0]] = 0; ta[emptyIdx[1]] = 1;
-                    bool matchA = false;
-                    for (uint8_t o = 0; o < _size; o++) {
-                        if (o == r) continue;
-                        bool hasEmpty = false;
-                        for (uint8_t c = 0; c < _size; c++) if (g[o][c] == -1) { hasEmpty = true; break; }
-                        if (hasEmpty) continue;
-                        if (memcmp(g[o], ta, _size) == 0) { matchA = true; break; }
-                    }
-                    if (matchA) {
-                        g[r][emptyIdx[0]] = 1; g[r][emptyIdx[1]] = 0;
-                        changed = true;
-                    } else {
-                        int8_t tb[8];
-                        memcpy(tb, g[r], _size);
-                        tb[emptyIdx[0]] = 1; tb[emptyIdx[1]] = 0;
-                        bool matchB = false;
-                        for (uint8_t o = 0; o < _size; o++) {
-                            if (o == r) continue;
-                            bool hasEmpty = false;
-                            for (uint8_t c = 0; c < _size; c++) if (g[o][c] == -1) { hasEmpty = true; break; }
-                            if (hasEmpty) continue;
-                            if (memcmp(g[o], tb, _size) == 0) { matchB = true; break; }
+            for (uint8_t isCol = 0; isCol < 2; isCol++) {
+                for (uint8_t idx = 0; idx < _size; idx++) {
+                    int emptyIdx[2] = {0, 0};
+                    uint8_t emptyCount = 0, c0 = 0, c1 = 0;
+                    int8_t curLine[8];
+                    for (uint8_t j = 0; j < _size; j++) {
+                        int8_t v = isCol ? g[j][idx] : g[idx][j];
+                        curLine[j] = v;
+                        if (v == -1) {
+                            if (emptyCount < 2) emptyIdx[emptyCount] = j;
+                            emptyCount++;
+                        } else if (v == 0) {
+                            c0++;
+                        } else if (v == 1) {
+                            c1++;
                         }
-                        if (matchB) {
-                            g[r][emptyIdx[0]] = 0; g[r][emptyIdx[1]] = 1;
+                    }
+                    if (emptyCount == 2 && c0 == half - 1 && c1 == half - 1) {
+                        auto matchesOther = [&](const int8_t* candLine) -> bool {
+                            for (uint8_t o = 0; o < _size; o++) {
+                                if (o == idx) continue;
+                                bool same = true;
+                                for (uint8_t j = 0; j < _size; j++) {
+                                    int8_t ov = isCol ? g[j][o] : g[o][j];
+                                    if (ov == -1 || ov != candLine[j]) { same = false; break; }
+                                }
+                                if (same) return true;
+                            }
+                            return false;
+                        };
+                        int8_t ta[8];
+                        memcpy(ta, curLine, _size);
+                        ta[emptyIdx[0]] = 0; ta[emptyIdx[1]] = 1;
+                        if (matchesOther(ta)) {
+                            if (isCol) { g[emptyIdx[0]][idx] = 1; g[emptyIdx[1]][idx] = 0; }
+                            else { g[idx][emptyIdx[0]] = 1; g[idx][emptyIdx[1]] = 0; }
                             changed = true;
+                        } else {
+                            int8_t tb[8];
+                            memcpy(tb, curLine, _size);
+                            tb[emptyIdx[0]] = 1; tb[emptyIdx[1]] = 0;
+                            if (matchesOther(tb)) {
+                                if (isCol) { g[emptyIdx[0]][idx] = 0; g[emptyIdx[1]][idx] = 1; }
+                                else { g[idx][emptyIdx[0]] = 0; g[idx][emptyIdx[1]] = 1; }
+                                changed = true;
+                            }
                         }
                     }
                 }
@@ -239,7 +246,10 @@ void BinaryGen::generate(BinaryDifficulty difficulty) {
         maxRule = 3;
     }
 
-    generateFullBoard();
+    for (uint8_t attempt = 0; attempt < 25; attempt++) {
+        if (generateFullBoard()) break;
+        yield();
+    }
     memcpy(_puzzle, _solution, sizeof(_puzzle));
 
     // Create coordinate array and shuffle
@@ -262,6 +272,7 @@ void BinaryGen::generate(BinaryDifficulty difficulty) {
         } else {
             _puzzle[r][c] = saved;
         }
+        if ((i & 0x07) == 0) yield();
     }
 }
 
@@ -290,34 +301,19 @@ bool BinaryGen::printRasterToReceipt(EscPosPrinter& printer, BinaryDifficulty /*
     const int16_t totalH = padding + cellSize * _size + padding;
 
     ThermalCanvas canvas;
-    if (!canvas.begin(totalH)) {
-        return false;
-    }
+    return canvas.renderBanded(printer, totalH, [&](ThermalCanvas& c) {
+        c.drawGrid(padding, padding, _size, _size, cellSize, cellSize, 4, 2);
 
-    // Outer border
-    canvas.drawRect(padding, padding, cellSize * _size, cellSize * _size, 4);
-
-    // Inner lines
-    for (uint8_t i = 1; i < _size; i++) {
-        int16_t pos = padding + i * cellSize;
-        canvas.drawHLine(padding, pos, cellSize * _size, 2);
-        canvas.drawVLine(pos, padding, cellSize * _size, 2);
-    }
-
-    // Numbers
-    for (uint8_t r = 0; r < _size; r++) {
-        for (uint8_t c = 0; c < _size; c++) {
-            int8_t val = _puzzle[r][c];
-            if (val != -1) {
-                int16_t cx = padding + c * cellSize + (cellSize - 18) / 2;
-                int16_t cy = padding + r * cellSize + (cellSize - 21) / 2;
-                canvas.drawChar(cx, cy, '0' + val, 3);
+        for (uint8_t r = 0; r < _size; r++) {
+            for (uint8_t col = 0; col < _size; col++) {
+                int8_t val = _puzzle[r][col];
+                if (val != -1) {
+                    int16_t cx = padding + col * cellSize + (cellSize - 18) / 2;
+                    int16_t cy = padding + r * cellSize + (cellSize - 21) / 2;
+                    c.drawChar(cx, cy, '0' + val, 3);
+                }
             }
         }
-    }
-
-    bool ok = canvas.printTo(printer);
-    canvas.end();
-    return ok;
+    });
 }
 

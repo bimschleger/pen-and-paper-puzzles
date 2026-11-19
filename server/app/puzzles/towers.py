@@ -72,9 +72,8 @@ class TowersPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs: Any,
     ) -> BasePuzzleResult:
-        diff_key = difficulty.lower()
-        if diff_key not in self.DIFFICULTY_CONFIGS:
-            diff_key = "medium"
+        rng = self.make_rng(seed)
+        diff_key = self.normalize_difficulty(difficulty)
 
         cfg = self.DIFFICULTY_CONFIGS[diff_key]
         size = cfg["size"]
@@ -85,7 +84,7 @@ class TowersPuzzle(BasePuzzle):
         if not puzzles:
             raise RuntimeError(f"No curated Towers puzzles found for difficulty '{diff_key}'")
 
-        idx, d4_op = select_seeded_d4(puzzles, seed)
+        idx, d4_op = select_seeded_d4(puzzles, seed, rng=rng)
 
         rot = d4_op % 4
         flip = d4_op // 4

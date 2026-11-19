@@ -84,6 +84,12 @@
 #include "../esp32-firmware/src/generators/SudokitoGen.h"
 #include "../esp32-firmware/src/generators/SudokitoGen.cpp"
 
+#include "../esp32-firmware/src/config/OfflineConfigManager.h"
+#include "../esp32-firmware/src/config/OfflineConfigManager.cpp"
+#include "../esp32-firmware/src/generators/GameRulesDataset.h"
+#include "../esp32-firmware/src/generators/OfflinePuzzleComposer.h"
+#include "../esp32-firmware/src/generators/OfflinePuzzleComposer.cpp"
+
 class CapturePrinter : public EscPosPrinter {
 public:
     std::vector<uint8_t> lastBitmap;
@@ -102,11 +108,27 @@ public:
     void feed(uint8_t = 1) override {}
     void cut(bool = false) override {}
 
-    void printRasterBitmap(const uint8_t* bitmapData, uint16_t widthDots, uint16_t heightDots) override {
+    bool beginRasterBitmap(uint16_t widthDots, uint16_t totalHeightDots) override {
         lastWidth = widthDots;
-        lastHeight = heightDots;
-        size_t totalBytes = ((widthDots + 7) / 8) * heightDots;
-        lastBitmap.assign(bitmapData, bitmapData + totalBytes);
+        lastHeight = totalHeightDots;
+        lastBitmap.clear();
+        lastBitmap.reserve((size_t)((widthDots + 7) / 8) * totalHeightDots);
+        return true;
+    }
+
+    bool writeRasterRows(const uint8_t* rowData, size_t byteLen) override {
+        if (rowData && byteLen > 0) {
+            lastBitmap.insert(lastBitmap.end(), rowData, rowData + byteLen);
+        }
+        return true;
+    }
+
+    void endRasterBitmap() override {}
+
+    void printRasterBitmap(const uint8_t* bitmapData, uint16_t widthDots, uint16_t heightDots) override {
+        beginRasterBitmap(widthDots, heightDots);
+        writeRasterRows(bitmapData, (size_t)((widthDots + 7) / 8) * heightDots);
+        endRasterBitmap();
     }
 };
 
@@ -155,7 +177,7 @@ static std::string escapeJson(const char* str) {
 
 int main(int argc, char** argv) {
     std::srand(42);
-    CapturePrinter* printer = new CapturePrinter();
+    CapturePrinter printer;
 
     std::cout << "[\n";
     bool first = true;
@@ -169,14 +191,14 @@ int main(int argc, char** argv) {
     {
         JumbleGen jGen;
         jGen.generate(JUMBLE_EASY);
-        printer->lastBitmap.clear();
-        jGen.printRasterToReceipt(*printer);
+        printer.lastBitmap.clear();
+        jGen.printRasterToReceipt(printer);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"jumble\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"riddle\": \"" << escapeJson(jGen.getRiddle()) << "\",\n";
         std::cout << "    \"answer\": \"" << escapeJson(jGen.getAnswer()) << "\",\n";
         std::cout << "    \"words\": [";
@@ -203,7 +225,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -211,14 +233,14 @@ int main(int argc, char** argv) {
     {
         WheelGen wGen;
         wGen.generate(WHEEL_EASY);
-        printer->lastBitmap.clear();
-        wGen.printRasterToReceipt(*printer);
+        printer.lastBitmap.clear();
+        wGen.printRasterToReceipt(printer);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"wheel\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"center_letter\": \"" << wGen.getCenterLetter() << "\",\n";
         std::cout << "    \"outer_letters\": [";
         const char* outer = wGen.getOuterLetters();
@@ -234,7 +256,7 @@ int main(int argc, char** argv) {
         std::cout << "    \"count5\": " << (int)wGen.getCount5() << ",\n";
         std::cout << "    \"count6\": " << (int)wGen.getCount6() << ",\n";
         std::cout << "    \"count7plus\": " << (int)wGen.getCount7Plus() << ",\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -242,14 +264,14 @@ int main(int argc, char** argv) {
     {
         MinesGen mGen;
         mGen.generate(MINES_MEDIUM);
-        printer->lastBitmap.clear();
-        mGen.printRasterToReceipt(*printer, MINES_MEDIUM);
+        printer.lastBitmap.clear();
+        mGen.printRasterToReceipt(printer, MINES_MEDIUM);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"mines\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"total_mines\": " << (int)mGen.getTotalMines() << ",\n";
         std::cout << "    \"rows\": 8,\n";
         std::cout << "    \"cols\": 8,\n";
@@ -264,7 +286,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -272,14 +294,14 @@ int main(int argc, char** argv) {
     {
         TentsGen tGen;
         tGen.generate(TENTS_MEDIUM);
-        printer->lastBitmap.clear();
-        tGen.printRasterToReceipt(*printer, TENTS_MEDIUM);
+        printer.lastBitmap.clear();
+        tGen.printRasterToReceipt(printer, TENTS_MEDIUM);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"tents\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"size\": " << (int)tGen.getSize() << ",\n";
         std::cout << "    \"row_clues\": [";
         for (uint8_t r = 0; r < tGen.getSize(); r++) {
@@ -304,7 +326,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -312,14 +334,14 @@ int main(int argc, char** argv) {
     {
         QueensGen qGen;
         qGen.generate(QUEENS_MEDIUM);
-        printer->lastBitmap.clear();
-        qGen.printRasterToReceipt(*printer);
+        printer.lastBitmap.clear();
+        qGen.printRasterToReceipt(printer);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"stars\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"size\": " << (int)qGen.getSize() << ",\n";
         std::cout << "    \"regions\": [";
         for (uint8_t r = 0; r < qGen.getSize(); r++) {
@@ -332,7 +354,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -340,14 +362,14 @@ int main(int argc, char** argv) {
     {
         WordSearchGen wsGen;
         wsGen.generate(WS_MEDIUM, 0);
-        printer->lastBitmap.clear();
-        wsGen.printRasterToReceipt(*printer);
+        printer.lastBitmap.clear();
+        wsGen.printRasterToReceipt(printer);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"wordsearch\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"theme\": \"" << wsGen.getThemeName() << "\",\n";
         std::cout << "    \"words\": [";
         for (size_t i = 0; i < wsGen.getWordCount(); i++) {
@@ -366,7 +388,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -374,14 +396,14 @@ int main(int argc, char** argv) {
     {
         WordSearchGen wsGenEasy;
         wsGenEasy.generate(WS_EASY, 0);
-        printer->lastBitmap.clear();
-        wsGenEasy.printRasterToReceipt(*printer);
+        printer.lastBitmap.clear();
+        wsGenEasy.printRasterToReceipt(printer);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"wordsearch_easy\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"theme\": \"" << wsGenEasy.getThemeName() << "\",\n";
         std::cout << "    \"words\": [";
         for (size_t i = 0; i < wsGenEasy.getWordCount(); i++) {
@@ -400,7 +422,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -408,14 +430,14 @@ int main(int argc, char** argv) {
     {
         SudokuGen sGen;
         sGen.generate(SUDOKU_EASY);
-        printer->lastBitmap.clear();
-        sGen.printRasterToReceipt(*printer, SUDOKU_EASY);
+        printer.lastBitmap.clear();
+        sGen.printRasterToReceipt(printer, SUDOKU_EASY);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"sudoku\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"grid\": [";
         for (uint8_t r = 0; r < 9; r++) {
             if (r > 0) std::cout << ", ";
@@ -427,7 +449,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -435,15 +457,15 @@ int main(int argc, char** argv) {
     {
         LoopGen loopGen;
         loopGen.generate(LOOP_MEDIUM);
-        printer->lastBitmap.clear();
-        loopGen.printRasterToReceipt(*printer, LOOP_MEDIUM);
+        printer.lastBitmap.clear();
+        loopGen.printRasterToReceipt(printer, LOOP_MEDIUM);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"loop\",\n";
         std::cout << "    \"difficulty\": \"medium\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"size\": " << (int)loopGen.getSize() << ",\n";
         std::cout << "    \"clues\": [";
         for (uint8_t r = 0; r < loopGen.getSize(); r++) {
@@ -456,7 +478,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -464,14 +486,14 @@ int main(int argc, char** argv) {
     {
         NonogramGen nGen;
         nGen.generate(NONO_MEDIUM);
-        printer->lastBitmap.clear();
-        nGen.printRasterToReceipt(*printer);
+        printer.lastBitmap.clear();
+        nGen.printRasterToReceipt(printer);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"nonogram\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"size\": " << (int)nGen.getSize() << ",\n";
         std::cout << "    \"row_clues\": [";
         for (uint8_t r = 0; r < nGen.getSize(); r++) {
@@ -497,7 +519,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -505,14 +527,14 @@ int main(int argc, char** argv) {
     {
         LightsGen lGen;
         lGen.generate(LIGHTS_EASY);
-        printer->lastBitmap.clear();
-        lGen.printRasterToReceipt(*printer, LIGHTS_EASY);
+        printer.lastBitmap.clear();
+        lGen.printRasterToReceipt(printer, LIGHTS_EASY);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"lights\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"size\": " << (int)lGen.getSize() << ",\n";
         std::cout << "    \"grid\": [";
         for (uint8_t r = 0; r < lGen.getSize(); r++) {
@@ -525,7 +547,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -533,15 +555,15 @@ int main(int argc, char** argv) {
     {
         KillerGen kGen;
         kGen.generate(KILLER_MEDIUM, 42);
-        printer->lastBitmap.clear();
-        kGen.printRasterToReceipt(*printer);
+        printer.lastBitmap.clear();
+        kGen.printRasterToReceipt(printer);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"killer\",\n";
         std::cout << "    \"difficulty\": \"medium\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"size\": " << (int)kGen.getSize() << ",\n";
         std::cout << "    \"box_rows\": " << (int)kGen.getBoxRows() << ",\n";
         std::cout << "    \"box_cols\": " << (int)kGen.getBoxCols() << ",\n";
@@ -562,7 +584,7 @@ int main(int argc, char** argv) {
             std::cout << "]}";
         }
         std::cout << "\n    ],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -570,15 +592,15 @@ int main(int argc, char** argv) {
     {
         CryptogramGen cGen;
         cGen.generateWithQuote("ACTIONS SPEAK LOUDER THAN WORDS.", "PROVERB", CRYPTO_EASY, 42);
-        printer->lastBitmap.clear();
-        cGen.printRasterToReceipt(*printer);
+        printer.lastBitmap.clear();
+        cGen.printRasterToReceipt(printer);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"cryptogram\",\n";
         std::cout << "    \"difficulty\": \"easy\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"phrase\": \"" << escapeJson(cGen.getPhrase()) << "\",\n";
         std::cout << "    \"author\": \"" << escapeJson(cGen.getAuthor()) << "\",\n";
         std::cout << "    \"ciphertext\": \"" << escapeJson(cGen.getCiphertext()) << "\",\n";
@@ -589,7 +611,7 @@ int main(int argc, char** argv) {
             std::cout << "{\"cipher\": \"" << escapeJson(cGen.getClue(i).cipher) << "\", \"plain\": \"" << escapeJson(cGen.getClue(i).plain) << "\"}";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -597,15 +619,15 @@ int main(int argc, char** argv) {
     {
         LadderGen ladderGen;
         ladderGen.generate(LADDER_EASY);
-        printer->lastBitmap.clear();
-        ladderGen.printRasterToReceipt(*printer);
+        printer.lastBitmap.clear();
+        ladderGen.printRasterToReceipt(printer);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"ladder\",\n";
         std::cout << "    \"difficulty\": \"easy\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"start_word\": \"" << escapeJson(ladderGen.getStartWord()) << "\",\n";
         std::cout << "    \"target_word\": \"" << escapeJson(ladderGen.getTargetWord()) << "\",\n";
         std::cout << "    \"word_len\": " << (int)ladderGen.getWordLen() << ",\n";
@@ -616,7 +638,7 @@ int main(int argc, char** argv) {
             std::cout << "\"" << escapeJson(ladderGen.getWord(i)) << "\"";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -624,14 +646,14 @@ int main(int argc, char** argv) {
     {
         BinaryGen bGen;
         bGen.generate(BINARY_MEDIUM);
-        printer->lastBitmap.clear();
-        bGen.printRasterToReceipt(*printer, BINARY_MEDIUM);
+        printer.lastBitmap.clear();
+        bGen.printRasterToReceipt(printer, BINARY_MEDIUM);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"binary\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"size\": " << (int)bGen.getSize() << ",\n";
         std::cout << "    \"grid\": [";
         for (uint8_t r = 0; r < bGen.getSize(); r++) {
@@ -644,7 +666,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -652,14 +674,14 @@ int main(int argc, char** argv) {
     {
         BridgesGen brGen;
         brGen.generate(BRIDGES_MEDIUM);
-        printer->lastBitmap.clear();
-        brGen.printRasterToReceipt(*printer, BRIDGES_MEDIUM);
+        printer.lastBitmap.clear();
+        brGen.printRasterToReceipt(printer, BRIDGES_MEDIUM);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"bridges\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"size\": " << (int)brGen.getSize() << ",\n";
         std::cout << "    \"islands\": [\n";
         for (uint8_t i = 0; i < brGen.getIslandCount(); i++) {
@@ -668,7 +690,7 @@ int main(int argc, char** argv) {
             std::cout << "      {\"r\": " << (int)isl.r << ", \"c\": " << (int)isl.c << ", \"count\": " << (int)isl.count << "}";
         }
         std::cout << "\n    ],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -676,14 +698,14 @@ int main(int argc, char** argv) {
     {
         TangoGen tgGen;
         tgGen.generate(TANGO_MEDIUM);
-        printer->lastBitmap.clear();
-        tgGen.printRasterToReceipt(*printer, TANGO_MEDIUM);
+        printer.lastBitmap.clear();
+        tgGen.printRasterToReceipt(printer, TANGO_MEDIUM);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"tango\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"size\": " << (int)tgGen.getSize() << ",\n";
         std::cout << "    \"grid\": [";
         for (uint8_t r = 0; r < tgGen.getSize(); r++) {
@@ -718,7 +740,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -726,15 +748,15 @@ int main(int argc, char** argv) {
     {
         TowersGen twGen;
         twGen.generate(TOWERS_MEDIUM, 42);
-        printer->lastBitmap.clear();
-        twGen.printRasterToReceipt(*printer);
+        printer.lastBitmap.clear();
+        twGen.printRasterToReceipt(printer);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"towers\",\n";
         std::cout << "    \"difficulty\": \"medium\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"size\": " << (int)twGen.getSize() << ",\n";
         std::cout << "    \"clues\": {\n";
         std::cout << "      \"top\": [";
@@ -773,7 +795,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -781,15 +803,15 @@ int main(int argc, char** argv) {
     {
         TowersGen twGen;
         twGen.generate(TOWERS_EXTREME, 42);
-        printer->lastBitmap.clear();
-        twGen.printRasterToReceipt(*printer);
+        printer.lastBitmap.clear();
+        twGen.printRasterToReceipt(printer);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"towers\",\n";
         std::cout << "    \"difficulty\": \"extreme\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"size\": " << (int)twGen.getSize() << ",\n";
         std::cout << "    \"clues\": {\n";
         std::cout << "      \"top\": [";
@@ -828,7 +850,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -836,15 +858,15 @@ int main(int argc, char** argv) {
     {
         InequalityGen fGen;
         fGen.generate(INEQUALITY_MEDIUM, 42);
-        printer->lastBitmap.clear();
-        fGen.printRasterToReceipt(*printer);
+        printer.lastBitmap.clear();
+        fGen.printRasterToReceipt(printer);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"inequality\",\n";
         std::cout << "    \"difficulty\": \"medium\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"size\": " << (int)fGen.getSize() << ",\n";
         std::cout << "    \"givens\": [";
         bool firstGiv = true;
@@ -891,7 +913,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -899,15 +921,15 @@ int main(int argc, char** argv) {
     {
         MazeGen mazeGen;
         mazeGen.generate(MAZE_MEDIUM, 42);
-        printer->lastBitmap.clear();
-        mazeGen.printRasterToReceipt(*printer, MAZE_MEDIUM);
+        printer.lastBitmap.clear();
+        mazeGen.printRasterToReceipt(printer, MAZE_MEDIUM);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"maze\",\n";
         std::cout << "    \"difficulty\": \"medium\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"size\": " << (int)mazeGen.getSize() << ",\n";
         std::cout << "    \"walls_h\": [";
         for (uint8_t r = 0; r < mazeGen.getSize() - 1; r++) {
@@ -931,7 +953,7 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 
@@ -939,14 +961,14 @@ int main(int argc, char** argv) {
     {
         SudokitoGen skGen;
         skGen.generate(SUDOKITO_MEDIUM);
-        printer->lastBitmap.clear();
-        skGen.printRasterToReceipt(*printer, SUDOKITO_MEDIUM);
+        printer.lastBitmap.clear();
+        skGen.printRasterToReceipt(printer, SUDOKITO_MEDIUM);
 
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"sudokito\",\n";
-        std::cout << "    \"width\": " << printer->lastWidth << ",\n";
-        std::cout << "    \"height\": " << printer->lastHeight << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"grid\": [";
         for (uint8_t r = 0; r < 6; r++) {
             if (r > 0) std::cout << ", ";
@@ -958,7 +980,275 @@ int main(int argc, char** argv) {
             std::cout << "]";
         }
         std::cout << "],\n";
-        std::cout << "    \"raster_hex\": \"" << toHex(printer->lastBitmap) << "\"\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
+        std::cout << "  }";
+    }
+
+    // 23. STARS HARD (9x9, 2-Star)
+    {
+        QueensGen qGen;
+        qGen.generate(QUEENS_HARD, 42);
+        printer.lastBitmap.clear();
+        qGen.printRasterToReceipt(printer);
+
+        printSep();
+        std::cout << "  {\n";
+        std::cout << "    \"puzzle\": \"stars\",\n";
+        std::cout << "    \"difficulty\": \"hard\",\n";
+        std::cout << "    \"stars_per_unit\": " << (int)qGen.getStarsPerUnit() << ",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
+        std::cout << "    \"size\": " << (int)qGen.getSize() << ",\n";
+        std::cout << "    \"regions\": [";
+        for (uint8_t r = 0; r < qGen.getSize(); r++) {
+            if (r > 0) std::cout << ", ";
+            std::cout << "[";
+            for (uint8_t c = 0; c < qGen.getSize(); c++) {
+                if (c > 0) std::cout << ", ";
+                std::cout << (int)qGen.getRegion(r, c);
+            }
+            std::cout << "]";
+        }
+        std::cout << "],\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
+        std::cout << "  }";
+    }
+
+    // 24. KILLER HARD (6x6)
+    {
+        KillerGen kGen;
+        kGen.generate(KILLER_HARD, 42);
+        printer.lastBitmap.clear();
+        kGen.printRasterToReceipt(printer);
+
+        printSep();
+        std::cout << "  {\n";
+        std::cout << "    \"puzzle\": \"killer\",\n";
+        std::cout << "    \"difficulty\": \"hard\",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
+        std::cout << "    \"size\": " << (int)kGen.getSize() << ",\n";
+        std::cout << "    \"box_rows\": " << (int)kGen.getBoxRows() << ",\n";
+        std::cout << "    \"box_cols\": " << (int)kGen.getBoxCols() << ",\n";
+        std::cout << "    \"cages\": [\n";
+        for (uint8_t i = 0; i < kGen.getNumCages(); i++) {
+            if (i > 0) std::cout << ",\n";
+            std::cout << "      {\"id\": " << (int)i << ", \"sum\": " << (int)kGen.getCageSum(i) << ", \"cells\": [";
+            bool firstCell = true;
+            for (uint8_t r = 0; r < kGen.getSize(); r++) {
+                for (uint8_t c = 0; c < kGen.getSize(); c++) {
+                    if (kGen.getCage(r, c) == i) {
+                        if (!firstCell) std::cout << ", ";
+                        std::cout << "[" << (int)r << ", " << (int)c << "]";
+                        firstCell = false;
+                    }
+                }
+            }
+            std::cout << "]}";
+        }
+        std::cout << "\n    ],\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
+        std::cout << "  }";
+    }
+
+    // 25. LIGHTS HARD
+    {
+        LightsGen lGen;
+        lGen.generate(LIGHTS_HARD);
+        printer.lastBitmap.clear();
+        lGen.printRasterToReceipt(printer, LIGHTS_HARD);
+
+        printSep();
+        std::cout << "  {\n";
+        std::cout << "    \"puzzle\": \"lights\",\n";
+        std::cout << "    \"difficulty\": \"hard\",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
+        std::cout << "    \"size\": " << (int)lGen.getSize() << ",\n";
+        std::cout << "    \"grid\": [";
+        for (uint8_t r = 0; r < lGen.getSize(); r++) {
+            if (r > 0) std::cout << ", ";
+            std::cout << "[";
+            for (uint8_t c = 0; c < lGen.getSize(); c++) {
+                if (c > 0) std::cout << ", ";
+                std::cout << (int)lGen.getCell(r, c);
+            }
+            std::cout << "]";
+        }
+        std::cout << "],\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
+        std::cout << "  }";
+    }
+
+    // 26. MAZE EXTREME (40x40)
+    {
+        MazeGen mazeGen;
+        mazeGen.generate(MAZE_EXTREME, 42);
+        printer.lastBitmap.clear();
+        mazeGen.printRasterToReceipt(printer, MAZE_EXTREME);
+
+        printSep();
+        std::cout << "  {\n";
+        std::cout << "    \"puzzle\": \"maze\",\n";
+        std::cout << "    \"difficulty\": \"extreme\",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
+        std::cout << "    \"size\": " << (int)mazeGen.getSize() << ",\n";
+        std::cout << "    \"cell_size\": 12,\n";
+        std::cout << "    \"wall_thickness\": 2,\n";
+        std::cout << "    \"walls_h\": [";
+        for (uint8_t r = 0; r < mazeGen.getSize() - 1; r++) {
+            if (r > 0) std::cout << ", ";
+            std::cout << "[";
+            for (uint8_t c = 0; c < mazeGen.getSize(); c++) {
+                if (c > 0) std::cout << ", ";
+                std::cout << (int)mazeGen.getWallH(r, c);
+            }
+            std::cout << "]";
+        }
+        std::cout << "],\n";
+        std::cout << "    \"walls_v\": [";
+        for (uint8_t r = 0; r < mazeGen.getSize(); r++) {
+            if (r > 0) std::cout << ", ";
+            std::cout << "[";
+            for (uint8_t c = 0; c < mazeGen.getSize() - 1; c++) {
+                if (c > 0) std::cout << ", ";
+                std::cout << (int)mazeGen.getWallV(r, c);
+            }
+            std::cout << "]";
+        }
+        std::cout << "],\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
+        std::cout << "  }";
+    }
+
+    // 27. TOWERS HARD (5x5)
+    {
+        TowersGen twGen;
+        twGen.generate(TOWERS_HARD, 42);
+        printer.lastBitmap.clear();
+        twGen.printRasterToReceipt(printer);
+
+        printSep();
+        std::cout << "  {\n";
+        std::cout << "    \"puzzle\": \"towers\",\n";
+        std::cout << "    \"difficulty\": \"hard\",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
+        std::cout << "    \"size\": " << (int)twGen.getSize() << ",\n";
+        std::cout << "    \"clues\": {\n";
+        std::cout << "      \"top\": [";
+        for (uint8_t i = 0; i < twGen.getSize(); i++) {
+            if (i > 0) std::cout << ", ";
+            std::cout << (int)twGen.getTopClue(i);
+        }
+        std::cout << "],\n      \"bottom\": [";
+        for (uint8_t i = 0; i < twGen.getSize(); i++) {
+            if (i > 0) std::cout << ", ";
+            std::cout << (int)twGen.getBottomClue(i);
+        }
+        std::cout << "],\n      \"left\": [";
+        for (uint8_t i = 0; i < twGen.getSize(); i++) {
+            if (i > 0) std::cout << ", ";
+            std::cout << (int)twGen.getLeftClue(i);
+        }
+        std::cout << "],\n      \"right\": [";
+        for (uint8_t i = 0; i < twGen.getSize(); i++) {
+            if (i > 0) std::cout << ", ";
+            std::cout << (int)twGen.getRightClue(i);
+        }
+        std::cout << "]\n    },\n";
+        std::cout << "    \"solution\": [";
+        for (uint8_t r = 0; r < twGen.getSize(); r++) {
+            if (r > 0) std::cout << ", ";
+            std::cout << "[";
+            for (uint8_t c = 0; c < twGen.getSize(); c++) {
+                if (c > 0) std::cout << ", ";
+                std::cout << (int)twGen.getSolution(r, c);
+            }
+            std::cout << "]";
+        }
+        std::cout << "],\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
+        std::cout << "  }";
+    }
+
+    // 28. INEQUALITY HARD (5x5)
+    {
+        InequalityGen fGen;
+        fGen.generate(INEQUALITY_HARD, 42);
+        printer.lastBitmap.clear();
+        fGen.printRasterToReceipt(printer);
+
+        printSep();
+        std::cout << "  {\n";
+        std::cout << "    \"puzzle\": \"inequality\",\n";
+        std::cout << "    \"difficulty\": \"hard\",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
+        std::cout << "    \"size\": " << (int)fGen.getSize() << ",\n";
+        std::cout << "    \"givens\": [";
+        bool firstGiv = true;
+        for (uint8_t r = 0; r < fGen.getSize(); r++) {
+            for (uint8_t c = 0; c < fGen.getSize(); c++) {
+                if (fGen.getGiven(r, c) > 0) {
+                    if (!firstGiv) std::cout << ", ";
+                    std::cout << "[" << (int)r << ", " << (int)c << ", " << (int)fGen.getGiven(r, c) << "]";
+                    firstGiv = false;
+                }
+            }
+        }
+        std::cout << "],\n    \"edges_h\": [";
+        for (uint8_t r = 0; r < fGen.getSize(); r++) {
+            if (r > 0) std::cout << ", ";
+            std::cout << "[";
+            for (uint8_t c = 0; c < fGen.getSize() - 1; c++) {
+                if (c > 0) std::cout << ", ";
+                std::cout << (int)fGen.getEdgeH(r, c);
+            }
+            std::cout << "]";
+        }
+        std::cout << "],\n    \"edges_v\": [";
+        for (uint8_t r = 0; r < fGen.getSize() - 1; r++) {
+            if (r > 0) std::cout << ", ";
+            std::cout << "[";
+            for (uint8_t c = 0; c < fGen.getSize(); c++) {
+                if (c > 0) std::cout << ", ";
+                std::cout << (int)fGen.getEdgeV(r, c);
+            }
+            std::cout << "]";
+        }
+        std::cout << "],\n    \"solution\": [";
+        for (uint8_t r = 0; r < fGen.getSize(); r++) {
+            if (r > 0) std::cout << ", ";
+            std::cout << "[";
+            for (uint8_t c = 0; c < fGen.getSize(); c++) {
+                if (c > 0) std::cout << ", ";
+                std::cout << (int)fGen.getSolution(r, c);
+            }
+            std::cout << "]";
+        }
+        std::cout << "],\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
+        std::cout << "  }";
+    }
+
+    // 29. ALL 20 GAME GUIDES
+    for (uint8_t g = 0; g < TOTAL_GAME_RULES; g++) {
+        ThermalCanvas canvas;
+        printer.lastBitmap.clear();
+        canvas.renderBanded(printer, 216, [&](ThermalCanvas& c) {
+            OfflinePuzzleComposer::renderGameGuideRaster(c, g);
+        });
+
+        printSep();
+        std::cout << "  {\n";
+        std::cout << "    \"puzzle\": \"guide\",\n";
+        std::cout << "    \"game_id\": " << (int)g << ",\n";
+        std::cout << "    \"key\": \"" << escapeJson(GAME_RULES[g].key) << "\",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
         std::cout << "  }";
     }
 

@@ -19,8 +19,21 @@ from .base import (
     BasePuzzleResult,
     load_curated_dataset,
     select_seeded_d4,
+    transform_coord_d4,
+    transform_grid_d4,
 )
 from ..renderer.canvas import THERMAL_WIDTH_DOTS, ThermalBitmap
+
+_INEQ_D4_ROT_FLIP = (
+    (0, False),
+    (1, False),
+    (2, False),
+    (3, False),
+    (0, True),
+    (2, True),
+    (1, True),
+    (3, True),
+)
 
 
 def transform_inequality(
@@ -31,76 +44,37 @@ def transform_inequality(
     sol: List[List[int]],
     transform_id: int,
 ) -> Tuple[List[List[int]], List[List[int]], List[List[int]], List[List[int]]]:
-    def map_coord(r: int, c: int) -> Tuple[int, int]:
-        if transform_id == 0:
-            return (r, c)
-        if transform_id == 1:
-            return (c, size - 1 - r)  # rot90
-        if transform_id == 2:
-            return (size - 1 - r, size - 1 - c)  # rot180
-        if transform_id == 3:
-            return (size - 1 - c, r)  # rot270
-        if transform_id == 4:
-            return (r, size - 1 - c)  # flip_h
-        if transform_id == 5:
-            return (size - 1 - r, c)  # flip_v
-        if transform_id == 6:
-            return (c, r)  # transpose
-        if transform_id == 7:
-            return (size - 1 - c, size - 1 - r)  # anti-transpose
-        return (r, c)
-
-    new_sol = [[0] * size for _ in range(size)]
-    for r in range(size):
-        for c in range(size):
-            nr, nc = map_coord(r, c)
-            new_sol[nr][nc] = sol[r][c]
-
-    new_givens = []
-    for r, c, val in givens:
-        nr, nc = map_coord(r, c)
-        new_givens.append([nr, nc, val])
-
+    rot, flip = _INEQ_D4_ROT_FLIP[transform_id % 8]
+    new_sol = transform_grid_d4(sol, rot, flip)
+    new_givens = [
+        [*transform_coord_d4(r, c, size, rot, flip), val]
+        for r, c, val in givens
+    ]
     new_edges_h = [[0] * (size - 1) for _ in range(size)]
     new_edges_v = [[0] * size for _ in range(size - 1)]
+
+    def place_edge(r1: int, c1: int, r2: int, c2: int) -> None:
+        pr1, pc1 = transform_coord_d4(r1, c1, size, rot, flip)
+        pr2, pc2 = transform_coord_d4(r2, c2, size, rot, flip)
+        v1, v2 = sol[r1][c1], sol[r2][c2]
+        if pr1 == pr2:
+            c_left = min(pc1, pc2)
+            val_left, val_right = (v1, v2) if pc1 < pc2 else (v2, v1)
+            new_edges_h[pr1][c_left] = 1 if val_left < val_right else 2
+        else:
+            r_top = min(pr1, pr2)
+            val_top, val_bot = (v1, v2) if pr1 < pr2 else (v2, v1)
+            new_edges_v[r_top][pc1] = 1 if val_top < val_bot else 2
 
     for r in range(size):
         for c in range(size - 1):
             if edges_h[r][c] != 0:
-                p1 = map_coord(r, c)
-                p2 = map_coord(r, c + 1)
-                v1, v2 = sol[r][c], sol[r][c + 1]
-                if p1[0] == p2[0]:
-                    r_new = p1[0]
-                    c_left = min(p1[1], p2[1])
-                    val_left = v1 if p1[1] < p2[1] else v2
-                    val_right = v2 if p1[1] < p2[1] else v1
-                    new_edges_h[r_new][c_left] = 1 if val_left < val_right else 2
-                else:
-                    c_new = p1[1]
-                    r_top = min(p1[0], p2[0])
-                    val_top = v1 if p1[0] < p2[0] else v2
-                    val_bot = v2 if p1[0] < p2[0] else v1
-                    new_edges_v[r_top][c_new] = 1 if val_top < val_bot else 2
+                place_edge(r, c, r, c + 1)
 
     for r in range(size - 1):
         for c in range(size):
             if edges_v[r][c] != 0:
-                p1 = map_coord(r, c)
-                p2 = map_coord(r + 1, c)
-                v1, v2 = sol[r][c], sol[r + 1][c]
-                if p1[0] == p2[0]:
-                    r_new = p1[0]
-                    c_left = min(p1[1], p2[1])
-                    val_left = v1 if p1[1] < p2[1] else v2
-                    val_right = v2 if p1[1] < p2[1] else v1
-                    new_edges_h[r_new][c_left] = 1 if val_left < val_right else 2
-                else:
-                    c_new = p1[1]
-                    r_top = min(p1[0], p2[0])
-                    val_top = v1 if p1[0] < p2[0] else v2
-                    val_bot = v2 if p1[0] < p2[0] else v1
-                    new_edges_v[r_top][c_new] = 1 if val_top < val_bot else 2
+                place_edge(r, c, r + 1, c)
 
     return new_givens, new_edges_h, new_edges_v, new_sol
 
@@ -130,9 +104,8 @@ class InequalityPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs: Any,
     ) -> BasePuzzleResult:
-        diff_key = difficulty.lower()
-        if diff_key not in self.DIFFICULTY_CONFIGS:
-            diff_key = "medium"
+        rng = self.make_rng(seed)
+        diff_key = self.normalize_difficulty(difficulty)
 
         cfg = self.DIFFICULTY_CONFIGS[diff_key]
         size = cfg["size"]
@@ -143,7 +116,7 @@ class InequalityPuzzle(BasePuzzle):
         if not puzzles:
             raise RuntimeError(f"No curated Inequality puzzles found for difficulty '{diff_key}'")
 
-        idx, d4_op = select_seeded_d4(puzzles, seed)
+        idx, d4_op = select_seeded_d4(puzzles, seed, rng=rng)
 
         base_p = puzzles[idx]
         givens, edges_h, edges_v, sol = transform_inequality(

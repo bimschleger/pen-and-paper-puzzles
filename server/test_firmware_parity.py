@@ -15,6 +15,7 @@ import sys
 import re
 import shutil
 import subprocess
+import tempfile
 from typing import Dict, List, Tuple
 
 # Add server directory to sys.path
@@ -83,13 +84,13 @@ def test_generator_parity(strict: bool = True) -> Tuple[List[str], List[str]]:
 
 
 def test_arduino_sketch_sync():
-    print("\nTest 2: Verifying Arduino Sketch Synchronization Parity...")
+    print("\nTest 2: Verifying Arduino Sketch Synchronization Parity (non-mutating --check)...")
     sync_script = os.path.join(ROOT_DIR, "scripts", "sync_arduino_sketch.sh")
     assert os.path.exists(sync_script), f"Missing sync script at {sync_script}"
 
-    # Run the sync script
-    res = subprocess.run(["/bin/bash", sync_script], cwd=ROOT_DIR, capture_output=True, text=True)
-    assert res.returncode == 0, f"sync_arduino_sketch.sh failed:\n{res.stderr}\n{res.stdout}"
+    # Verify parity without mutating PenAndPaperPuzzles/
+    res = subprocess.run(["/bin/bash", sync_script, "--check"], cwd=ROOT_DIR, capture_output=True, text=True)
+    assert res.returncode == 0, f"Arduino sketch sync drift detected:\n{res.stderr}\n{res.stdout}"
 
     # Verify key synced files exist in PenAndPaperPuzzles/
     expected_files = [
@@ -108,37 +109,56 @@ def test_arduino_sketch_sync():
 
 
 def test_host_cpp_compilation():
-    print("\nTest 3: Verifying Host C++ Offline Generator Compilation...")
+    print("\nTest 3: Verifying Host C++ Offline Generator Compilation (Prod, Host Test, ESP32-S3)...")
     compiler = shutil.which("clang++") or shutil.which("g++")
     if not compiler:
         print("  -> Skipped: No host C++ compiler (clang++/g++) available in environment.")
         return
 
-    output_bin = os.path.join(FW_DIR, "test", "test_runner_parity_check")
-    cmd = [
+    base_flags = [
         compiler,
         "-std=c++17",
         "-I", os.path.join(FW_DIR, "test"),
         "-I", os.path.join(FW_DIR, "include"),
         "-I", os.path.join(FW_DIR, "src"),
-        TEST_CPP,
-        "-o", output_bin,
     ]
+    prod_bin = os.path.join(FW_DIR, "test", "test_runner_parity_prod")
+    host_bin = os.path.join(FW_DIR, "test", "test_runner_parity_host")
 
     try:
-        build_res = subprocess.run(cmd, cwd=ROOT_DIR, capture_output=True, text=True)
-        assert build_res.returncode == 0, (
-            f"Host C++ compilation failed for {TEST_CPP}:\n{build_res.stderr}\n{build_res.stdout}"
+        # 1. Production ESP32 profile (no HOST_TEST -> strips SOLUTIONS arrays & host accessors)
+        prod_cmd = base_flags + [TEST_CPP, "-o", prod_bin]
+        build_prod = subprocess.run(prod_cmd, cwd=ROOT_DIR, capture_output=True, text=True)
+        assert build_prod.returncode == 0, (
+            f"Production-profile C++ compilation failed for {TEST_CPP}:\n{build_prod.stderr}\n{build_prod.stdout}"
+        )
+        run_prod = subprocess.run([prod_bin], cwd=ROOT_DIR, capture_output=True, text=True)
+        assert run_prod.returncode == 0, (
+            f"Execution of production-profile offline generator test failed:\n{run_prod.stderr}\n{run_prod.stdout}"
         )
 
-        run_res = subprocess.run([output_bin], cwd=ROOT_DIR, capture_output=True, text=True)
-        assert run_res.returncode == 0, (
-            f"Execution of compiled offline generator test failed:\n{run_res.stderr}\n{run_res.stdout}"
+        # 2. Host test profile (-DHOST_TEST -> enables solution arrays & MazeGen::solvePath)
+        host_cmd = base_flags + ["-DHOST_TEST", TEST_CPP, "-o", host_bin]
+        build_host = subprocess.run(host_cmd, cwd=ROOT_DIR, capture_output=True, text=True)
+        assert build_host.returncode == 0, (
+            f"Host-test C++ compilation (-DHOST_TEST) failed for {TEST_CPP}:\n{build_host.stderr}\n{build_host.stdout}"
         )
-        print("  -> Passed! C++ firmware generator suite compiles and runs cleanly on host.")
+        run_host = subprocess.run([host_bin], cwd=ROOT_DIR, capture_output=True, text=True)
+        assert run_host.returncode == 0, (
+            f"Execution of host-test offline generator test failed:\n{run_host.stderr}\n{run_host.stdout}"
+        )
+
+        # 3. ESP32-S3 syntax check (-fsyntax-only -DCONFIG_IDF_TARGET_ESP32S3)
+        s3_cmd = base_flags + ["-fsyntax-only", "-DCONFIG_IDF_TARGET_ESP32S3", TEST_CPP]
+        s3_res = subprocess.run(s3_cmd, cwd=ROOT_DIR, capture_output=True, text=True)
+        assert s3_res.returncode == 0, (
+            f"ESP32-S3 syntax check failed for {TEST_CPP}:\n{s3_res.stderr}\n{s3_res.stdout}"
+        )
+        print("  -> Passed! C++ firmware generator suite compiles cleanly across Prod, -DHOST_TEST, and ESP32-S3 syntax profiles.")
     finally:
-        if os.path.exists(output_bin):
-            os.remove(output_bin)
+        for path in (prod_bin, host_bin):
+            if os.path.exists(path):
+                os.remove(path)
 
 
 def test_rule_7_flat_includes():
@@ -274,6 +294,68 @@ def test_offline_puzzle_enum_ordering_parity():
     print(f"  -> Passed! All {len(enum_names)} enum entries in OfflinePuzzleType match DEFAULT_REGISTRY 1:1.")
 
 
+def test_rule_19_ram_and_rodata_budgets():
+    print("\nTest 8: Verifying Rule 19 ESP32 Band RAM (<= 18,432 B) & Curated .rodata Budgets (<= 38,000 B prod)...")
+    compiler = shutil.which("clang++") or shutil.which("g++")
+    if not compiler:
+        print("  -> Skipped: No host C++ compiler (clang++/g++) available in environment.")
+        return
+
+    probe_src = r"""
+#include <iostream>
+#include "Arduino.h"
+#include "printer/EscPosPrinter.h"
+#include "printer/ThermalCanvas.h"
+#include "generators/StarsDataset.h"
+#include "generators/KillerDataset.h"
+#include "generators/TowersDataset.h"
+#include "generators/InequalityDataset.h"
+int main() {
+    size_t stars = sizeof(STARS_EASY_REGIONS) + sizeof(STARS_MEDIUM_REGIONS) + sizeof(STARS_HARD_REGIONS) + sizeof(STARS_EXTREME_REGIONS);
+#ifdef HOST_TEST
+    stars += sizeof(STARS_EASY_SOLUTIONS) + sizeof(STARS_MEDIUM_SOLUTIONS) + sizeof(STARS_HARD_SOLUTIONS) + sizeof(STARS_EXTREME_SOLUTIONS);
+#endif
+    size_t killer = sizeof(KILLER_EASY_DATASET) + sizeof(KILLER_MEDIUM_DATASET) + sizeof(KILLER_HARD_DATASET) + sizeof(KILLER_EXTREME_DATASET);
+    size_t towers = sizeof(TOWERS_EASY_DATASET) + sizeof(TOWERS_MEDIUM_DATASET) + sizeof(TOWERS_HARD_DATASET) + sizeof(TOWERS_EXTREME_DATASET);
+    size_t ineq = sizeof(INEQUALITY_EASY_DATASET) + sizeof(INEQUALITY_MEDIUM_DATASET) + sizeof(INEQUALITY_HARD_DATASET) + sizeof(INEQUALITY_EXTREME_DATASET);
+    std::cout << (ThermalCanvas::BAND_HEIGHT * 72) << " " << (stars + killer + towers + ineq) << "\n";
+    return 0;
+}
+"""
+    base_flags = [
+        compiler,
+        "-std=c++17",
+        "-I", os.path.join(FW_DIR, "test"),
+        "-I", os.path.join(FW_DIR, "include"),
+        "-I", os.path.join(FW_DIR, "src"),
+    ]
+    with tempfile.TemporaryDirectory() as td:
+        src_path = os.path.join(td, "budget_probe.cpp")
+        with open(src_path, "w", encoding="utf-8") as fh:
+            fh.write(probe_src)
+
+        results = {}
+        for label, extra in (("prod", []), ("host", ["-DHOST_TEST"])):
+            exe = os.path.join(td, f"probe_{label}")
+            build = subprocess.run(base_flags + extra + [src_path, "-o", exe], cwd=ROOT_DIR, capture_output=True, text=True)
+            assert build.returncode == 0, f"Budget probe compilation ({label}) failed:\n{build.stderr}"
+            run = subprocess.run([exe], cwd=ROOT_DIR, capture_output=True, text=True)
+            assert run.returncode == 0, f"Budget probe execution ({label}) failed:\n{run.stderr}"
+            band_bytes, rodata_bytes = (int(tok) for tok in run.stdout.strip().split())
+            results[label] = (band_bytes, rodata_bytes)
+
+    band_bytes, prod_rodata = results["prod"]
+    _, host_rodata = results["host"]
+    stripped_savings = host_rodata - prod_rodata
+
+    assert band_bytes <= 18432, f"ThermalCanvas band buffer {band_bytes} B exceeds 18,432 B budget (Rule 19)"
+    assert prod_rodata <= 38000, f"Production curated .rodata {prod_rodata} B exceeds 38,000 B budget (Rule 19)"
+    assert stripped_savings >= 15000, (
+        f"Expected #ifdef HOST_TEST solution stripping to save >= 15,000 B, got {stripped_savings} B (prod={prod_rodata}, host={host_rodata})"
+    )
+    print(f"  -> Passed! Band RAM={band_bytes:,} B (<= 18,432 B), Prod .rodata={prod_rodata:,} B (saves {stripped_savings:,} B vs HOST_TEST).")
+
+
 def run_firmware_tests(strict: bool = True):
     print("=" * 60)
     print("RUNNING TIER 4: Firmware Parity & C++ Compilation Verification")
@@ -285,6 +367,7 @@ def run_firmware_tests(strict: bool = True):
     test_rule_14_offline_appliance_libraries()
     test_softap_portal_parity()
     test_offline_puzzle_enum_ordering_parity()
+    test_rule_19_ram_and_rodata_budgets()
     print("\n[SUCCESS] Tier 4 Firmware verification completed!\n")
 
 

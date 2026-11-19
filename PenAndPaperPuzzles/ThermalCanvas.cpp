@@ -70,7 +70,12 @@ static const FontGlyph GLYPH_TABLE[] = {
     { '_', {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3F} },
     { ',', {0x00, 0x00, 0x00, 0x00, 0x0C, 0x04, 0x08} },
     { '"', {0x14, 0x14, 0x14, 0x00, 0x00, 0x00, 0x00} },
-    { '\'', {0x08, 0x08, 0x10, 0x00, 0x00, 0x00, 0x00} }
+    { '\'', {0x08, 0x08, 0x10, 0x00, 0x00, 0x00, 0x00} },
+    { '^', {0x0C, 0x12, 0x21, 0x00, 0x00, 0x00, 0x00} },
+    { '|', {0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08} },
+    { '<', {0x02, 0x04, 0x08, 0x10, 0x08, 0x04, 0x02} },
+    { '>', {0x10, 0x08, 0x04, 0x02, 0x04, 0x08, 0x10} },
+    { ';', {0x00, 0x0C, 0x0C, 0x00, 0x0C, 0x04, 0x08} }
 };
 static const size_t GLYPH_COUNT = sizeof(GLYPH_TABLE) / sizeof(GLYPH_TABLE[0]);
 
@@ -85,7 +90,59 @@ static const uint8_t* getGlyphRows(char c) {
     return GLYPH_TABLE[36].rows;
 }
 
-ThermalCanvas::ThermalCanvas() : _height(0), _buffer(nullptr) {
+namespace {
+inline void fillRowSpan(uint8_t* rowPtr, int16_t startX, int16_t endX, uint8_t color) {
+    if (startX >= endX) return;
+    uint16_t bStart = (uint16_t)startX >> 3;
+    uint16_t bEnd = (uint16_t)(endX - 1) >> 3;
+    uint8_t leftMask = (uint8_t)(0xFFu >> (startX & 7));
+    uint8_t rightBits = (uint8_t)(endX & 7);
+    uint8_t rightMask = (rightBits == 0) ? 0xFFu : (uint8_t)(0xFFu << (8 - rightBits));
+
+    if (color) {
+        if (bStart == bEnd) {
+            rowPtr[bStart] |= (uint8_t)(leftMask & rightMask);
+        } else {
+            rowPtr[bStart] |= leftMask;
+            if (bEnd > bStart + 1) {
+                memset(rowPtr + bStart + 1, 0xFF, bEnd - bStart - 1);
+            }
+            rowPtr[bEnd] |= rightMask;
+        }
+    } else {
+        if (bStart == bEnd) {
+            rowPtr[bStart] &= (uint8_t)~(leftMask & rightMask);
+        } else {
+            rowPtr[bStart] &= (uint8_t)~leftMask;
+            if (bEnd > bStart + 1) {
+                memset(rowPtr + bStart + 1, 0x00, bEnd - bStart - 1);
+            }
+            rowPtr[bEnd] &= (uint8_t)~rightMask;
+        }
+    }
+}
+
+inline void orRowSpan(uint8_t* rowPtr, int16_t startX, int16_t endX, uint8_t patternByte) {
+    if (startX >= endX || patternByte == 0) return;
+    uint16_t bStart = (uint16_t)startX >> 3;
+    uint16_t bEnd = (uint16_t)(endX - 1) >> 3;
+    uint8_t leftMask = (uint8_t)(0xFFu >> (startX & 7));
+    uint8_t rightBits = (uint8_t)(endX & 7);
+    uint8_t rightMask = (rightBits == 0) ? 0xFFu : (uint8_t)(0xFFu << (8 - rightBits));
+
+    if (bStart == bEnd) {
+        rowPtr[bStart] |= (uint8_t)(patternByte & leftMask & rightMask);
+    } else {
+        rowPtr[bStart] |= (uint8_t)(patternByte & leftMask);
+        for (uint16_t b = bStart + 1; b < bEnd; b++) {
+            rowPtr[b] |= patternByte;
+        }
+        rowPtr[bEnd] |= (uint8_t)(patternByte & rightMask);
+    }
+}
+} // namespace
+
+ThermalCanvas::ThermalCanvas() : _height(0), _yOffset(0), _totalHeight(0), _buffer(nullptr) {
 }
 
 ThermalCanvas::~ThermalCanvas() {
@@ -95,6 +152,8 @@ ThermalCanvas::~ThermalCanvas() {
 bool ThermalCanvas::begin(uint16_t heightDots) {
     end();
     _height = heightDots;
+    _yOffset = 0;
+    _totalHeight = heightDots;
     size_t totalBytes = (size_t)THERMAL_CANVAS_WIDTH_BYTES * _height;
     _buffer = (uint8_t*)malloc(totalBytes);
     if (_buffer) {
@@ -102,6 +161,7 @@ bool ThermalCanvas::begin(uint16_t heightDots) {
         return true;
     }
     _height = 0;
+    _totalHeight = 0;
     return false;
 }
 
@@ -111,6 +171,8 @@ void ThermalCanvas::end() {
         _buffer = nullptr;
     }
     _height = 0;
+    _yOffset = 0;
+    _totalHeight = 0;
 }
 
 void ThermalCanvas::clear(uint8_t color) {
@@ -121,10 +183,11 @@ void ThermalCanvas::clear(uint8_t color) {
 }
 
 void ThermalCanvas::setPixel(int16_t x, int16_t y, uint8_t color) {
-    if (!_buffer || x < 0 || x >= THERMAL_CANVAS_WIDTH || y < 0 || y >= _height) {
+    int16_t ly = y - _yOffset;
+    if (!_buffer || x < 0 || x >= THERMAL_CANVAS_WIDTH || ly < 0 || ly >= (int16_t)_height) {
         return;
     }
-    size_t byteIdx = (size_t)y * THERMAL_CANVAS_WIDTH_BYTES + (x >> 3);
+    size_t byteIdx = (size_t)ly * THERMAL_CANVAS_WIDTH_BYTES + (x >> 3);
     uint8_t bitMask = 1 << (7 - (x & 7));
     if (color) {
         _buffer[byteIdx] |= bitMask;
@@ -134,28 +197,41 @@ void ThermalCanvas::setPixel(int16_t x, int16_t y, uint8_t color) {
 }
 
 void ThermalCanvas::drawHLine(int16_t x, int16_t y, int16_t w, uint8_t thickness, uint8_t color) {
-    if (w <= 0 || thickness <= 0) return;
-    for (uint8_t t = 0; t < thickness; t++) {
-        int16_t py = y + t;
-        if (py >= 0 && py < _height) {
-            int16_t startX = max((int16_t)0, x);
-            int16_t endX = min((int16_t)THERMAL_CANVAS_WIDTH, (int16_t)(x + w));
-            for (int16_t px = startX; px < endX; px++) {
-                setPixel(px, py, color);
-            }
-        }
+    if (!_buffer || w <= 0 || thickness <= 0) return;
+    int16_t startX = max((int16_t)0, x);
+    int16_t endX = min((int16_t)THERMAL_CANVAS_WIDTH, (int16_t)(x + w));
+    if (startX >= endX) return;
+
+    int16_t startY = max(_yOffset, y);
+    int16_t endY = min((int16_t)(_yOffset + (int16_t)_height), (int16_t)(y + thickness));
+    for (int16_t py = startY; py < endY; py++) {
+        uint8_t* rowPtr = _buffer + (size_t)(py - _yOffset) * THERMAL_CANVAS_WIDTH_BYTES;
+        fillRowSpan(rowPtr, startX, endX, color);
     }
 }
 
 void ThermalCanvas::drawVLine(int16_t x, int16_t y, int16_t h, uint8_t thickness, uint8_t color) {
-    if (h <= 0 || thickness <= 0) return;
-    for (uint8_t t = 0; t < thickness; t++) {
-        int16_t px = x + t;
-        if (px >= 0 && px < THERMAL_CANVAS_WIDTH) {
-            int16_t startY = max((int16_t)0, y);
-            int16_t endY = min((int16_t)_height, (int16_t)(y + h));
+    if (!_buffer || h <= 0 || thickness <= 0) return;
+    int16_t startY = max(_yOffset, y);
+    int16_t endY = min((int16_t)(_yOffset + (int16_t)_height), (int16_t)(y + h));
+    if (startY >= endY) return;
+
+    int16_t startX = max((int16_t)0, x);
+    int16_t endX = min((int16_t)THERMAL_CANVAS_WIDTH, (int16_t)(x + thickness));
+    for (int16_t px = startX; px < endX; px++) {
+        uint16_t xByte = (uint16_t)(px >> 3);
+        uint8_t bitMask = (uint8_t)(0x80u >> (px & 7));
+        size_t offset = (size_t)(startY - _yOffset) * THERMAL_CANVAS_WIDTH_BYTES + xByte;
+        if (color) {
             for (int16_t py = startY; py < endY; py++) {
-                setPixel(px, py, color);
+                _buffer[offset] |= bitMask;
+                offset += THERMAL_CANVAS_WIDTH_BYTES;
+            }
+        } else {
+            uint8_t invMask = (uint8_t)~bitMask;
+            for (int16_t py = startY; py < endY; py++) {
+                _buffer[offset] &= invMask;
+                offset += THERMAL_CANVAS_WIDTH_BYTES;
             }
         }
     }
@@ -170,55 +246,91 @@ void ThermalCanvas::drawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint8_t
 }
 
 void ThermalCanvas::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint8_t color) {
-    if (w <= 0 || h <= 0) return;
-    int16_t startY = max((int16_t)0, y);
-    int16_t endY = min((int16_t)_height, (int16_t)(y + h));
+    if (!_buffer || w <= 0 || h <= 0) return;
+    int16_t startY = max(_yOffset, y);
+    int16_t endY = min((int16_t)(_yOffset + (int16_t)_height), (int16_t)(y + h));
     int16_t startX = max((int16_t)0, x);
     int16_t endX = min((int16_t)THERMAL_CANVAS_WIDTH, (int16_t)(x + w));
+    if (startY >= endY || startX >= endX) return;
 
     for (int16_t py = startY; py < endY; py++) {
-        for (int16_t px = startX; px < endX; px++) {
-            setPixel(px, py, color);
-        }
+        uint8_t* rowPtr = _buffer + (size_t)(py - _yOffset) * THERMAL_CANVAS_WIDTH_BYTES;
+        fillRowSpan(rowPtr, startX, endX, color);
     }
 }
 
 void ThermalCanvas::fillHatch(int16_t x, int16_t y, int16_t w, int16_t h, uint8_t patternId) {
-    if (w <= 0 || h <= 0) return;
+    if (!_buffer || w <= 0 || h <= 0) return;
     uint8_t pat = patternId % 10;
-    int16_t startY = max((int16_t)0, y);
-    int16_t endY = min((int16_t)_height, (int16_t)(y + h));
+    if (pat == 0) return;
+    int16_t startY = max((int16_t)0, max(_yOffset, y));
+    int16_t endY = min((int16_t)(_yOffset + (int16_t)_height), (int16_t)(y + h));
     int16_t startX = max((int16_t)0, x);
     int16_t endX = min((int16_t)THERMAL_CANVAS_WIDTH, (int16_t)(x + w));
+    if (startY >= endY || startX >= endX) return;
 
     for (int16_t py = startY; py < endY; py++) {
-        for (int16_t px = startX; px < endX; px++) {
-            bool isBurn = false;
-            switch (pat) {
-                case 0: isBurn = false; break;
-                case 1: isBurn = ((px + py) % 8 == 0); break;
-                case 2: isBurn = ((px - py + 1000) % 8 == 0); break;
-                case 3: isBurn = ((px + py) % 10 == 0 || (px - py + 1000) % 10 == 0); break;
-                case 4: isBurn = (px % 8 == 0); break;
-                case 5: isBurn = (px % 4 == 0 && py % 4 == 0); break;
-                case 6: isBurn = ((px + py) % 8 == 0 && (px % 4 < 2)); break;
-                case 7: isBurn = ((px - py + 1000) % 8 == 0 && (px % 4 < 2)); break;
-                case 8: {
-                    int16_t rx = px % 8;
-                    int16_t ry = py % 8;
-                    isBurn = ((rx == 4 && abs(ry - 4) <= 1) || (ry == 4 && abs(rx - 4) <= 1));
-                    break;
+        uint8_t* rowPtr = _buffer + (size_t)(py - _yOffset) * THERMAL_CANVAS_WIDTH_BYTES;
+        if (pat != 3 && pat != 9) {
+            uint8_t rowMask = 0;
+            for (uint8_t bx = 0; bx < 8; bx++) {
+                bool isBurn = false;
+                switch (pat) {
+                    case 1: isBurn = (((bx + py) & 7) == 0); break;
+                    case 2: isBurn = (((bx - py + 1000) % 8) == 0); break;
+                    case 4: isBurn = (bx == 0); break;
+                    case 5: isBurn = ((bx & 3) == 0 && (py % 4 == 0)); break;
+                    case 6: isBurn = (((bx + py) & 7) == 0 && ((bx & 3) < 2)); break;
+                    case 7: isBurn = (((bx - py + 1000) % 8) == 0 && ((bx & 3) < 2)); break;
+                    case 8: {
+                        int16_t ry = py % 8;
+                        isBurn = ((bx == 4 && abs(ry - 4) <= 1) || (ry == 4 && abs((int16_t)bx - 4) <= 1));
+                        break;
+                    }
                 }
-                case 9: isBurn = ((px + py) % 6 == 0 && (px - py + 1000) % 6 == 0); break;
+                if (isBurn) rowMask |= (uint8_t)(0x80u >> bx);
             }
-            if (isBurn) {
-                setPixel(px, py, 1);
+            if (rowMask) {
+                orRowSpan(rowPtr, startX, endX, rowMask);
+            }
+        } else if (pat == 3) {
+            for (int16_t px = startX; px < endX; px++) {
+                if ((px + py) % 10 == 0 || (px - py + 1000) % 10 == 0) {
+                    rowPtr[px >> 3] |= (uint8_t)(0x80u >> (px & 7));
+                }
+            }
+        } else {
+            for (int16_t px = startX; px < endX; px++) {
+                if ((px + py) % 6 == 0 && (px - py + 1000) % 6 == 0) {
+                    rowPtr[px >> 3] |= (uint8_t)(0x80u >> (px & 7));
+                }
             }
         }
     }
 }
 
+void ThermalCanvas::drawGrid(int16_t x0, int16_t y0, uint8_t rows, uint8_t cols, int16_t cellW, int16_t cellH,
+                             uint8_t outerThick, uint8_t innerThick,
+                             uint8_t majorRowStep, uint8_t majorColStep, uint8_t majorThick) {
+    if (rows == 0 || cols == 0 || cellW <= 0 || cellH <= 0) return;
+    int16_t w = (int16_t)cols * cellW;
+    int16_t h = (int16_t)rows * cellH;
+    drawRect(x0, y0, w, h, outerThick, 1);
+    for (uint8_t r = 1; r < rows; r++) {
+        uint8_t th = (majorRowStep > 0 && (r % majorRowStep) == 0 && majorThick > 0) ? majorThick : innerThick;
+        drawHLine(x0, y0 + (int16_t)r * cellH, w, th, 1);
+    }
+    for (uint8_t c = 1; c < cols; c++) {
+        uint8_t th = (majorColStep > 0 && (c % majorColStep) == 0 && majorThick > 0) ? majorThick : innerThick;
+        drawVLine(x0 + (int16_t)c * cellW, y0, h, th, 1);
+    }
+}
+
 void ThermalCanvas::drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint8_t thickness, uint8_t color) {
+    int16_t minY = min(y0, y1) - (int16_t)thickness;
+    int16_t maxY = max(y0, y1) + (int16_t)thickness;
+    if (maxY < _yOffset || minY >= _yOffset + (int16_t)_height) return;
+
     int16_t dx = abs(x1 - x0);
     int16_t sx = (x0 < x1) ? 1 : -1;
     int16_t dy = -abs(y1 - y0);
@@ -269,59 +381,59 @@ void ThermalCanvas::drawPolygon(const int16_t* px, const int16_t* py, uint8_t nu
 }
 
 void ThermalCanvas::drawCircle(int16_t cx, int16_t cy, int16_t radius, uint8_t thickness, uint8_t color) {
-    if (radius <= 0) return;
+    if (!_buffer || radius <= 0) return;
     int32_t rInnerSq = (radius >= thickness) ? (int32_t)(radius - thickness) * (radius - thickness) : 0;
     int32_t rOuterSq = (int32_t)radius * radius;
-    int16_t yStart = max((int16_t)0, (int16_t)(cy - radius));
-    int16_t yEnd = min((int16_t)_height, (int16_t)(cy + radius + 1));
+    int16_t yStart = max(_yOffset, (int16_t)(cy - radius));
+    int16_t yEnd = min((int16_t)(_yOffset + (int16_t)_height), (int16_t)(cy + radius + 1));
     int16_t xStart = max((int16_t)0, (int16_t)(cx - radius));
     int16_t xEnd = min((int16_t)THERMAL_CANVAS_WIDTH, (int16_t)(cx + radius + 1));
 
     for (int16_t py = yStart; py < yEnd; py++) {
         int32_t dy = py - cy;
         int32_t dySq = dy * dy;
+        uint8_t* rowPtr = _buffer + (size_t)(py - _yOffset) * THERMAL_CANVAS_WIDTH_BYTES;
         for (int16_t px = xStart; px < xEnd; px++) {
             int32_t dx = px - cx;
             int32_t distSq = dx * dx + dySq;
             if (distSq >= rInnerSq && distSq <= rOuterSq) {
-                setPixel(px, py, color);
+                if (color) rowPtr[px >> 3] |= (uint8_t)(0x80u >> (px & 7));
+                else rowPtr[px >> 3] &= (uint8_t)~(0x80u >> (px & 7));
             }
         }
     }
 }
 
 void ThermalCanvas::fillCircle(int16_t cx, int16_t cy, int16_t radius, uint8_t color) {
-    if (radius <= 0) return;
+    if (!_buffer || radius <= 0) return;
     int32_t rSq = (int32_t)radius * radius;
-    int16_t yStart = max((int16_t)0, (int16_t)(cy - radius));
-    int16_t yEnd = min((int16_t)_height, (int16_t)(cy + radius + 1));
+    int16_t yStart = max(_yOffset, (int16_t)(cy - radius));
+    int16_t yEnd = min((int16_t)(_yOffset + (int16_t)_height), (int16_t)(cy + radius + 1));
     int16_t xStart = max((int16_t)0, (int16_t)(cx - radius));
     int16_t xEnd = min((int16_t)THERMAL_CANVAS_WIDTH, (int16_t)(cx + radius + 1));
 
     for (int16_t py = yStart; py < yEnd; py++) {
         int32_t dy = py - cy;
         int32_t dySq = dy * dy;
+        uint8_t* rowPtr = _buffer + (size_t)(py - _yOffset) * THERMAL_CANVAS_WIDTH_BYTES;
         for (int16_t px = xStart; px < xEnd; px++) {
             int32_t dx = px - cx;
             if (dx * dx + dySq <= rSq) {
-                setPixel(px, py, color);
+                if (color) rowPtr[px >> 3] |= (uint8_t)(0x80u >> (px & 7));
+                else rowPtr[px >> 3] &= (uint8_t)~(0x80u >> (px & 7));
             }
         }
     }
 }
 
 void ThermalCanvas::drawChar(int16_t x, int16_t y, char c, uint8_t scale, uint8_t color) {
-    if (scale == 0) return;
+    if (!_buffer || scale == 0 || y + 7 * (int16_t)scale <= _yOffset || y >= _yOffset + (int16_t)_height) return;
     const uint8_t* rows = getGlyphRows(c);
     for (uint8_t rowIdx = 0; rowIdx < 7; rowIdx++) {
         uint8_t rowByte = rows[rowIdx];
         for (uint8_t colIdx = 0; colIdx < 6; colIdx++) {
             if ((rowByte >> (5 - colIdx)) & 1) {
-                for (uint8_t sy = 0; sy < scale; sy++) {
-                    for (uint8_t sx = 0; sx < scale; sx++) {
-                        setPixel(x + colIdx * scale + sx, y + rowIdx * scale + sy, color);
-                    }
-                }
+                fillRect(x + colIdx * scale, y + rowIdx * scale, scale, scale, color);
             }
         }
     }

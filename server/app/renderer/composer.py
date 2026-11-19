@@ -9,9 +9,11 @@ Strictly conforms to:
   - docs/THERMAL_DRAWING_SPEC.md
 """
 
+import logging
 from typing import Dict, Any, List, Optional
 from ..puzzles.registry import PuzzleRegistry, DEFAULT_REGISTRY
-from ..renderer.canvas import HAS_PILLOW
+
+logger = logging.getLogger(__name__)
 
 # ESC/POS Hardware Constants
 ESC = b"\x1b"
@@ -173,17 +175,14 @@ class DailyReceiptComposer:
                     if raster_bytes:
                         r.write_raw(raster_bytes)
                         rendered_graphical = True
-                except Exception:
+                except Exception as exc:
+                    logger.warning("Raster rendering failed for '%s', falling back to ASCII: %s", plugin.puzzle_id, exc)
                     rendered_graphical = False
 
             if not rendered_graphical:
                 ascii_text = p_data.get("text") or plugin.format_ascii_puzzle(p_data)
                 for line in ascii_text.split("\n"):
-                    # Maintain standard indentation for clean ASCII layout
-                    if plugin.puzzle_id in ("sudoku", "binary", "tango") and not line.startswith("   "):
-                        r.println("   " + line)
-                    else:
-                        r.println(line)
+                    r.println(line)
 
             r.println()
             if idx < len(plugins) - 1:

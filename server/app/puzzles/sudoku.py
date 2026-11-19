@@ -40,22 +40,20 @@ class SudokuPuzzle(BasePuzzle):
         return ["easy", "medium", "hard"]
 
     def generate(self, difficulty: str = "medium", seed: Optional[int] = None, **kwargs) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        difficulty = difficulty.lower()
+        rng = self.make_rng(seed)
+        difficulty = self.normalize_difficulty(difficulty)
         target_clues = self.DIFFICULTY_CLUES.get(difficulty, 30)
 
         # 1. Generate full solved 9x9 board
         solution_board = [[0] * 9 for _ in range(9)]
-        self._fill_board(solution_board)
+        self._fill_board(solution_board, rng)
 
         # 2. Clone board to create puzzle by removing numbers
         puzzle_board = [row[:] for row in solution_board]
 
         # Cells to try removing
         cells = [(r, c) for r in range(9) for c in range(9)]
-        random.shuffle(cells)
+        rng.shuffle(cells)
 
         clues_remaining = 81
         for r, c in cells:
@@ -100,14 +98,14 @@ class SudokuPuzzle(BasePuzzle):
         lines = []
         for r in range(9):
             if r in (3, 6):
-                lines.append("------+-------+------")
+                lines.append("   ------+-------+------")
             row_chars = []
             for c in range(9):
                 if c in (3, 6):
                     row_chars.append("|")
                 val = board[r][c] if r < len(board) and c < len(board[r]) else 0
                 row_chars.append(str(val) if val != 0 else ".")
-            lines.append(" ".join(row_chars))
+            lines.append("   " + " ".join(row_chars))
         return "\n".join(lines)
 
     def render_raster(
@@ -119,7 +117,7 @@ class SudokuPuzzle(BasePuzzle):
         padding = 24
         board_size = target_width - padding * 2
         c_size = board_size // 9
-        total_h = padding + c_size * 9 + padding
+        total_h = ((padding + c_size * 9 + padding + 7) // 8) * 8
         tb = ThermalBitmap(target_width, total_h)
 
         for i in range(10):
@@ -150,16 +148,17 @@ class SudokuPuzzle(BasePuzzle):
                     return False
         return True
 
-    def _fill_board(self, board: List[List[int]]) -> bool:
+    def _fill_board(self, board: List[List[int]], rng: Optional[random.Random] = None) -> bool:
+        r_gen = rng if rng is not None else random.Random()
         for r in range(9):
             for c in range(9):
                 if board[r][c] == 0:
                     nums = list(range(1, 10))
-                    random.shuffle(nums)
+                    r_gen.shuffle(nums)
                     for num in nums:
                         if self._is_valid(board, r, c, num):
                             board[r][c] = num
-                            if self._fill_board(board):
+                            if self._fill_board(board, r_gen):
                                 return True
                             board[r][c] = 0
                     return False

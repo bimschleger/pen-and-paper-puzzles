@@ -6,20 +6,18 @@ conforming strictly to:
   - docs/THERMAL_80MM_PRINT_GUIDE.md
   - docs/THERMAL_DRAWING_SPEC.md
 
-Supports both high-resolution Pillow rendering and Pure-Python ThermalBitmap fallback.
+Renders exclusively through Pure-Python ThermalBitmap 1-bit primitives.
 """
 
 from typing import Tuple, Dict, Any, List, Optional
+import math
 import os
 
 THERMAL_WIDTH_DOTS = 576
 THERMAL_WIDTH_BYTES = 72  # 576 // 8
-
-try:
-    from PIL import Image, ImageDraw, ImageFont
-    HAS_PILLOW = True
-except ImportError:
-    HAS_PILLOW = False
+_BIT_COUNTS = tuple(bin(b).count("1") for b in range(256))
+_FULL_ONES = b"\xff" * THERMAL_WIDTH_BYTES
+_FULL_ZEROS = b"\x00" * THERMAL_WIDTH_BYTES
 
 
 def image_to_escpos_raster(image_bytes: bytes, width: int, height: int) -> bytes:
@@ -64,25 +62,23 @@ def calculate_duty_cycle(raster_bytes: bytes) -> Dict[str, Any]:
     max_line_black_dots = 0
     consec_dense = 0
     max_consec_dense = 0
-
-    bit_counts = [bin(b).count("1") for b in range(256)]
-
-    for y in range(height_dots):
-        line_start = y * width_bytes
-        line_bytes = data[line_start:line_start + width_bytes]
-        line_black = sum(bit_counts[b] for b in line_bytes)
-        total_black_dots += line_black
-        if line_black > max_line_black_dots:
-            max_line_black_dots = line_black
-
-        if line_black / float(width_bytes * 8) > 0.75:
-            consec_dense += 1
-            if consec_dense > max_consec_dense:
-                max_consec_dense = consec_dense
-        else:
-            consec_dense = 0
-
     line_total_dots = width_bytes * 8
+
+    if line_total_dots > 0:
+        for y in range(height_dots):
+            line_start = y * width_bytes
+            line_bytes = data[line_start:line_start + width_bytes]
+            line_black = sum(_BIT_COUNTS[b] for b in line_bytes)
+            total_black_dots += line_black
+            if line_black > max_line_black_dots:
+                max_line_black_dots = line_black
+            if line_black / float(line_total_dots) > 0.75:
+                consec_dense += 1
+                if consec_dense > max_consec_dense:
+                    max_consec_dense = consec_dense
+            else:
+                consec_dense = 0
+
     avg_density = (total_black_dots / float(total_bits)) * 100.0 if total_bits > 0 else 0.0
     peak_line_density = (max_line_black_dots / float(line_total_dots)) * 100.0 if line_total_dots > 0 else 0.0
 
@@ -99,38 +95,46 @@ def calculate_duty_cycle(raster_bytes: bytes) -> Dict[str, Any]:
     }
 
 
-def pil_to_escpos(image) -> bytes:
-    """
-    Converts a PIL.Image instance into ESC/POS GS v 0 raster bytes.
-    Strictly forces width to 576 dots and ensures 1-bit MSB-first packing.
-    """
-    if not HAS_PILLOW:
-        raise RuntimeError("Pillow is required for graphical rendering.")
+def _hatch_predicate(pat: int, px: int, py: int) -> bool:
+    if pat == 1:
+        return (px + py) % 8 == 0
+    if pat == 2:
+        return (px - py + 1000) % 8 == 0
+    if pat == 3:
+        return (px + py) % 10 == 0 or (px - py + 1000) % 10 == 0
+    if pat == 4:
+        return px % 8 == 0
+    if pat == 5:
+        return px % 4 == 0 and py % 4 == 0
+    if pat == 6:
+        return (px + py) % 8 == 0 and (px % 4 < 2)
+    if pat == 7:
+        return (px - py + 1000) % 8 == 0 and (px % 4 < 2)
+    if pat == 8:
+        rx = px % 8
+        ry = py % 8
+        return (rx == 4 and abs(ry - 4) <= 1) or (ry == 4 and abs(rx - 4) <= 1)
+    if pat == 9:
+        return (px + py) % 6 == 0 and (px - py + 1000) % 6 == 0
+    return False
 
-    target_width = THERMAL_WIDTH_DOTS
-    if image.width != target_width:
-        ratio = target_width / float(image.width)
-        new_height = int(float(image.height) * ratio)
-        image = image.resize((target_width, new_height), Image.Resampling.LANCZOS)
 
-    mono = image.convert("1", dither=Image.Dither.FLOYDSTEINBERG)
-    width, height = mono.size
-    width_bytes = (width + 7) // 8
+def _build_hatch_table() -> Dict[int, Tuple[bytes, ...]]:
+    periods = {1: 8, 2: 8, 3: 10, 4: 1, 5: 4, 6: 8, 7: 8, 8: 8, 9: 6}
+    table: Dict[int, Tuple[bytes, ...]] = {}
+    for pat, period in periods.items():
+        rows: List[bytes] = []
+        for py in range(period):
+            row = bytearray(THERMAL_WIDTH_BYTES)
+            for px in range(THERMAL_WIDTH_DOTS):
+                if _hatch_predicate(pat, px, py):
+                    row[px >> 3] |= 1 << (7 - (px & 7))
+            rows.append(bytes(row))
+        table[pat] = tuple(rows)
+    return table
 
-    raw_data = bytearray()
-    pixels = mono.load()
 
-    for y in range(height):
-        for x_byte in range(width_bytes):
-            byte_val = 0
-            for bit in range(8):
-                x = x_byte * 8 + bit
-                if x < width:
-                    if pixels[x, y] == 0:  # 0 is black in PIL
-                        byte_val |= (1 << (7 - bit))
-            raw_data.append(byte_val)
-
-    return image_to_escpos_raster(bytes(raw_data), width, height)
+_HATCH_TABLE = _build_hatch_table()
 
 
 FONT_5X7 = {
@@ -188,6 +192,11 @@ FONT_5X7 = {
     ',': [0x00, 0x00, 0x00, 0x00, 0x0C, 0x04, 0x08],
     '"': [0x14, 0x14, 0x14, 0x00, 0x00, 0x00, 0x00],
     "'": [0x08, 0x08, 0x10, 0x00, 0x00, 0x00, 0x00],
+    '^': [0x0C, 0x12, 0x21, 0x00, 0x00, 0x00, 0x00],
+    '|': [0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08],
+    '<': [0x02, 0x04, 0x08, 0x10, 0x08, 0x04, 0x02],
+    '>': [0x10, 0x08, 0x04, 0x02, 0x04, 0x08, 0x10],
+    ';': [0x00, 0x0C, 0x0C, 0x00, 0x0C, 0x04, 0x08],
 }
 
 
@@ -212,28 +221,118 @@ class ThermalBitmap:
             else:
                 self.buffer[byte_idx] &= ~bit_mask
 
+    def _fill_row_span(self, y: int, x0: int, x1: int, color: int):
+        first_byte = x0 >> 3
+        last_byte = (x1 - 1) >> 3
+        start_mask = 0xFF >> (x0 & 7)
+        end_mask = (0xFF << (7 - ((x1 - 1) & 7))) & 0xFF
+        row_off = y * self.width_bytes
+        buf = self.buffer
+        if first_byte == last_byte:
+            mask = start_mask & end_mask
+            if color:
+                buf[row_off + first_byte] |= mask
+            else:
+                buf[row_off + first_byte] &= ~mask
+        else:
+            mid_count = last_byte - first_byte - 1
+            if color:
+                buf[row_off + first_byte] |= start_mask
+                if mid_count > 0:
+                    s = row_off + first_byte + 1
+                    fill = _FULL_ONES[:mid_count] if mid_count <= len(_FULL_ONES) else b"\xff" * mid_count
+                    buf[s:s + mid_count] = fill
+                buf[row_off + last_byte] |= end_mask
+            else:
+                buf[row_off + first_byte] &= ~start_mask
+                if mid_count > 0:
+                    s = row_off + first_byte + 1
+                    fill = _FULL_ZEROS[:mid_count] if mid_count <= len(_FULL_ZEROS) else b"\x00" * mid_count
+                    buf[s:s + mid_count] = fill
+                buf[row_off + last_byte] &= ~end_mask
+
     def draw_hline(self, x: int, y: int, w: int, thickness: int = 1, color: int = 1):
-        for t in range(thickness):
-            py = y + t
-            if 0 <= py < self.height:
-                for px in range(max(0, x), min(x + w, self.width)):
-                    self.set_pixel(px, py, color)
+        if thickness <= 0 or w <= 0:
+            return
+        x0 = max(0, x)
+        x1 = min(x + w, self.width)
+        y0 = max(0, y)
+        y1 = min(y + thickness, self.height)
+        if x0 >= x1 or y0 >= y1:
+            return
+
+        first_byte = x0 >> 3
+        last_byte = (x1 - 1) >> 3
+        start_mask = 0xFF >> (x0 & 7)
+        end_mask = (0xFF << (7 - ((x1 - 1) & 7))) & 0xFF
+        wb = self.width_bytes
+        buf = self.buffer
+
+        if first_byte == last_byte:
+            mask = start_mask & end_mask
+            if color:
+                for row_off in range(y0 * wb, y1 * wb, wb):
+                    buf[row_off + first_byte] |= mask
+            else:
+                inv = ~mask & 0xFF
+                for row_off in range(y0 * wb, y1 * wb, wb):
+                    buf[row_off + first_byte] &= inv
+        else:
+            mid_count = last_byte - first_byte - 1
+            if color:
+                fill = _FULL_ONES[:mid_count] if mid_count <= len(_FULL_ONES) else b"\xff" * mid_count
+                for row_off in range(y0 * wb, y1 * wb, wb):
+                    buf[row_off + first_byte] |= start_mask
+                    if mid_count > 0:
+                        s = row_off + first_byte + 1
+                        buf[s:s + mid_count] = fill
+                    buf[row_off + last_byte] |= end_mask
+            else:
+                inv_start = ~start_mask & 0xFF
+                inv_end = ~end_mask & 0xFF
+                fill = _FULL_ZEROS[:mid_count] if mid_count <= len(_FULL_ZEROS) else b"\x00" * mid_count
+                for row_off in range(y0 * wb, y1 * wb, wb):
+                    buf[row_off + first_byte] &= inv_start
+                    if mid_count > 0:
+                        s = row_off + first_byte + 1
+                        buf[s:s + mid_count] = fill
+                    buf[row_off + last_byte] &= inv_end
 
     def draw_vline(self, x: int, y: int, h: int, thickness: int = 1, color: int = 1):
-        for t in range(thickness):
-            px = x + t
-            if 0 <= px < self.width:
-                for py in range(max(0, y), min(y + h, self.height)):
-                    self.set_pixel(px, py, color)
+        if thickness <= 0 or h <= 0:
+            return
+        if thickness > 1:
+            self.draw_hline(x, y, thickness, thickness=h, color=color)
+            return
+        if not (0 <= x < self.width):
+            return
+        y0 = max(0, y)
+        y1 = min(y + h, self.height)
+        if y0 >= y1:
+            return
+        wb = self.width_bytes
+        col_byte = x >> 3
+        bit_mask = 1 << (7 - (x & 7))
+        buf = self.buffer
+        start = y0 * wb + col_byte
+        stop = y1 * wb + col_byte
+        if color:
+            for idx in range(start, stop, wb):
+                buf[idx] |= bit_mask
+        else:
+            inv = ~bit_mask & 0xFF
+            for idx in range(start, stop, wb):
+                buf[idx] &= inv
 
     def draw_line(self, x0: int, y0: int, x1: int, y1: int, thickness: int = 1, color: int = 1):
+        x0, y0, x1, y1 = int(round(x0)), int(round(y0)), int(round(x1)), int(round(y1))
         dx = abs(x1 - x0)
         sx = 1 if x0 < x1 else -1
         dy = -abs(y1 - y0)
         sy = 1 if y0 < y1 else -1
         err = dx + dy
 
-        while True:
+        for _ in range(dx - dy + 2):
             if thickness <= 1:
                 self.set_pixel(x0, y0, color)
             else:
@@ -252,14 +351,47 @@ class ThermalBitmap:
                 y0 += sy
 
     def draw_dashed_hline(self, x: int, y: int, w: int, dash_len: int = 4, gap_len: int = 4, thickness: int = 1, color: int = 1):
-        if w <= 0 or dash_len == 0:
+        if w <= 0 or dash_len <= 0 or gap_len < 0:
             return
         cur_x = x
         end_x = x + w
+        step = dash_len + gap_len
         while cur_x < end_x:
             seg_w = min(dash_len, end_x - cur_x)
             self.draw_hline(cur_x, y, seg_w, thickness=thickness, color=color)
-            cur_x += dash_len + gap_len
+            cur_x += step
+
+    def draw_dashed_vline(self, x: int, y: int, h: int, dash_len: int = 4, gap_len: int = 4, thickness: int = 1, color: int = 1):
+        if h <= 0 or dash_len <= 0 or gap_len < 0:
+            return
+        cur_y = y
+        end_y = y + h
+        step = dash_len + gap_len
+        while cur_y < end_y:
+            seg_h = min(dash_len, end_y - cur_y)
+            self.draw_vline(x, cur_y, seg_h, thickness=thickness, color=color)
+            cur_y += step
+
+    def draw_grid(
+        self,
+        x: int,
+        y: int,
+        cols: int,
+        rows: int,
+        cell_w: int,
+        cell_h: int,
+        outer_thick: int = 4,
+        inner_thick: int = 1,
+    ):
+        if cols <= 0 or rows <= 0 or cell_w <= 0 or cell_h <= 0:
+            return
+        w = cols * cell_w
+        h = rows * cell_h
+        self.draw_rect(x, y, w, h, thickness=outer_thick, color=1)
+        for r in range(1, rows):
+            self.draw_hline(x, y + r * cell_h, w, thickness=inner_thick, color=1)
+        for c in range(1, cols):
+            self.draw_vline(x + c * cell_w, y, h, thickness=inner_thick, color=1)
 
     def draw_polygon(self, points: List[Tuple[int, int]], thickness: int = 1, color: int = 1):
         if len(points) < 2:
@@ -276,49 +408,64 @@ class ThermalBitmap:
         self.draw_vline(x + w - thickness, y, h, thickness, color)
 
     def fill_rect(self, x: int, y: int, w: int, h: int, color: int = 1):
-        for py in range(max(0, y), min(y + h, self.height)):
-            for px in range(max(0, x), min(x + w, self.width)):
-                self.set_pixel(px, py, color)
+        self.draw_hline(x, y, w, thickness=h, color=color)
 
     def fill_hatch(self, x: int, y: int, w: int, h: int, pattern_id: int):
         pat = pattern_id % 10
-        for py in range(max(0, y), min(y + h, self.height)):
-            for px in range(max(0, x), min(x + w, self.width)):
-                is_burn = False
-                if pat == 0:
-                    is_burn = False
-                elif pat == 1:
-                    is_burn = ((px + py) % 8 == 0)
-                elif pat == 2:
-                    is_burn = ((px - py + 1000) % 8 == 0)
-                elif pat == 3:
-                    is_burn = ((px + py) % 10 == 0 or (px - py + 1000) % 10 == 0)
-                elif pat == 4:
-                    is_burn = (px % 8 == 0)
-                elif pat == 5:
-                    is_burn = (px % 4 == 0 and py % 4 == 0)
-                elif pat == 6:
-                    is_burn = ((px + py) % 8 == 0 and (px % 4 < 2))
-                elif pat == 7:
-                    is_burn = ((px - py + 1000) % 8 == 0 and (px % 4 < 2))
-                elif pat == 8:
-                    rx = px % 8
-                    ry = py % 8
-                    is_burn = ((rx == 4 and abs(ry - 4) <= 1) or (ry == 4 and abs(rx - 4) <= 1))
-                elif pat == 9:
-                    is_burn = ((px + py) % 6 == 0 and (px - py + 1000) % 6 == 0)
+        if pat == 0 or w <= 0 or h <= 0:
+            return
+        x0 = max(0, x)
+        x1 = min(x + w, self.width)
+        y0 = max(0, y)
+        y1 = min(y + h, self.height)
+        if x0 >= x1 or y0 >= y1:
+            return
 
-                if is_burn:
+        if x1 <= THERMAL_WIDTH_DOTS:
+            rows = _HATCH_TABLE[pat]
+            period = len(rows)
+            first_byte = x0 >> 3
+            last_byte = (x1 - 1) >> 3
+            start_mask = 0xFF >> (x0 & 7)
+            end_mask = (0xFF << (7 - ((x1 - 1) & 7))) & 0xFF
+            wb = self.width_bytes
+            buf = self.buffer
+            if first_byte == last_byte:
+                mask = start_mask & end_mask
+                for py in range(y0, y1):
+                    buf[py * wb + first_byte] |= rows[py % period][first_byte] & mask
+            else:
+                for py in range(y0, y1):
+                    pat_row = rows[py % period]
+                    row_off = py * wb
+                    buf[row_off + first_byte] |= pat_row[first_byte] & start_mask
+                    for b in range(first_byte + 1, last_byte):
+                        buf[row_off + b] |= pat_row[b]
+                    buf[row_off + last_byte] |= pat_row[last_byte] & end_mask
+            return
+
+        for py in range(y0, y1):
+            for px in range(x0, x1):
+                if _hatch_predicate(pat, px, py):
                     self.set_pixel(px, py, 1)
 
     def draw_char(self, x: int, y: int, char: str, scale: int = 2, color: int = 1):
+        if scale <= 0:
+            return
         glyph = FONT_5X7.get(char.upper(), FONT_5X7.get(' ', [0]*7))
         for row_idx, row_byte in enumerate(glyph):
+            if row_byte == 0:
+                continue
+            py = y + row_idx * scale
+            if py + scale <= 0 or py >= self.height:
+                continue
             for col_idx in range(6):
                 if (row_byte >> (5 - col_idx)) & 1:
-                    for sy in range(scale):
-                        for sx in range(scale):
-                            self.set_pixel(x + col_idx * scale + sx, y + row_idx * scale + sy, color)
+                    px = x + col_idx * scale
+                    if scale == 1:
+                        self.set_pixel(px, py, color)
+                    else:
+                        self.draw_hline(px, py, scale, thickness=scale, color=color)
 
     def draw_text(self, x: int, y: int, text: str, scale: int = 2, color: int = 1):
         cur_x = x
@@ -339,23 +486,45 @@ class ThermalBitmap:
         self.draw_text(x, y, text, scale=scale, color=color)
 
     def draw_circle(self, cx: int, cy: int, radius: int, thickness: int = 2, color: int = 1):
-        r_inner_sq = (radius - thickness) ** 2
+        if radius <= 0:
+            return
+        r_inner_sq = max(0, radius - thickness) ** 2
         r_outer_sq = radius ** 2
-        for py in range(max(0, cy - radius), min(cy + radius + 1, self.height)):
-            for px in range(max(0, cx - radius), min(cx + radius + 1, self.width)):
-                dist_sq = (px - cx) ** 2 + (py - cy) ** 2
-                if r_inner_sq <= dist_sq <= r_outer_sq:
-                    self.set_pixel(px, py, color)
+        y0 = max(0, cy - radius)
+        y1 = min(cy + radius + 1, self.height)
+        for py in range(y0, y1):
+            dy_sq = (py - cy) ** 2
+            outer_dx = math.isqrt(r_outer_sq - dy_sq)
+            if dy_sq >= r_inner_sq:
+                lx = max(0, cx - outer_dx)
+                rx = min(self.width, cx + outer_dx + 1)
+                if lx < rx:
+                    self._fill_row_span(py, lx, rx, color)
+            else:
+                k = math.isqrt(r_inner_sq - dy_sq - 1) + 1
+                if k <= outer_dx:
+                    lx0 = max(0, cx - outer_dx)
+                    rx0 = min(self.width, cx - k + 1)
+                    if lx0 < rx0:
+                        self._fill_row_span(py, lx0, rx0, color)
+                    lx1 = max(0, cx + k)
+                    rx1 = min(self.width, cx + outer_dx + 1)
+                    if lx1 < rx1:
+                        self._fill_row_span(py, lx1, rx1, color)
 
     def fill_circle(self, cx: int, cy: int, radius: int, color: int = 1):
         if radius <= 0:
             return
         r_sq = radius * radius
-        for py in range(max(0, cy - radius), min(cy + radius + 1, self.height)):
+        y0 = max(0, cy - radius)
+        y1 = min(cy + radius + 1, self.height)
+        for py in range(y0, y1):
             dy_sq = (py - cy) ** 2
-            for px in range(max(0, cx - radius), min(cx + radius + 1, self.width)):
-                if (px - cx) ** 2 + dy_sq <= r_sq:
-                    self.set_pixel(px, py, color)
+            dx = math.isqrt(r_sq - dy_sq)
+            x0 = max(0, cx - dx)
+            x1 = min(self.width, cx + dx + 1)
+            if x0 < x1:
+                self._fill_row_span(py, x0, x1, color)
 
     def to_escpos(self) -> bytes:
         return image_to_escpos_raster(bytes(self.buffer), self.width, self.height)

@@ -18,7 +18,6 @@ from app.main import generate_daily_bundle
 from app.puzzles.registry import DEFAULT_REGISTRY
 from app.renderer.receipt_rasterizer import (
     calculate_duty_cycle,
-    image_to_escpos_raster,
     render_sudoku_raster,
     render_wordsearch_raster,
     render_nonogram_raster,
@@ -37,6 +36,8 @@ from app.renderer.receipt_rasterizer import (
     render_loop_raster,
     render_towers_raster,
     render_inequality_raster,
+    render_maze_raster,
+    render_sudokito_raster,
     THERMAL_WIDTH_DOTS,
     THERMAL_WIDTH_BYTES,
 )
@@ -49,44 +50,52 @@ from app.renderer.text_formatter import (
 )
 
 
+RASTERIZER_FACADES = {
+    "sudoku": render_sudoku_raster,
+    "wordsearch": render_wordsearch_raster,
+    "nonogram": render_nonogram_raster,
+    "queens": render_queens_dithered_raster,
+    "jumble": render_jumble_raster,
+    "binary": render_binary_raster,
+    "mines": render_mines_raster,
+    "tents": render_tents_raster,
+    "bridges": render_bridges_raster,
+    "killer": render_killer_raster,
+    "cryptogram": render_cryptogram_raster,
+    "tango": render_tango_raster,
+    "ladder": render_ladder_raster,
+    "wheel": render_wheel_raster,
+    "lights": render_lights_raster,
+    "loop": render_loop_raster,
+    "towers": render_towers_raster,
+    "inequality": render_inequality_raster,
+    "maze": render_maze_raster,
+    "sudokito": render_sudokito_raster,
+}
+
+
 def test_bundle_completeness():
-    print("Test 1: Verifying Daily Bundle Completeness (All 16 Puzzles)...")
+    plugins = DEFAULT_REGISTRY.get_all()
+    print(f"Test 1: Verifying Daily Bundle Completeness (All {len(plugins)} Puzzles)...")
     bundle = generate_daily_bundle(difficulty="medium")
-    required_keys = ["title", "date", "difficulty", "sudoku", "wordsearch", "nonogram", "queens", "jumble", "binary", "mines", "tents", "bridges", "killer", "cryptogram", "tango", "ladder", "wheel", "lights", "loop", "towers", "inequality"]
+    required_keys = ["title", "date", "difficulty"] + [p.puzzle_id for p in plugins]
     for k in required_keys:
         assert k in bundle, f"Missing key '{k}' in generated bundle"
-    print(f"  -> Passed! All {len(required_keys) - 3} puzzles present in daily bundle.\n")
+    print(f"  -> Passed! All {len(plugins)} puzzles present in daily bundle.\n")
     return bundle
 
 
 def test_raster_specifications(bundle):
     print("Test 2: Verifying 80mm Thermal Raster Specifications (576 Dots / 72 Bytes)...")
-    rasterizers = [
-        ("Sudoku", render_sudoku_raster, "sudoku"),
-        ("WordSearch", render_wordsearch_raster, "wordsearch"),
-        ("Nonogram", render_nonogram_raster, "nonogram"),
-        ("Stars (Queens)", render_queens_dithered_raster, "queens"),
-        ("Jumble", render_jumble_raster, "jumble"),
-        ("Binary", render_binary_raster, "binary"),
-        ("Mines", render_mines_raster, "mines"),
-        ("Tents", render_tents_raster, "tents"),
-        ("Bridges", render_bridges_raster, "bridges"),
-        ("Killer", render_killer_raster, "killer"),
-        ("Cryptogram", render_cryptogram_raster, "cryptogram"),
-        ("Tango", render_tango_raster, "tango"),
-        ("Ladder", render_ladder_raster, "ladder"),
-        ("Wheel", render_wheel_raster, "wheel"),
-        ("Lights", render_lights_raster, "lights"),
-        ("Loop", render_loop_raster, "loop"),
-        ("Towers", render_towers_raster, "towers"),
-        ("Inequality", render_inequality_raster, "inequality"),
-    ]
+    plugins = DEFAULT_REGISTRY.get_all()
 
-    for name, fn, key in rasterizers:
+    for plugin in plugins:
+        key = plugin.puzzle_id
+        name = plugin.title
+        fn = RASTERIZER_FACADES.get(key)
+        assert fn is not None, f"Missing render_<game>_raster facade for '{key}' in receipt_rasterizer.py"
         puzzle_data = bundle[key]
         raster = fn(puzzle_data)
-        plugin = DEFAULT_REGISTRY.get(key)
-        assert plugin is not None, f"Missing plugin for '{key}'"
         plugin_raster = plugin.render_raster(puzzle_data)
         assert len(plugin_raster) == len(raster), f"{name}: Plugin raster length mismatch"
 
@@ -105,6 +114,7 @@ def test_raster_specifications(bundle):
         # 4. Verify height
         height_dots = raster[6] | (raster[7] << 8)
         assert height_dots > 50, f"{name}: Height dots unreasonably small ({height_dots})"
+        assert height_dots % 8 == 0, f"{name}: Height dots ({height_dots}) must be aligned to a multiple of 8"
 
         # 5. Verify byte alignment: total length == 8 + width_bytes * height_dots
         expected_len = 8 + width_bytes * height_dots
@@ -124,7 +134,7 @@ def test_raster_specifications(bundle):
 
         print(f"  -> {name:15}: {duty['width_dots']}x{duty['height_dots']} dots | {len(raster)} bytes | Avg Duty: {duty['average_duty_cycle_pct']:5.2f}% | Safe: OK")
 
-    print(f"  -> Passed! All {len(rasterizers)} rasterizers conform strictly to 576-dot thermal standard.\n")
+    print(f"  -> Passed! All {len(plugins)} rasterizers conform strictly to 576-dot thermal standard.\n")
 
 
 def test_text_receipt_format(bundle):
@@ -143,7 +153,9 @@ def test_text_receipt_format(bundle):
 
     # 4. PUZZLE_HEADER_SPEC compliance: check strict one-word titles
     receipt_text = receipt_bytes.decode("latin-1")
-    for title in ["--- SUDOKU ---", "--- SEARCH ---", "--- NONOGRAM ---", "--- STARS ---", "--- JUMBLE ---", "--- BINARY ---", "--- MINES ---", "--- TENTS ---", "--- BRIDGES ---", "--- KILLER ---", "--- CRYPTOGRAM ---", "--- TANGO ---", "--- LADDER ---", "--- WHEEL ---", "--- LIGHTS ---", "--- LOOP ---", "--- TOWERS ---", "--- INEQUALITY ---"]:
+    plugins = DEFAULT_REGISTRY.get_all()
+    for plugin in plugins:
+        title = f"--- {plugin.title} ---"
         assert title in receipt_text, f"Missing canonical title '{title}' in text receipt"
 
     # 5. Master Receipt Header & Footer Standards (Section 9)
@@ -157,7 +169,7 @@ def test_text_receipt_format(bundle):
     assert "on the cable behind the printer." in receipt_text, "Missing 'on the cable behind the printer.' in text receipt footer"
     assert "diagnostics" not in receipt_text.lower(), "Receipt must not contain diagnostics information"
 
-    print("  -> Passed! Text receipt contains all 16 canonical headers, offline header/footer, pre-cut feeds, and cutter commands.\n")
+    print(f"  -> Passed! Text receipt contains all {len(plugins)} canonical headers, offline header/footer, pre-cut feeds, and cutter commands.\n")
 
 
 def test_hybrid_receipt_format(bundle):
@@ -194,7 +206,7 @@ def test_solution_key_spec(bundle):
     assert "[ SOLUTION KEY ]" in receipt_text, "Missing [ SOLUTION KEY ] header"
 
     # Check that each game is represented in the solution key
-    expected_subtitles = ["SUDOKU", "SEARCH", "NONOGRAM", "STARS", "JUMBLE", "BINARY", "MINES", "TENTS", "BRIDGES", "KILLER", "CRYPTOGRAM", "TANGO", "LADDER"]
+    expected_subtitles = [p.title for p in DEFAULT_REGISTRY.get_all()]
     for sub in expected_subtitles:
         assert sub in receipt_text, f"Missing '{sub}' in Solution Key"
 

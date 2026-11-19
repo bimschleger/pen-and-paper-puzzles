@@ -19,6 +19,46 @@ inline uint8_t mp_unpack_nibble_pgm(const uint8_t* arr, uint16_t idx) {
     return (idx & 1) ? (byteVal & 0x0F) : (byteVal >> 4);
 }
 
+inline uint8_t mp_unpack_2bit_pgm(const uint8_t* arr, uint16_t idx) {
+    uint8_t byteVal = pgm_read_byte(arr + (idx >> 2));
+    return (byteVal >> ((3 - (idx & 3)) << 1)) & 0x03;
+}
+
+inline void mp_transform_coord_d4(uint8_t r, uint8_t c, uint8_t size, uint8_t transform,
+                                  uint8_t& nr, uint8_t& nc, bool flipFirst = false) {
+    uint8_t tr = r, tc = c;
+    uint8_t rot = transform & 3;
+    bool flip = (transform >= 4);
+    if (flipFirst && flip) {
+        tc = (uint8_t)(size - 1 - tc);
+    }
+    for (uint8_t k = 0; k < rot; k++) {
+        uint8_t nextR = tc;
+        uint8_t nextC = (uint8_t)(size - 1 - tr);
+        tr = nextR;
+        tc = nextC;
+    }
+    if (!flipFirst && flip) {
+        tc = (uint8_t)(size - 1 - tc);
+    }
+    nr = tr;
+    nc = tc;
+}
+
+inline void mp_transform_coord_d4_ineq(uint8_t r, uint8_t c, uint8_t size, uint8_t transform,
+                                       uint8_t& nr, uint8_t& nc) {
+    switch (transform) {
+        case 1: nr = c; nc = (uint8_t)(size - 1 - r); break;
+        case 2: nr = (uint8_t)(size - 1 - r); nc = (uint8_t)(size - 1 - c); break;
+        case 3: nr = (uint8_t)(size - 1 - c); nc = r; break;
+        case 4: nr = r; nc = (uint8_t)(size - 1 - c); break;
+        case 5: nr = (uint8_t)(size - 1 - r); nc = c; break;
+        case 6: nr = c; nc = r; break;
+        case 7: nr = (uint8_t)(size - 1 - c); nc = (uint8_t)(size - 1 - r); break;
+        default: nr = r; nc = c; break;
+    }
+}
+
 inline void printWrapped(EscPosPrinter& printer, const char* text, int maxWidth = 44) {
     if (!text || text[0] == '\0') return;
 

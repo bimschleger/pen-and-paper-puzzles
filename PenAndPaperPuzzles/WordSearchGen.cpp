@@ -290,62 +290,51 @@ bool WordSearchGen::printRasterToReceipt(EscPosPrinter& printer) {
 
     const int16_t checklistRows = (int16_t)((_numPlacedWords + 1) / 2);
     const int16_t checklistH = 40 + checklistRows * 28;
-    const int16_t totalH = 12 + gridH + 20 + checklistH + 12;
-
-    ThermalCanvas canvas;
-    if (!canvas.begin(totalH)) {
-        return false;
-    }
+    const int16_t totalH = ((12 + gridH + 20 + checklistH + 12 + 7) / 8) * 8;
 
     const int16_t gridY = 12;
 
-    // Outer border
-    canvas.drawRect(padding, gridY, innerWidth, gridH, 4);
+    ThermalCanvas canvas;
+    return canvas.renderBanded(printer, totalH, [&](ThermalCanvas& canvas) {
+        canvas.drawGrid(padding, gridY, _gridSize, _gridSize, cellSize, cellSize, 4, 1);
 
-    // Letter matrix & inner grid lines
-    for (uint8_t r = 0; r < _gridSize; r++) {
-        for (uint8_t c = 0; c < _gridSize; c++) {
-            char letter = _grid[r][c];
-            int16_t cx = padding + c * cellSize + (cellSize - 18) / 2;
-            int16_t cy = gridY + r * cellSize + (cellSize - 21) / 2;
-            canvas.drawChar(cx, cy, letter, 3);
-            if (c > 0) {
-                canvas.drawVLine(padding + c * cellSize, gridY, gridH, 1);
+        for (uint8_t r = 0; r < _gridSize; r++) {
+            for (uint8_t c = 0; c < _gridSize; c++) {
+                char letter = _grid[r][c];
+                int16_t cx = padding + c * cellSize + (cellSize - 18) / 2;
+                int16_t cy = gridY + r * cellSize + (cellSize - 21) / 2;
+                canvas.drawChar(cx, cy, letter, 3);
             }
         }
-        if (r > 0) {
-            canvas.drawHLine(padding, gridY + r * cellSize, innerWidth, 1);
+
+        int16_t curY = gridY + gridH + 16;
+        canvas.drawHLine(padding, curY, innerWidth, 2);
+        curY += 18;
+
+        if (_currentTheme && _currentTheme[0] != '\0') {
+            char themeBuf[48];
+            snprintf(themeBuf, sizeof(themeBuf), "THEME: %s", _currentTheme);
+            for (int k = 7; themeBuf[k]; k++) themeBuf[k] = toupper((unsigned char)themeBuf[k]);
+            canvas.drawText(padding, curY, themeBuf, 2);
+        } else {
+            canvas.drawText(padding, curY, "WORDS TO FIND:", 2);
         }
-    }
+        curY += 28;
 
-    // Divider line
-    int16_t curY = gridY + gridH + 16;
-    canvas.drawHLine(padding, curY, innerWidth, 2);
-    curY += 18;
-
-    if (_currentTheme && _currentTheme[0] != '\0') {
-        String themeStr = String("THEME: ") + _currentTheme;
-        themeStr.toUpperCase();
-        canvas.drawText(padding, curY, themeStr.c_str(), 2);
-    } else {
-        canvas.drawText(padding, curY, "WORDS TO FIND:", 2);
-    }
-    curY += 28;
-
-    // Word checklist
-    int16_t colW = innerWidth / 2;
-    for (size_t i = 0; i < _numPlacedWords; i++) {
-        int16_t colIdx = i % 2;
-        int16_t rowIdx = i / 2;
-        int16_t ix = padding + colIdx * colW;
-        int16_t iy = curY + rowIdx * 28;
-        canvas.drawRect(ix, iy + 2, 16, 16, 2);
-        String w = _placedWords[i];
-        w.toUpperCase();
-        canvas.drawText(ix + 24, iy + 2, w.c_str(), 2);
-    }
-
-    bool ok = canvas.printTo(printer);
-    canvas.end();
-    return ok;
+        int16_t colW = innerWidth / 2;
+        for (size_t i = 0; i < _numPlacedWords; i++) {
+            int16_t colIdx = i % 2;
+            int16_t rowIdx = i / 2;
+            int16_t ix = padding + colIdx * colW;
+            int16_t iy = curY + rowIdx * 28;
+            canvas.drawRect(ix, iy + 2, 16, 16, 2);
+            char wordBuf[32];
+            size_t k = 0;
+            for (; _placedWords[i][k] && k < sizeof(wordBuf) - 1; k++) {
+                wordBuf[k] = toupper((unsigned char)_placedWords[i][k]);
+            }
+            wordBuf[k] = '\0';
+            canvas.drawText(ix + 24, iy + 2, wordBuf, 2);
+        }
+    });
 }

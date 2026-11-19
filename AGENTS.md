@@ -19,3 +19,15 @@ All agents must strictly comply with Rules 1 through 18 defined therein:
 - Rule 16: Web Simulator Hardware Emulation Standard
 - Rule 17: Shared Utilities, DRY Primitives & Dynamic Count Standard
 - Rule 18: Game Onboarding, Setup Portal, Documentation & Parity Standard
+
+Engineering performance, hardware budgets, solver safety, and CI coverage gates are maintained in:
+👉 `.agents/rules/engineering_performance_and_ci.md`
+
+All agents must also strictly comply with Rules 19 through 25 defined therein:
+- Rule 19: ESP32 Banded Raster Memory (`<= 18,432 B`) & `.rodata` Flash Discipline
+- Rule 20: Bounded Iterative Solvers, Mandatory Retry Handling & WDT `yield()`
+- Rule 21: Declarative Multi-Target Game Guides (`diagram_ops` SSoT)
+- Rule 22: Strictly Printable 7-Bit ASCII & Fail-Loud Dataset Pipeline
+- Rule 23: Zero-CDN Offline Web Targets, Payload Budgets & Real-Event Coverage
+- Rule 24: Python Pure-Bitmap Performance, Shared Utilities & Python 3.9+ Compatibility
+- Rule 25: New-Feature Full-Coverage Contract & PR/CI Gate Parity

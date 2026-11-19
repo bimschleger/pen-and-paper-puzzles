@@ -25,33 +25,11 @@ bool SudokuGen::isValid(uint8_t board[9][9], uint8_t row, uint8_t col, uint8_t n
     return true;
 }
 
-bool SudokuGen::fillBoard(uint8_t board[9][9]) {
-    for (uint8_t r = 0; r < 9; r++) {
-        for (uint8_t c = 0; c < 9; c++) {
-            if (board[r][c] == 0) {
-                uint8_t nums[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-                mp_shuffle(nums, 9);
-                for (uint8_t i = 0; i < 9; i++) {
-                    uint8_t num = nums[i];
-                    if (isValid(board, r, c, num)) {
-                        board[r][c] = num;
-                        if (fillBoard(board)) {
-                            return true;
-                        }
-                        board[r][c] = 0;
-                    }
-                }
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-uint8_t SudokuGen::countSolutions(uint8_t board[9][9], uint8_t maxCount) {
-    int8_t bestR = -1, bestC = -1;
+static uint8_t findSudokuMrv(uint8_t board[9][9], uint8_t& bestR, uint8_t& bestC, uint16_t& bestMask) {
     uint8_t bestCandCount = 10;
-    uint16_t bestMask = 0;
+    bestR = 0xFF;
+    bestC = 0xFF;
+    bestMask = 0;
 
     for (uint8_t r = 0; r < 9; r++) {
         for (uint8_t c = 0; c < 9; c++) {
@@ -59,35 +37,149 @@ uint8_t SudokuGen::countSolutions(uint8_t board[9][9], uint8_t maxCount) {
                 uint16_t mask = 0;
                 uint8_t cnt = 0;
                 for (uint8_t num = 1; num <= 9; num++) {
-                    if (isValid(board, r, c, num)) {
-                        mask |= (1 << num);
+                    bool ok = true;
+                    for (uint8_t i = 0; i < 9; i++) {
+                        if (board[r][i] == num || board[i][c] == num) { ok = false; break; }
+                    }
+                    if (ok) {
+                        uint8_t br = (r / 3) * 3, bc = (c / 3) * 3;
+                        for (uint8_t dr = 0; dr < 3 && ok; dr++) {
+                            for (uint8_t dc = 0; dc < 3; dc++) {
+                                if (board[br + dr][bc + dc] == num) { ok = false; break; }
+                            }
+                        }
+                    }
+                    if (ok) {
+                        mask |= (uint16_t)(1u << num);
                         cnt++;
                     }
                 }
-                if (cnt == 0) return 0;
+                if (cnt == 0) return 0; // dead end
                 if (cnt < bestCandCount) {
                     bestCandCount = cnt;
                     bestR = r;
                     bestC = c;
                     bestMask = mask;
-                    if (cnt == 1) break;
+                    if (cnt == 1) return 2; // found next cell
                 }
             }
         }
-        if (bestCandCount == 1) break;
     }
+    return (bestR == 0xFF) ? 1 : 2; // 1 = solved, 2 = next cell found
+}
 
-    if (bestR == -1) return 1;
+bool SudokuGen::fillBoard(uint8_t board[9][9]) {
+    uint8_t stackR[81];
+    uint8_t stackC[81];
+    uint8_t stackCount[81];
+    uint8_t stackIdx[81];
+    uint8_t stackVals[81][9];
+
+    auto pushCell = [&](int8_t depth) -> uint8_t {
+        uint8_t r, c;
+        uint16_t mask;
+        uint8_t st = findSudokuMrv(board, r, c, mask);
+        if (st != 2) return st;
+
+        uint8_t n = 0;
+        for (uint8_t v = 1; v <= 9; v++) {
+            if (mask & (1u << v)) stackVals[depth][n++] = v;
+        }
+        mp_shuffle(stackVals[depth], n);
+        stackR[depth] = r;
+        stackC[depth] = c;
+        stackCount[depth] = n;
+        stackIdx[depth] = 0;
+        return 2;
+    };
+
+    int8_t sp = 0;
+    uint8_t initSt = pushCell(0);
+    if (initSt == 1) return true;
+    if (initSt == 0) return false;
+
+    uint32_t nodes = 0;
+    const uint32_t MAX_NODES = 25000;
+
+    while (sp >= 0) {
+        if ((++nodes & 0xFF) == 0) yield();
+        if (nodes >= MAX_NODES) {
+            for (int8_t k = 0; k <= sp; k++) board[stackR[k]][stackC[k]] = 0;
+            return false;
+        }
+
+        uint8_t r = stackR[sp];
+        uint8_t c = stackC[sp];
+        board[r][c] = 0;
+
+        if (stackIdx[sp] >= stackCount[sp]) {
+            sp--;
+            continue;
+        }
+
+        board[r][c] = stackVals[sp][stackIdx[sp]++];
+        if (sp + 1 >= 81) return true;
+
+        uint8_t nextSt = pushCell(sp + 1);
+        if (nextSt == 1) return true;
+        if (nextSt == 2) sp++;
+    }
+    return false;
+}
+
+uint8_t SudokuGen::countSolutions(uint8_t board[9][9], uint8_t maxCount) {
+    struct CountFrame {
+        uint16_t mask;
+        uint8_t r;
+        uint8_t c;
+        uint8_t nextVal;
+    };
+    CountFrame stack[81];
+
+    uint8_t r0, c0;
+    uint16_t m0;
+    uint8_t st0 = findSudokuMrv(board, r0, c0, m0);
+    if (st0 == 0) return 0;
+    if (st0 == 1) return 1;
+
+    int8_t sp = 0;
+    stack[0] = { m0, r0, c0, 1 };
 
     uint8_t count = 0;
-    for (uint8_t num = 1; num <= 9; num++) {
-        if (bestMask & (1 << num)) {
-            board[bestR][bestC] = num;
-            count += countSolutions(board, maxCount - count);
-            board[bestR][bestC] = 0;
+    uint32_t nodes = 0;
+    const uint32_t MAX_NODES = 25000;
+
+    while (sp >= 0) {
+        if ((++nodes & 0xFF) == 0) yield();
+        if (nodes >= MAX_NODES) {
+            for (int8_t k = 0; k <= sp; k++) board[stack[k].r][stack[k].c] = 0;
+            return maxCount;
+        }
+
+        CountFrame& f = stack[sp];
+        board[f.r][f.c] = 0;
+
+        uint8_t v = f.nextVal;
+        while (v <= 9 && !(f.mask & (1u << v))) v++;
+        if (v > 9) {
+            sp--;
+            continue;
+        }
+        f.nextVal = v + 1;
+        board[f.r][f.c] = v;
+
+        uint8_t nr, nc;
+        uint16_t nm;
+        uint8_t nst = findSudokuMrv(board, nr, nc, nm);
+        if (nst == 1) {
+            count++;
             if (count >= maxCount) {
+                for (int8_t k = 0; k <= sp; k++) board[stack[k].r][stack[k].c] = 0;
                 return count;
             }
+        } else if (nst == 2 && sp + 1 < 81) {
+            sp++;
+            stack[sp] = { nm, nr, nc, 1 };
         }
     }
     return count;
@@ -100,7 +192,11 @@ void SudokuGen::generate(SudokuDifficulty difficulty) {
 
     // 1. Fill random solved board
     uint8_t solution[9][9] = {0};
-    fillBoard(solution);
+    for (uint8_t attempt = 0; attempt < 5; attempt++) {
+        memset(solution, 0, sizeof(solution));
+        if (fillBoard(solution)) break;
+        yield();
+    }
 
     // 2. Clone to puzzle
     memcpy(_puzzle, solution, sizeof(_puzzle));
@@ -155,35 +251,27 @@ bool SudokuGen::printRasterToReceipt(EscPosPrinter& printer, SudokuDifficulty /*
     const int16_t padding = 24;
     const int16_t boardSize = THERMAL_CANVAS_WIDTH - padding * 2; // 528
     const int16_t cellSize = boardSize / 9; // 58
-    const int16_t totalH = padding + cellSize * 9 + padding; // 570
+    const int16_t totalH = ((padding + cellSize * 9 + padding + 7) / 8) * 8; // 576
 
     ThermalCanvas canvas;
-    if (!canvas.begin(totalH)) {
-        return false;
-    }
+    return canvas.renderBanded(printer, totalH, [&](ThermalCanvas& canvas) {
+        for (int i = 0; i <= 9; i++) {
+            int16_t pos = padding + i * cellSize;
+            bool isMajor = (i % 3 == 0);
+            canvas.drawHLine(padding, pos, cellSize * 9, isMajor ? 4 : 1);
+            canvas.drawVLine(pos, padding, cellSize * 9, isMajor ? 4 : 1);
+        }
 
-    // Grid lines
-    for (int i = 0; i <= 9; i++) {
-        int16_t pos = padding + i * cellSize;
-        bool isMajor = (i % 3 == 0);
-        canvas.drawHLine(padding, pos, cellSize * 9, isMajor ? 4 : 1);
-        canvas.drawVLine(pos, padding, cellSize * 9, isMajor ? 4 : 1);
-    }
-
-    // Digits
-    for (uint8_t r = 0; r < 9; r++) {
-        for (uint8_t c = 0; c < 9; c++) {
-            uint8_t val = _puzzle[r][c];
-            if (val != 0) {
-                int16_t cx = padding + c * cellSize + (cellSize - 18) / 2;
-                int16_t cy = padding + r * cellSize + (cellSize - 21) / 2;
-                canvas.drawChar(cx, cy, '0' + val, 3);
+        for (uint8_t r = 0; r < 9; r++) {
+            for (uint8_t c = 0; c < 9; c++) {
+                uint8_t val = _puzzle[r][c];
+                if (val != 0) {
+                    int16_t cx = padding + c * cellSize + (cellSize - 18) / 2;
+                    int16_t cy = padding + r * cellSize + (cellSize - 21) / 2;
+                    canvas.drawChar(cx, cy, '0' + val, 3);
+                }
             }
         }
-    }
-
-    bool ok = canvas.printTo(printer);
-    canvas.end();
-    return ok;
+    });
 }
 

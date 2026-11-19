@@ -8,6 +8,7 @@ import random
 from typing import List, Tuple, Optional, Dict, Any, Set, Union
 
 from .base import BasePuzzle, BasePuzzleResult
+from ._grid_utils import all_neighbors
 from ..renderer.canvas import (
     THERMAL_WIDTH_DOTS,
     ThermalBitmap,
@@ -45,10 +46,8 @@ class MinesPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs,
     ) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        difficulty = difficulty.lower()
+        rng = self.make_rng(seed)
+        difficulty = self.normalize_difficulty(difficulty)
         cfg = self.DIFFICULTY_SETTINGS.get(difficulty, self.DIFFICULTY_SETTINGS["medium"])
         rows = cfg["rows"]
         cols = cfg["cols"]
@@ -58,7 +57,7 @@ class MinesPuzzle(BasePuzzle):
         all_cells = [(r, c) for r in range(rows) for c in range(cols)]
 
         for _ in range(100):
-            mine_set = set(random.sample(all_cells, num_mines))
+            mine_set = set(rng.sample(all_cells, num_mines))
 
             full_clues: Dict[Tuple[int, int], int] = {}
             for r in range(rows):
@@ -73,7 +72,7 @@ class MinesPuzzle(BasePuzzle):
 
             pruned_clues = dict(full_clues)
             clue_keys = list(full_clues.keys())
-            random.shuffle(clue_keys)
+            rng.shuffle(clue_keys)
 
             for k in clue_keys:
                 if len(pruned_clues) <= target_clues:
@@ -204,57 +203,59 @@ class MinesPuzzle(BasePuzzle):
         return tb.to_escpos()
 
     def _get_neighbors(self, r: int, c: int, rows: int, cols: int) -> List[Tuple[int, int]]:
-        neighbors = []
-        for dr in (-1, 0, 1):
-            for dc in (-1, 0, 1):
-                if dr == 0 and dc == 0:
-                    continue
-                nr, nc = r + dr, c + dc
-                if 0 <= nr < rows and 0 <= nc < cols:
-                    neighbors.append((nr, nc))
-        return neighbors
+        return all_neighbors(r, c, rows, cols)
 
     def _solve_deductive(self, rows: int, cols: int, clues: Dict[Tuple[int, int], int], total_mines: int) -> Tuple[bool, List[List[int]]]:
-        state = [[-1] * cols for _ in range(rows)]
-        for (r, c) in clues:
-            state[r][c] = 0
+        total_cells = rows * cols
+        unknown_mask = (1 << total_cells) - 1
+        mine_mask = 0
+        clue_info = []
+        for (r, c), val in clues.items():
+            unknown_mask &= ~(1 << (r * cols + c))
+            nbr_mask = 0
+            for nr, nc in all_neighbors(r, c, rows, cols):
+                nbr_mask |= 1 << (nr * cols + nc)
+            clue_info.append((r, c, val, nbr_mask))
+
+        def build_state() -> List[List[int]]:
+            return [
+                [
+                    -1 if ((unknown_mask >> (r * cols + c)) & 1) else (1 if ((mine_mask >> (r * cols + c)) & 1) else 0)
+                    for c in range(cols)
+                ]
+                for r in range(rows)
+            ]
 
         changed = True
-        max_iter = rows * cols + 10
+        max_iter = total_cells + 10
         iter_count = 0
         while changed and iter_count < max_iter:
             iter_count += 1
             changed = False
+            active_clues = []
 
-            for (r, c), val in clues.items():
-                neighs = self._get_neighbors(r, c, rows, cols)
-                unknowns = [p for p in neighs if state[p[0]][p[1]] == -1]
-                mines = [p for p in neighs if state[p[0]][p[1]] == 1]
-                rem = val - len(mines)
+            for r, c, val, nbr_mask in clue_info:
+                u_mask = nbr_mask & unknown_mask
+                m_mask = nbr_mask & mine_mask
+                m_cnt = bin(m_mask).count("1") if m_mask else 0
+                u_cnt = bin(u_mask).count("1") if u_mask else 0
+                rem = val - m_cnt
 
-                if rem < 0 or len(unknowns) + len(mines) < val:
-                    return False, state
+                if rem < 0 or u_cnt + m_cnt < val:
+                    return False, build_state()
 
-                if rem == 0 and unknowns:
-                    for ur, uc in unknowns:
-                        state[ur][uc] = 0
-                        changed = True
-                elif rem == len(unknowns) and unknowns:
-                    for ur, uc in unknowns:
-                        state[ur][uc] = 1
-                        changed = True
+                if rem == 0 and u_mask:
+                    unknown_mask &= ~u_mask
+                    changed = True
+                elif rem == u_cnt and u_mask:
+                    mine_mask |= u_mask
+                    unknown_mask &= ~u_mask
+                    changed = True
+                elif u_mask:
+                    active_clues.append((r, c, u_mask, rem))
 
             if changed:
                 continue
-
-            active_clues = []
-            for (r1, c1), v1 in clues.items():
-                n1 = self._get_neighbors(r1, c1, rows, cols)
-                u1 = {p for p in n1 if state[p[0]][p[1]] == -1}
-                if not u1:
-                    continue
-                m1 = sum(1 for p in n1 if state[p[0]][p[1]] == 1)
-                active_clues.append((r1, c1, u1, v1 - m1))
 
             for i in range(len(active_clues)):
                 r1, c1, u1, rem1 = active_clues[i]
@@ -265,40 +266,40 @@ class MinesPuzzle(BasePuzzle):
                     if abs(r1 - r2) > 2 or abs(c1 - c2) > 2:
                         continue
 
-                    if u1.issubset(u2):
-                        diff = u2 - u1
+                    if (u1 & u2) == u1:
+                        diff = u2 & ~u1
                         rem_diff = rem2 - rem1
                         if rem_diff < 0:
-                            return False, state
-                        if rem_diff == 0 and diff:
-                            for dr, dc in diff:
-                                state[dr][dc] = 0
+                            return False, build_state()
+                        if diff:
+                            if rem_diff == 0:
+                                unknown_mask &= ~diff
                                 changed = True
-                        elif len(diff) == rem_diff and diff:
-                            for dr, dc in diff:
-                                state[dr][dc] = 1
+                            elif bin(diff).count("1") == rem_diff:
+                                mine_mask |= diff
+                                unknown_mask &= ~diff
                                 changed = True
+                        if changed:
+                            break
                 if changed:
                     break
 
             if changed:
                 continue
 
-            found_mines = sum(1 for r in range(rows) for c in range(cols) if state[r][c] == 1)
-            all_unknowns = [(r, c) for r in range(rows) for c in range(cols) if state[r][c] == -1]
-            rem_global = total_mines - found_mines
-
-            if rem_global == 0 and all_unknowns:
-                for ur, uc in all_unknowns:
-                    state[ur][uc] = 0
+            if unknown_mask:
+                found_mines = bin(mine_mask).count("1") if mine_mask else 0
+                rem_global = total_mines - found_mines
+                rem_unk_cnt = bin(unknown_mask).count("1")
+                if rem_global == 0:
+                    unknown_mask = 0
                     changed = True
-            elif len(all_unknowns) == rem_global and all_unknowns:
-                for ur, uc in all_unknowns:
-                    state[ur][uc] = 1
+                elif rem_unk_cnt == rem_global:
+                    mine_mask |= unknown_mask
+                    unknown_mask = 0
                     changed = True
 
-        is_solved = all(state[r][c] != -1 for r in range(rows) for c in range(cols))
-        return is_solved, state
+        return (unknown_mask == 0), build_state()
 
     def verify_accuracy(
         self,

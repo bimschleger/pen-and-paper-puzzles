@@ -4,10 +4,12 @@ Encapsulates procedural generation, canonical instruction formatting,
 ASCII layout, solution key formatting, and 576-dot thermal raster rendering.
 """
 
+from collections import deque
 import random
 from typing import List, Tuple, Optional, Dict, Any, Set, Union
 
 from .base import BasePuzzle, BasePuzzleResult
+from ._grid_utils import ortho_neighbors
 from ..renderer.canvas import (
     THERMAL_WIDTH_DOTS,
     ThermalBitmap,
@@ -72,109 +74,169 @@ class LightsPuzzle(BasePuzzle):
         return vis
 
     def _get_adj_cells(self, rows: int, cols: int, r: int, c: int) -> List[Tuple[int, int]]:
-        adj = []
-        for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < rows and 0 <= nc < cols:
-                adj.append((nr, nc))
-        return adj
+        return ortho_neighbors(r, c, rows, cols)
 
     def _solve_deductive(self, rows: int, cols: int, walls: List[List[int]]) -> Tuple[bool, Optional[List[List[int]]]]:
         """
-        Pure deductive logic solver for Akari / Lights.
+        Pure deductive logic solver for Akari / Lights using incremental worklists.
         Returns (is_solved, bulb_grid).
         Only forced logical moves are made; zero guessing/branching.
         """
-        white_cells = [(r, c) for r in range(rows) for c in range(cols) if walls[r][c] == -1]
-        vis_map = {cell: set(self._get_visibility(rows, cols, walls, cell[0], cell[1])) for cell in white_cells}
+        total = rows * cols
+        flat_walls = [walls[r][c] for r in range(rows) for c in range(cols)]
+        white_indices: List[int] = []
+        vis_idx: List[Tuple[int, ...]] = [()] * total
 
-        is_bulb: Dict[Tuple[int, int], bool] = {cell: False for cell in white_cells}
-        can_be_bulb: Dict[Tuple[int, int], bool] = {cell: True for cell in white_cells}
-        is_lit: Dict[Tuple[int, int], bool] = {cell: False for cell in white_cells}
-
-        changed = True
-
-        def place_bulb(br: int, bc: int):
-            nonlocal changed
-            if is_bulb[(br, bc)]:
-                return
-            is_bulb[(br, bc)] = True
-            is_lit[(br, bc)] = True
-            for vr, vc in vis_map[(br, bc)]:
-                is_lit[(vr, vc)] = True
-                if (vr, vc) != (br, bc) and can_be_bulb[(vr, vc)]:
-                    can_be_bulb[(vr, vc)] = False
-                    changed = True
-
-        def forbid_bulb(fr: int, fc: int):
-            nonlocal changed
-            if can_be_bulb[(fr, fc)]:
-                can_be_bulb[(fr, fc)] = False
-                changed = True
-
-        iterations = 0
-        max_iterations = 200
-
-        while changed and iterations < max_iterations:
-            changed = False
-            iterations += 1
-
-            # Rule 1: Numbered walls
-            for r in range(rows):
-                for c in range(cols):
-                    clue = walls[r][c]
-                    if clue < 0:
-                        continue
-                    adj_white = [cell for cell in self._get_adj_cells(rows, cols, r, c) if walls[cell[0]][cell[1]] == -1]
-                    confirmed = [cell for cell in adj_white if is_bulb[cell]]
-                    candidates = [cell for cell in adj_white if can_be_bulb[cell] and not is_bulb[cell]]
-
-                    if len(confirmed) > clue or len(confirmed) + len(candidates) < clue:
-                        return False, None
-
-                    if len(confirmed) == clue and candidates:
-                        for cell in candidates:
-                            forbid_bulb(cell[0], cell[1])
-                    elif len(confirmed) + len(candidates) == clue and candidates:
-                        for cell in candidates:
-                            place_bulb(cell[0], cell[1])
-
-            # Rule 2: Unlit white cells with only 1 possible placer
-            for r, c in white_cells:
-                if not is_lit[(r, c)]:
-                    cand_placers = [cell for cell in vis_map[(r, c)] if can_be_bulb[cell]]
-                    if len(cand_placers) == 0:
-                        return False, None
-                    elif len(cand_placers) == 1:
-                        br, bc = cand_placers[0]
-                        place_bulb(br, bc)
-
-            # Rule 3: Contradiction probe on candidates
-            for r, c in white_cells:
-                if can_be_bulb[(r, c)] and not is_bulb[(r, c)]:
-                    adj_walls = [w for w in self._get_adj_cells(rows, cols, r, c) if walls[w[0]][w[1]] >= 0]
-                    for wr, wc in adj_walls:
-                        clue = walls[wr][wc]
-                        adj_white = [cell for cell in self._get_adj_cells(rows, cols, wr, wc) if walls[cell[0]][cell[1]] == -1]
-                        confirmed_cnt = sum(1 for cell in adj_white if is_bulb[cell])
-                        if confirmed_cnt + 1 > clue:
-                            forbid_bulb(r, c)
-                            break
-
-        # Verification of complete logical solution
         for r in range(rows):
             for c in range(cols):
-                clue = walls[r][c]
-                if clue >= 0:
-                    adj_white = [cell for cell in self._get_adj_cells(rows, cols, r, c) if walls[cell[0]][cell[1]] == -1]
-                    if sum(1 for cell in adj_white if is_bulb[cell]) != clue:
-                        return False, None
+                idx = r * cols + c
+                if flat_walls[idx] != -1:
+                    continue
+                white_indices.append(idx)
+                vis = [idx]
+                for dr in range(r - 1, -1, -1):
+                    ni = dr * cols + c
+                    if flat_walls[ni] != -1:
+                        break
+                    vis.append(ni)
+                for dr in range(r + 1, rows):
+                    ni = dr * cols + c
+                    if flat_walls[ni] != -1:
+                        break
+                    vis.append(ni)
+                for dc in range(c - 1, -1, -1):
+                    ni = r * cols + dc
+                    if flat_walls[ni] != -1:
+                        break
+                    vis.append(ni)
+                for dc in range(c + 1, cols):
+                    ni = r * cols + dc
+                    if flat_walls[ni] != -1:
+                        break
+                    vis.append(ni)
+                vis_idx[idx] = tuple(vis)
 
-        for cell in white_cells:
-            if not is_lit[cell]:
+        wall_clues: List[int] = []
+        wall_adj: List[Tuple[int, ...]] = []
+        cell_adj_walls: List[List[int]] = [[] for _ in range(total)]
+
+        for r in range(rows):
+            for c in range(cols):
+                clue = flat_walls[r * cols + c]
+                if clue < 0:
+                    continue
+                adj_white = tuple(nr * cols + nc for nr, nc in ortho_neighbors(r, c, rows, cols) if flat_walls[nr * cols + nc] == -1)
+                if clue > len(adj_white):
+                    return False, None
+                w_id = len(wall_clues)
+                wall_clues.append(clue)
+                wall_adj.append(adj_white)
+                for ni in adj_white:
+                    cell_adj_walls[ni].append(w_id)
+
+        num_walls = len(wall_clues)
+        is_bulb = bytearray(total)
+        can_be_bulb = bytearray(1 if v == -1 else 0 for v in flat_walls)
+        is_lit = bytearray(total)
+        placer_cnt = [len(vis_idx[i]) if flat_walls[i] == -1 else 0 for i in range(total)]
+
+        wall_confirmed = [0] * num_walls
+        wall_cand = [len(adj) for adj in wall_adj]
+        dirty_walls = deque(range(num_walls))
+        in_dirty_walls = bytearray([1] * num_walls)
+        forced_unlit = deque()
+
+        for i in white_indices:
+            if placer_cnt[i] == 0:
+                return False, None
+            if placer_cnt[i] == 1:
+                forced_unlit.append(i)
+
+        def forbid_bulb(idx: int) -> bool:
+            if not can_be_bulb[idx]:
+                return True
+            if is_bulb[idx]:
+                return False
+            can_be_bulb[idx] = 0
+            for w_id in cell_adj_walls[idx]:
+                wall_cand[w_id] -= 1
+                if not in_dirty_walls[w_id]:
+                    in_dirty_walls[w_id] = 1
+                    dirty_walls.append(w_id)
+            for v in vis_idx[idx]:
+                placer_cnt[v] -= 1
+                if not is_lit[v]:
+                    if placer_cnt[v] == 0:
+                        return False
+                    if placer_cnt[v] == 1:
+                        forced_unlit.append(v)
+            return True
+
+        def place_bulb(idx: int) -> bool:
+            if is_bulb[idx]:
+                return True
+            if not can_be_bulb[idx]:
+                return False
+            is_bulb[idx] = 1
+            is_lit[idx] = 1
+            for w_id in cell_adj_walls[idx]:
+                wall_confirmed[w_id] += 1
+                wall_cand[w_id] -= 1
+                if wall_confirmed[w_id] > wall_clues[w_id]:
+                    return False
+                if not in_dirty_walls[w_id]:
+                    in_dirty_walls[w_id] = 1
+                    dirty_walls.append(w_id)
+            for v in vis_idx[idx]:
+                is_lit[v] = 1
+                if v != idx and not forbid_bulb(v):
+                    return False
+            return True
+
+        max_steps = (total + num_walls + 4) * 4
+        steps = 0
+        while (dirty_walls or forced_unlit) and steps < max_steps:
+            steps += 1
+            if dirty_walls:
+                w_id = dirty_walls.popleft()
+                in_dirty_walls[w_id] = 0
+                clue = wall_clues[w_id]
+                conf = wall_confirmed[w_id]
+                cand = wall_cand[w_id]
+                if conf > clue or conf + cand < clue:
+                    return False, None
+                if cand > 0:
+                    if conf == clue:
+                        for ci in wall_adj[w_id]:
+                            if can_be_bulb[ci] and not is_bulb[ci]:
+                                if not forbid_bulb(ci):
+                                    return False, None
+                    elif conf + cand == clue:
+                        for ci in wall_adj[w_id]:
+                            if can_be_bulb[ci] and not is_bulb[ci]:
+                                if not place_bulb(ci):
+                                    return False, None
+            else:
+                u = forced_unlit.popleft()
+                if is_lit[u]:
+                    continue
+                placer = -1
+                for p in vis_idx[u]:
+                    if can_be_bulb[p]:
+                        placer = p
+                        break
+                if placer == -1 or not place_bulb(placer):
+                    return False, None
+
+        for w_id in range(num_walls):
+            if wall_confirmed[w_id] != wall_clues[w_id]:
                 return False, None
 
-        bulb_grid = [[1 if is_bulb.get((r, c), False) else 0 for c in range(cols)] for r in range(rows)]
+        for idx in white_indices:
+            if not is_lit[idx]:
+                return False, None
+
+        bulb_grid = [[1 if is_bulb[r * cols + c] else 0 for c in range(cols)] for r in range(rows)]
         return True, bulb_grid
 
     def generate(
@@ -183,21 +245,19 @@ class LightsPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs,
     ) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        diff_key = difficulty.lower() if difficulty else "medium"
+        rng = self.make_rng(seed)
+        diff_key = self.normalize_difficulty(difficulty)
         cfg = self.DIFFICULTY_SETTINGS.get(diff_key, self.DIFFICULTY_SETTINGS["medium"])
         size = cfg["size"]
         rows = cols = size
         wall_prob = cfg["wall_prob"]
         retain_target = cfg["retain_target"]
 
-        for _ in range(80):
+        for _ in range(300):
             walls = [[-1] * cols for _ in range(rows)]
             num_wall_pairs = int((rows * cols * wall_prob) / 2)
             cells = [(r, c) for r in range(rows) for c in range(cols)]
-            random.shuffle(cells)
+            rng.shuffle(cells)
 
             placed = 0
             for r, c in cells:
@@ -220,17 +280,23 @@ class LightsPuzzle(BasePuzzle):
             # Independent dominating set search
             bulbs = set()
             success = False
-            for _ in range(25):
+            for attempt_dom in range(25):
                 bulbs.clear()
                 unlit = set(white_cells)
                 forbidden = set()
 
                 while unlit:
-                    target = min(unlit, key=lambda c: sum(1 for v in vis_map[c] if v not in forbidden))
+                    if attempt_dom == 0:
+                        target = min(unlit, key=lambda c: sum(1 for v in vis_map[c] if v not in forbidden))
+                    else:
+                        target = min(unlit, key=lambda c: (sum(1 for v in vis_map[c] if v not in forbidden), rng.random()))
                     placers = [v for v in vis_map[target] if v not in forbidden]
                     if not placers:
                         break
-                    b = max(placers, key=lambda p: len(set(vis_map[p]) & unlit))
+                    if attempt_dom == 0:
+                        b = max(placers, key=lambda p: len(set(vis_map[p]) & unlit))
+                    else:
+                        b = max(placers, key=lambda p: (len(set(vis_map[p]) & unlit), rng.random()))
                     bulbs.add(b)
                     for v in vis_map[b]:
                         unlit.discard(v)
@@ -257,7 +323,7 @@ class LightsPuzzle(BasePuzzle):
 
             # Clue thinning to match difficulty
             all_walls = [(r, c) for r in range(rows) for c in range(cols) if walls[r][c] >= 0]
-            random.shuffle(all_walls)
+            rng.shuffle(all_walls)
 
             for wr, wc in all_walls:
                 old_clue = walls[wr][wc]
@@ -267,7 +333,7 @@ class LightsPuzzle(BasePuzzle):
                 if can_solve:
                     current_numbered = sum(1 for r in range(rows) for c in range(cols) if walls[r][c] >= 0)
                     if current_numbered <= len(all_walls) * retain_target:
-                        pass
+                        break
                 else:
                     walls[wr][wc] = old_clue
 
@@ -310,19 +376,29 @@ class LightsPuzzle(BasePuzzle):
         total_bulbs = puzzle_data.get("total_bulbs", 10)
 
         lines = [f"TOTAL BULBS: {total_bulbs}", ""]
-        sep = "   +" + "---+" * cols
+        compact = cols >= 11  # Keep 12x12 within 48-col ESC/POS Font A limit
+        indent = "  " if compact else "   "
+        sep = indent + "+" + ("--+" if compact else "---+") * cols
         lines.append(sep)
 
         for r in range(rows):
-            line = "   |"
+            line = indent + "|"
             for c in range(cols):
                 val = puzzle[r][c] if r < len(puzzle) and c < len(puzzle[r]) else -1
-                if val >= 0:
-                    line += f" {val} |"
-                elif val == -2:
-                    line += " # |"
+                if compact:
+                    if val >= 0:
+                        line += f"{val} |"
+                    elif val == -2:
+                        line += "# |"
+                    else:
+                        line += "  |"
                 else:
-                    line += "   |"
+                    if val >= 0:
+                        line += f" {val} |"
+                    elif val == -2:
+                        line += " # |"
+                    else:
+                        line += "   |"
             lines.append(line)
             lines.append(sep)
 

@@ -22,7 +22,9 @@ public:
     bool printRasterToReceipt(EscPosPrinter& printer);
 
     uint8_t getSize() const { return _size; }
+#ifdef HOST_TEST
     uint8_t getSolution(uint8_t r, uint8_t c) const { return (r < _size && c < _size) ? _solution[r][c] : 0; }
+#endif
     uint8_t getTopClue(uint8_t c) const { return (c < _size) ? _top[c] : 0; }
     uint8_t getBottomClue(uint8_t c) const { return (c < _size) ? _bottom[c] : 0; }
     uint8_t getLeftClue(uint8_t r) const { return (r < _size) ? _left[r] : 0; }
@@ -32,7 +34,9 @@ private:
     uint8_t _size;
     uint8_t _cellSize;
     uint16_t _height;
+#ifdef HOST_TEST
     uint8_t _solution[MAX_SIZE][MAX_SIZE];
+#endif
     uint8_t _top[MAX_SIZE];
     uint8_t _bottom[MAX_SIZE];
     uint8_t _left[MAX_SIZE];

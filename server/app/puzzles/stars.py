@@ -17,6 +17,7 @@ from .base import (
     transform_coord_d4,
     transform_grid_d4,
 )
+from ._grid_utils import is_orthogonally_connected
 from ..renderer.canvas import (
     THERMAL_WIDTH_DOTS,
     ThermalBitmap,
@@ -70,10 +71,8 @@ class StarsPuzzle(BasePuzzle):
         seed: Optional[int] = None,
         **kwargs,
     ) -> BasePuzzleResult:
-        if seed is not None:
-            random.seed(seed)
-
-        difficulty = difficulty.lower()
+        rng = self.make_rng(seed)
+        difficulty = self.normalize_difficulty(difficulty)
         cfg = self.DIFFICULTY_CONFIGS.get(difficulty, self.DIFFICULTY_CONFIGS["medium"])
         n = cfg["size"]
         k_stars = cfg["stars"]
@@ -83,7 +82,7 @@ class StarsPuzzle(BasePuzzle):
         tier_key = difficulty
         if dataset and tier_key in dataset and dataset[tier_key]:
             puzzles = dataset[tier_key]
-            idx, transform = select_seeded_d4(puzzles, seed)
+            idx, transform = select_seeded_d4(puzzles, seed, rng=rng)
 
             p = puzzles[idx]
             base_regions = p["regions"]
@@ -114,11 +113,11 @@ class StarsPuzzle(BasePuzzle):
 
         # 2. Fallback procedural generation if dataset unavailable
         for _ in range(50):
-            stars = self._place_stars(n, k_stars)
+            stars = self._place_stars(n, k_stars, rng=rng)
             if not stars:
                 continue
 
-            regions = self._generate_regions(n, stars, k_stars)
+            regions = self._generate_regions(n, stars, k_stars, rng=rng)
 
             if self._validate_puzzle(regions, stars, n, k_stars):
                 ascii_text = self.format_ascii_puzzle({"regions": regions, "stars_solution": list(stars), "grid_size": n})
@@ -222,7 +221,7 @@ class StarsPuzzle(BasePuzzle):
         padding = 24
         board_size = target_width - padding * 2
         cell_size = board_size // size
-        total_h = padding + cell_size * size + padding
+        total_h = ((padding + cell_size * size + padding + 7) // 8) * 8
         tb = ThermalBitmap(target_width, total_h)
 
         for r in range(size):
@@ -237,16 +236,23 @@ class StarsPuzzle(BasePuzzle):
                 reg = regions[r][c] if r < len(regions) and c < len(regions[r]) else 0
                 x0 = padding + c * cell_size
                 y0 = padding + r * cell_size
-                is_bottom = (r == size - 1) or (r + 1 < len(regions) and regions[r + 1][c] != reg)
+                is_bottom = (r == size - 1) or (r + 1 < len(regions) and c < len(regions[r + 1]) and regions[r + 1][c] != reg)
                 tb.draw_hline(x0, y0 + cell_size, cell_size, thickness=4 if is_bottom else 1)
-                is_right = (c == size - 1) or (c + 1 < len(regions[r]) and regions[r][c + 1] != reg)
+                is_right = (c == size - 1) or (r < len(regions) and c + 1 < len(regions[r]) and regions[r][c + 1] != reg)
                 tb.draw_vline(x0 + cell_size, y0, cell_size, thickness=4 if is_right else 1)
 
         tb.draw_rect(padding, padding, cell_size * size, cell_size * size, thickness=5)
         return tb.to_escpos()
 
     # --- Internal Generation & Validation Helpers ---
-    def _place_stars(self, n: int, k_stars: int, max_attempts: int = 200) -> Set[Tuple[int, int]]:
+    def _place_stars(
+        self,
+        n: int,
+        k_stars: int,
+        max_attempts: int = 200,
+        rng: Optional[random.Random] = None,
+    ) -> Set[Tuple[int, int]]:
+        r_gen = rng if rng is not None else random.Random()
         for _ in range(max_attempts):
             stars: Set[Tuple[int, int]] = set()
             col_counts = [0] * n
@@ -264,7 +270,7 @@ class StarsPuzzle(BasePuzzle):
             for r in range(n):
                 placed_in_row = 0
                 cols = list(range(n))
-                random.shuffle(cols)
+                r_gen.shuffle(cols)
                 for c in cols:
                     if can_place(r, c):
                         stars.add((r, c))
@@ -281,7 +287,14 @@ class StarsPuzzle(BasePuzzle):
 
         return set()
 
-    def _generate_regions(self, n: int, stars: Set[Tuple[int, int]], k_stars: int) -> List[List[int]]:
+    def _generate_regions(
+        self,
+        n: int,
+        stars: Set[Tuple[int, int]],
+        k_stars: int,
+        rng: Optional[random.Random] = None,
+    ) -> List[List[int]]:
+        r_gen = rng if rng is not None else random.Random()
         grid = [[-1] * n for _ in range(n)]
         frontiers: List[List[Tuple[int, int]]] = [[] for _ in range(n)]
         dirs = [(0, 1), (0, -1), (1, 0), (-1, 0)]
@@ -297,7 +310,7 @@ class StarsPuzzle(BasePuzzle):
             for _ in range(50):
                 temp_grid = [[-1] * n for _ in range(n)]
                 unpaired = list(stars)
-                random.shuffle(unpaired)
+                r_gen.shuffle(unpaired)
                 pairs = []
                 all_paired = True
 
@@ -354,7 +367,7 @@ class StarsPuzzle(BasePuzzle):
         active_regions = list(range(n))
 
         while unassigned > 0 and active_regions:
-            random.shuffle(active_regions)
+            r_gen.shuffle(active_regions)
             progress = False
 
             for reg_id in list(active_regions):
@@ -362,11 +375,11 @@ class StarsPuzzle(BasePuzzle):
                 expanded = False
 
                 shuffled_frontier = list(frontier)
-                random.shuffle(shuffled_frontier)
+                r_gen.shuffle(shuffled_frontier)
 
                 for r, c in shuffled_frontier:
                     random_dirs = list(dirs)
-                    random.shuffle(random_dirs)
+                    r_gen.shuffle(random_dirs)
                     for dr, dc in random_dirs:
                         nr, nc = r + dr, c + dc
                         if 0 <= nr < n and 0 <= nc < n and grid[nr][nc] == -1:
@@ -412,21 +425,15 @@ class StarsPuzzle(BasePuzzle):
         if any(cnt != k_stars for cnt in region_star_counts):
             return False
 
-        for reg_id in range(n):
-            cells = [(r, c) for r in range(n) for c in range(n) if regions[r][c] == reg_id]
-            if not cells:
-                return False
-            visited = set()
-            queue = [cells[0]]
-            visited.add(cells[0])
-            while queue:
-                cr, cc = queue.pop(0)
-                for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                    nr, nc = cr + dr, cc + dc
-                    if (nr, nc) in cells and (nr, nc) not in visited:
-                        visited.add((nr, nc))
-                        queue.append((nr, nc))
-            if len(visited) != len(cells):
+        region_cells: List[List[Tuple[int, int]]] = [[] for _ in range(n)]
+        for r in range(n):
+            for c in range(n):
+                reg = regions[r][c]
+                if 0 <= reg < n:
+                    region_cells[reg].append((r, c))
+
+        for cells in region_cells:
+            if not cells or not is_orthogonally_connected(cells):
                 return False
 
         return True
