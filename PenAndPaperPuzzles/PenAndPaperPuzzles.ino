@@ -266,7 +266,7 @@ void setup() {
     // -------------------------------------------------------------------------
 #if SETUP_MODE_ON_PRINTER_ONLINE_BOOT
     Serial.printf("[MAIN] Checking for printer-first boot gesture (window: %d ms)...\n", PRINTER_BOOT_PROBE_WINDOW_MS);
-    if (printer.isPrinterOnline(PRINTER_BOOT_PROBE_WINDOW_MS)) {
+    if (printer.isPrinterOnline(PRINTER_BOOT_PROBE_WINDOW_MS, true)) {
         Serial.println("\n************************************************************");
         Serial.println("* >>> PRINTER-FIRST BOOT DETECTED! ENTERING SETUP MODE <<< *");
         Serial.println("************************************************************\n");

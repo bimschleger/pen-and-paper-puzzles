@@ -133,7 +133,7 @@ bool EscPosPrinter::isConnected() {
 #endif
 }
 
-bool EscPosPrinter::isPrinterOnline(uint32_t timeoutMs) {
+bool EscPosPrinter::isPrinterOnline(uint32_t timeoutMs, bool waitForLink) {
     if (_mode == PRINTER_MODE_SERIAL) {
         return (_serial != nullptr);
     }
@@ -147,23 +147,39 @@ bool EscPosPrinter::isPrinterOnline(uint32_t timeoutMs) {
         lastSuccessMs = now;
         return true;
     }
-    // Fast physical PHY link check (zero-latency SPI read, ~50 microseconds)
-    // When the direct-cabled printer is powered OFF, the link drops immediately!
+
+    // Fast physical PHY link check (zero-latency SPI read, ~50 microseconds).
+    // In loop() polling (waitForLink == false), return false immediately when LinkOFF.
+    // At boot (waitForLink == true), wait up to timeoutMs for W5500 PHY auto-negotiation.
+    unsigned long probeStartMs = now;
     if (Ethernet.linkStatus() == LinkOFF) {
-        wasOnline = false;
-        lastSuccessMs = 0;
-        return false;
+        if (!waitForLink) {
+            wasOnline = false;
+            lastSuccessMs = 0;
+            return false;
+        }
+        while (Ethernet.linkStatus() == LinkOFF && (millis() - probeStartMs < timeoutMs)) {
+            delay(50);
+            yield();
+        }
+        if (Ethernet.linkStatus() == LinkOFF) {
+            wasOnline = false;
+            lastSuccessMs = 0;
+            return false;
+        }
     }
 
     // Cache a recent successful probe for up to 1000ms so we do not flood the printer's
     // embedded TCP stack with 5 new TCP connections per second during idle loop polling.
-    if (wasOnline && (now - lastSuccessMs < 1000)) {
+    if (!waitForLink && wasOnline && (now - lastSuccessMs < 1000)) {
         return true;
     }
 
     // PHY link is ON. Probe TCP port 9100 with bounded retransmission
     // to prevent blocking the ESP32 CPU loop if the printer IP is temporarily unreachable.
-    uint16_t rtr = (timeoutMs > 0) ? (uint16_t)min((uint32_t)timeoutMs, (uint32_t)1000) : 100;
+    uint32_t elapsed = millis() - probeStartMs;
+    uint32_t remaining = (timeoutMs > elapsed) ? (timeoutMs - elapsed) : 200;
+    uint16_t rtr = (uint16_t)min(max(remaining, (uint32_t)200), (uint32_t)500);
     Ethernet.setRetransmissionTimeout(rtr);
     Ethernet.setRetransmissionCount(1);
 
@@ -171,10 +187,16 @@ bool EscPosPrinter::isPrinterOnline(uint32_t timeoutMs) {
     IPAddress targetIP;
     targetIP.fromString(PRINTER_IP_ADDR);
     bool online = probe.connect(targetIP, PRINTER_TCP_PORT);
+    if (!online && waitForLink && (millis() - probeStartMs + 150 < timeoutMs)) {
+        // Brief retry if PHY link just came up and printer ARP/TCP stack is settling
+        delay(100);
+        yield();
+        online = probe.connect(targetIP, PRINTER_TCP_PORT);
+    }
     if (online) {
         probe.stop();
         wasOnline = true;
-        lastSuccessMs = now;
+        lastSuccessMs = millis();
     } else {
         wasOnline = false;
     }
