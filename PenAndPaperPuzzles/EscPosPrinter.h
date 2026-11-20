@@ -28,7 +28,7 @@ public:
     bool connect();
     void disconnect();
     bool isConnected();
-    bool isPrinterOnline(uint32_t timeoutMs = 300);
+    bool isPrinterOnline(uint32_t timeoutMs = 300, bool waitForLink = false);
 
     // Basic ESC/POS Formatting
     virtual void init();
