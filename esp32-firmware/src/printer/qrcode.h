@@ -38,9 +38,15 @@
 #define __QRCODE_H_
 
 #ifndef __cplusplus
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+// C23+ defines bool, true, and false as built-in keywords
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#include <stdbool.h>
+#else
 typedef unsigned char bool;
 static const bool false = 0;
 static const bool true = 1;
+#endif
 #endif
 
 #include <stdint.h>
