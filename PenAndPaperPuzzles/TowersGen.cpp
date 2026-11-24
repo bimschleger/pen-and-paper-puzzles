@@ -161,13 +161,13 @@ bool TowersGen::printRasterToReceipt(EscPosPrinter& printer) {
 
         for (uint8_t c = 0; c < _size; c++) {
             if (_top[c] > 0) {
-                uint16_t cx = grid_x + c * _cellSize + (_cellSize - 12) / 2;
-                uint16_t cy = grid_y - 20;
+                uint16_t cx = grid_x + c * _cellSize + (_cellSize - 16) / 2;
+                uint16_t cy = grid_y - 22;
                 char str[2] = { (char)('0' + _top[c]), '\0' };
                 canvas.drawText(cx, cy, str, 2);
             }
             if (_bottom[c] > 0) {
-                uint16_t cx = grid_x + c * _cellSize + (_cellSize - 12) / 2;
+                uint16_t cx = grid_x + c * _cellSize + (_cellSize - 16) / 2;
                 uint16_t cy = grid_y + grid_w + 6;
                 char str[2] = { (char)('0' + _bottom[c]), '\0' };
                 canvas.drawText(cx, cy, str, 2);
@@ -176,14 +176,14 @@ bool TowersGen::printRasterToReceipt(EscPosPrinter& printer) {
 
         for (uint8_t r = 0; r < _size; r++) {
             if (_left[r] > 0) {
-                uint16_t cx = grid_x - 18;
-                uint16_t cy = grid_y + r * _cellSize + (_cellSize - 14) / 2;
+                uint16_t cx = grid_x - 20;
+                uint16_t cy = grid_y + r * _cellSize + (_cellSize - 16) / 2;
                 char str[2] = { (char)('0' + _left[r]), '\0' };
                 canvas.drawText(cx, cy, str, 2);
             }
             if (_right[r] > 0) {
-                uint16_t cx = grid_x + grid_w + 6;
-                uint16_t cy = grid_y + r * _cellSize + (_cellSize - 14) / 2;
+                uint16_t cx = grid_x + grid_w + 4;
+                uint16_t cy = grid_y + r * _cellSize + (_cellSize - 16) / 2;
                 char str[2] = { (char)('0' + _right[r]), '\0' };
                 canvas.drawText(cx, cy, str, 2);
             }

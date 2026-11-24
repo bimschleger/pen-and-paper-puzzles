@@ -6,13 +6,13 @@ into canonical JSON (server/data/thermal_fonts.json).
 
 Generates:
   - Proportional receipt fonts (ASCII 0x20..0x7E):
-      0: caption_16  (HelveticaNeue-Medium 15pt)
-      1: body_20     (HelveticaNeue 19pt)
-      2: subhead_22  (HelveticaNeue-Bold 21pt)
-      3: display_32  (HelveticaNeue-Bold 30pt)
+      0: caption_16  (HelveticaNeue-Medium 20pt)
+      1: body_20     (HelveticaNeue 24pt)
+      2: subhead_22  (HelveticaNeue-Bold 28pt)
+      3: display_32  (HelveticaNeue-Bold 36pt)
   - Fixed-cell in-board puzzle glyph tables (59 GLYPH_TABLE chars):
-      4: grid_12x14  (Drop-in native 1-bit replacement for 5x7 scale=2)
-      5: grid_18x21  (Drop-in native 1-bit replacement for 5x7 scale=3)
+      4: grid_12x14  (Drop-in native 1-bit replacement for 5x7 scale=2; 19pt in 16x16)
+      5: grid_18x21  (Drop-in native 1-bit replacement for 5x7 scale=3; 28pt in 20x22)
 """
 
 import base64
@@ -354,7 +354,7 @@ def build_fonts(preview_path: Path = None) -> None:
         {
             "id": "caption_16",
             "psName": "HelveticaNeue-Medium",
-            "ptSize": 15.0,
+            "ptSize": 20.0,
             "threshold": 112,
             "fixedW": 0,
             "fixedH": 0,
@@ -363,7 +363,7 @@ def build_fonts(preview_path: Path = None) -> None:
         {
             "id": "body_20",
             "psName": "HelveticaNeue",
-            "ptSize": 19.0,
+            "ptSize": 24.0,
             "threshold": 112,
             "fixedW": 0,
             "fixedH": 0,
@@ -372,7 +372,7 @@ def build_fonts(preview_path: Path = None) -> None:
         {
             "id": "subhead_22",
             "psName": "HelveticaNeue-Bold",
-            "ptSize": 21.0,
+            "ptSize": 28.0,
             "threshold": 124,
             "fixedW": 0,
             "fixedH": 0,
@@ -381,7 +381,7 @@ def build_fonts(preview_path: Path = None) -> None:
         {
             "id": "display_32",
             "psName": "HelveticaNeue-Bold",
-            "ptSize": 30.0,
+            "ptSize": 36.0,
             "threshold": 128,
             "fixedW": 0,
             "fixedH": 0,
@@ -390,19 +390,19 @@ def build_fonts(preview_path: Path = None) -> None:
         {
             "id": "grid_12x14",
             "psName": "HelveticaNeue-Bold",
-            "ptSize": 14.5,
+            "ptSize": 19.0,
             "threshold": 116,
-            "fixedW": 12,
-            "fixedH": 14,
+            "fixedW": 16,
+            "fixedH": 16,
             "chars": GRID_CHARS,
         },
         {
             "id": "grid_18x21",
             "psName": "HelveticaNeue-Bold",
-            "ptSize": 22.0,
+            "ptSize": 28.0,
             "threshold": 124,
-            "fixedW": 18,
-            "fixedH": 21,
+            "fixedW": 20,
+            "fixedH": 22,
             "chars": GRID_CHARS,
         },
     ]

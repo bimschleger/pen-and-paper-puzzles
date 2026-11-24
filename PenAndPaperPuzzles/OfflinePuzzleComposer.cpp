@@ -503,7 +503,7 @@ bool OfflinePuzzleComposer::printGameGuide(EscPosPrinter& printer, uint8_t gameI
             c.drawTextFont(20, curY, "RULES OF PLAY", FONT_CAPTION_16);
             curY += c.getFontLineHeight(FONT_CAPTION_16) + 6;
             for (uint8_t i = 0; i < ruleCopy.ruleCount; i++) {
-                c.fillCircle(26, curY + 12, 3, 1);
+                c.fillCircle(26, curY + (int16_t)(c.getFontLineHeight(FONT_BODY_20) / 2), 3, 1);
                 mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.rulesOff[i], strBuf, sizeof(strBuf));
                 curY += c.drawWrappedTextFont(40, curY, 516, strBuf, FONT_BODY_20, 0, 4) + 6;
             }
@@ -550,7 +550,7 @@ bool OfflinePuzzleComposer::printGameGuide(EscPosPrinter& printer, uint8_t gameI
             c.drawTextFont(20, curY, "WHERE TO START", FONT_CAPTION_16);
             curY += c.getFontLineHeight(FONT_CAPTION_16) + 6;
             for (uint8_t i = 0; i < ruleCopy.anchorCount; i++) {
-                c.fillCircle(26, curY + 12, 3, 1);
+                c.fillCircle(26, curY + (int16_t)(c.getFontLineHeight(FONT_BODY_20) / 2), 3, 1);
                 mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.openingAnchorsOff[i], strBuf, sizeof(strBuf));
                 curY += c.drawWrappedTextFont(40, curY, 516, strBuf, FONT_BODY_20, 0, 4) + 6;
             }
@@ -558,12 +558,12 @@ bool OfflinePuzzleComposer::printGameGuide(EscPosPrinter& printer, uint8_t gameI
             c.drawTextFont(20, curY, "COMMON QUESTIONS", FONT_CAPTION_16);
             curY += c.getFontLineHeight(FONT_CAPTION_16) + 6;
             for (uint8_t i = 0; i < ruleCopy.faqCount; i++) {
-                c.drawTextFont(20, curY + 2, "Q:", FONT_CAPTION_16);
+                c.drawTextFont(20, curY + 4, "Q:", FONT_CAPTION_16);
                 mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.faq[i].questionOff, strBuf, sizeof(strBuf));
-                curY += c.drawWrappedTextFont(46, curY, 510, strBuf, FONT_SUBHEAD_22, 0, 2) + 4;
+                curY += c.drawWrappedTextFont(48, curY, 508, strBuf, FONT_SUBHEAD_22, 0, 2) + 4;
                 c.drawTextFont(20, curY + 2, "A:", FONT_CAPTION_16);
                 mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.faq[i].answerOff, strBuf, sizeof(strBuf));
-                curY += c.drawWrappedTextFont(46, curY, 510, strBuf, FONT_BODY_20, 0, 4) + 10;
+                curY += c.drawWrappedTextFont(48, curY, 508, strBuf, FONT_BODY_20, 0, 4) + 10;
             }
         });
     }

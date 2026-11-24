@@ -181,7 +181,7 @@ class NonogramPuzzle(BasePuzzle):
             for k, val in enumerate(clues):
                 dist = (len(clues) - 1 - k) * col_clue_item_h
                 clue_str = str(val)
-                clue_w = 23 if len(clue_str) > 1 else 10
+                clue_w = 28 if len(clue_str) > 1 else 16
                 col_cx = grid_x + c * cell_size + (cell_size - clue_w) // 2
                 tb.draw_text(col_cx, grid_y - 26 - dist, clue_str, scale=2)
             if c > 0:
@@ -190,13 +190,13 @@ class NonogramPuzzle(BasePuzzle):
 
         # Row clues
         for r in range(size):
-            row_cy = grid_y + r * cell_size + cell_size // 2 - 7
+            row_cy = grid_y + r * cell_size + cell_size // 2 - 8
             clues = row_clues[r] if r < len(row_clues) else []
             for k, val in enumerate(clues):
                 dist = (len(clues) - 1 - k) * 20
                 clue_str = str(val)
-                char_offset = 13 if len(clue_str) > 1 else 0
-                tb.draw_text(grid_x - 22 - dist - char_offset, row_cy, clue_str, scale=2)
+                char_offset = 14 if len(clue_str) > 1 else 0
+                tb.draw_text(grid_x - 24 - dist - char_offset, row_cy, clue_str, scale=2)
             if r > 0:
                 is_major = (r % major_interval == 0)
                 tb.draw_hline(padding, grid_y + r * cell_size, row_clue_width, thickness=3 if is_major else 1)

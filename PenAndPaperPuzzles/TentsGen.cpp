@@ -164,15 +164,15 @@ bool TentsGen::printRasterToReceipt(EscPosPrinter& printer, TentsDifficulty /*di
         for (uint8_t c = 0; c < _size; c++) {
             char buf[4];
             snprintf(buf, sizeof(buf), "%d", _colClues[c]);
-            int16_t cx = gridX + c * cellSize + (cellSize - 12) / 2;
+            int16_t cx = gridX + c * cellSize + (cellSize - 16) / 2;
             canvas.drawText(cx, gridY - 24, buf, 2);
         }
 
         for (uint8_t r = 0; r < _size; r++) {
             char buf[4];
             snprintf(buf, sizeof(buf), "%d", _rowClues[r]);
-            int16_t cy = gridY + r * cellSize + (cellSize - 14) / 2;
-            canvas.drawText(padding + 16, cy, buf, 2);
+            int16_t cy = gridY + r * cellSize + (cellSize - 16) / 2;
+            canvas.drawText(padding + 14, cy, buf, 2);
         }
 
         for (uint8_t r = 0; r < _size; r++) {

@@ -711,7 +711,7 @@ void ThermalCanvas::drawMasterHeader(const char* title, const char* subtitle, co
 uint16_t ThermalCanvas::measurePuzzleHeaderHeight(const ThermalCanvas& ref, const char* title,
                                                   const char* diffStr, const char* instruction) {
     (void)title;
-    int16_t curY = 36;
+    int16_t curY = 4 + (int16_t)ref.getFontLineHeight(FONT_SUBHEAD_22) + 4;
     if (diffStr && diffStr[0] != '\0') {
         curY += (int16_t)ref.getFontLineHeight(FONT_CAPTION_16) + 4;
     }
@@ -725,18 +725,9 @@ uint16_t ThermalCanvas::measurePuzzleHeaderHeight(const ThermalCanvas& ref, cons
 void ThermalCanvas::drawPuzzleHeader(const char* title, const char* diffStr, const char* instruction) {
     int16_t curY = 4;
     if (title && title[0] != '\0') {
-        int16_t tw = measureTextFont(title, FONT_SUBHEAD_22);
-        int16_t tx = (THERMAL_CANVAS_WIDTH - tw) / 2;
-        int16_t ruleY = curY + (int16_t)getFontLineHeight(FONT_SUBHEAD_22) / 2;
-        if (tx - 14 > 20) {
-            drawHLine(20, ruleY, tx - 14 - 20, 1, 1);
-        }
-        if (tx + tw + 14 < 556) {
-            drawHLine(tx + tw + 14, ruleY, 556 - (tx + tw + 14), 1, 1);
-        }
-        drawTextFont(tx, curY, title, FONT_SUBHEAD_22, 1);
+        drawCenteredTextFont(curY, title, FONT_SUBHEAD_22, 1);
     }
-    curY = 36;
+    curY = 4 + (int16_t)getFontLineHeight(FONT_SUBHEAD_22) + 4;
     if (diffStr && diffStr[0] != '\0') {
         char diffBuf[64];
         snprintf(diffBuf, sizeof(diffBuf), "DIFFICULTY: %s", diffStr);
@@ -796,7 +787,7 @@ void ThermalCanvas::drawMasterFooter(const char* closingTagline, bool includeSch
 void ThermalCanvas::drawText(int16_t x, int16_t y, const char* text, uint8_t scale, uint8_t color) {
     if (!text || scale == 0) return;
     int16_t curX = x;
-    int16_t charW = 6 * scale + max(1, scale / 2);
+    int16_t charW = (scale == 2) ? 14 : (6 * scale + max(1, scale / 2));
     while (*text) {
         drawChar(curX, y, *text, scale, color);
         curX += charW;
@@ -815,7 +806,7 @@ int16_t ThermalCanvas::getTextWidth(const char* text, uint8_t scale) const {
     if (!text || scale == 0) return 0;
     int len = strlen(text);
     if (len == 0) return 0;
-    int16_t charW = 6 * scale + max(1, scale / 2);
+    int16_t charW = (scale == 2) ? 14 : (6 * scale + max(1, scale / 2));
     return len * charW;
 }
 

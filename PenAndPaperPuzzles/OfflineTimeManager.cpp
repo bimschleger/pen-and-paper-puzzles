@@ -269,8 +269,10 @@ void OfflineTimeManager::printSetupTicket(EscPosPrinter& printer, const OfflineC
         if (rows == 0) rows = 1;
 
         ThermalCanvas tc;
+        int16_t bodyRowH = (int16_t)tc.getFontLineHeight(FONT_BODY_20) + 4;
+        int16_t kvRowH = (int16_t)tc.getFontLineHeight(FONT_SUBHEAD_22) + 4;
         uint16_t h = 4 + tc.measureWrappedHeightFont("These are the games that are currently active to print:", 536, FONT_BODY_20, 4) + 12;
-        h += (uint16_t)rows * 28 + 14 + 3 * 30 + 8;
+        h += (uint16_t)rows * (uint16_t)bodyRowH + 18 + 3 * (uint16_t)kvRowH + 8;
         h = (uint16_t)((h + 7) & ~7);
 
         String countVal = String(config->getPuzzleCount()) + " Puzzles";
@@ -279,33 +281,34 @@ void OfflineTimeManager::printSetupTicket(EscPosPrinter& printer, const OfflineC
 
         tc.renderBanded(printer, h, [&](ThermalCanvas& c) {
             int16_t curY = 4;
+            int16_t bulletOff = (int16_t)(c.getFontLineHeight(FONT_BODY_20) / 2);
             curY += c.drawWrappedTextFont(20, curY, 536,
                                           "These are the games that are currently active to print:",
                                           FONT_BODY_20, 1, 4) + 12;
             for (uint8_t r = 0; r < rows; r++) {
                 if (r < activeCount) {
-                    c.fillCircle(28, curY + 12, 2, 1);
+                    c.fillCircle(28, curY + bulletOff, 2, 1);
                     c.drawTextFont(38, curY, config->getPuzzleName(activeGames[r]), FONT_BODY_20);
                 } else if (activeCount == 0 && r == 0) {
                     c.drawTextFont(38, curY, "(None)", FONT_BODY_20);
                 }
                 uint8_t rightIdx = r + rows;
                 if (rightIdx < activeCount) {
-                    c.fillCircle(296, curY + 12, 2, 1);
+                    c.fillCircle(296, curY + bulletOff, 2, 1);
                     c.drawTextFont(306, curY, config->getPuzzleName(activeGames[rightIdx]), FONT_BODY_20);
                 }
-                curY += 28;
+                curY += bodyRowH;
             }
             curY += 8;
             c.drawHLine(20, curY, 536, 1, 1);
             curY += 10;
-            c.drawTextFont(20, curY, "Daily Count", FONT_BODY_20);
+            c.drawTextFont(20, curY + 4, "Daily Count", FONT_BODY_20);
             c.drawRightTextFont(556, curY, countVal.c_str(), FONT_SUBHEAD_22);
-            curY += 30;
-            c.drawTextFont(20, curY, "Difficulty", FONT_BODY_20);
+            curY += kvRowH;
+            c.drawTextFont(20, curY + 4, "Difficulty", FONT_BODY_20);
             c.drawRightTextFont(556, curY, diffVal, FONT_SUBHEAD_22);
-            curY += 30;
-            c.drawTextFont(20, curY, "Daily Schedule", FONT_BODY_20);
+            curY += kvRowH;
+            c.drawTextFont(20, curY + 4, "Daily Schedule", FONT_BODY_20);
             c.drawRightTextFont(556, curY, schedVal.c_str(), FONT_SUBHEAD_22);
         });
     }
@@ -324,9 +327,12 @@ void OfflineTimeManager::printSetupTicket(EscPosPrinter& printer, const OfflineC
     });
     {
         ThermalCanvas tc;
-        tc.renderBanded(printer, 64, [&](ThermalCanvas& c) {
+        int16_t subH = (int16_t)tc.getFontLineHeight(FONT_SUBHEAD_22);
+        int16_t capH = (int16_t)tc.getFontLineHeight(FONT_CAPTION_16);
+        uint16_t h = (uint16_t)((4 + subH + 4 + capH + 8 + 7) & ~7);
+        tc.renderBanded(printer, h, [&](ThermalCanvas& c) {
             c.drawCenteredTextFont(4, "Network: Pen-And-Paper-Puzzles", FONT_SUBHEAD_22);
-            c.drawCenteredTextFont(34, "(Open Network - No Password)", FONT_CAPTION_16);
+            c.drawCenteredTextFont(4 + subH + 4, "(Open Network - No Password)", FONT_CAPTION_16);
         });
     }
 
@@ -339,7 +345,8 @@ void OfflineTimeManager::printSetupTicket(EscPosPrinter& printer, const OfflineC
     });
     {
         ThermalCanvas tc;
-        tc.renderBanded(printer, 40, [&](ThermalCanvas& c) {
+        uint16_t h = (uint16_t)((4 + tc.getFontLineHeight(FONT_SUBHEAD_22) + 8 + 7) & ~7);
+        tc.renderBanded(printer, h, [&](ThermalCanvas& c) {
             c.drawCenteredTextFont(4, "URL: http://192.168.4.1", FONT_SUBHEAD_22);
         });
     }
@@ -349,8 +356,12 @@ void OfflineTimeManager::printSetupTicket(EscPosPrinter& printer, const OfflineC
                                     "Customize your game selection and schedule:");
     {
         ThermalCanvas tc;
-        tc.renderBanded(printer, 168, [&](ThermalCanvas& c) {
+        int16_t bodyRowH = (int16_t)tc.getFontLineHeight(FONT_BODY_20) + 4;
+        int16_t subH = (int16_t)tc.getFontLineHeight(FONT_SUBHEAD_22);
+        uint16_t h = (uint16_t)((4 + 4 * bodyRowH + 10 + subH + 8 + 7) & ~7);
+        tc.renderBanded(printer, h, [&](ThermalCanvas& c) {
             int16_t curY = 4;
+            int16_t bulletOff = (int16_t)(c.getFontLineHeight(FONT_BODY_20) / 2);
             const char* bullets[4] = {
                 "Select which games to get",
                 "How many games to print",
@@ -358,9 +369,9 @@ void OfflineTimeManager::printSetupTicket(EscPosPrinter& printer, const OfflineC
                 "Set if you want daily prints"
             };
             for (uint8_t i = 0; i < 4; i++) {
-                c.fillCircle(44, curY + 12, 2, 1);
+                c.fillCircle(44, curY + bulletOff, 2, 1);
                 c.drawTextFont(56, curY, bullets[i], FONT_BODY_20);
-                curY += 28;
+                curY += bodyRowH;
             }
             curY += 10;
             c.drawCenteredTextFont(curY, "Click Save to apply your settings.", FONT_SUBHEAD_22);
@@ -406,30 +417,33 @@ void OfflineTimeManager::printConfigSavedTicket(EscPosPrinter& printer, const Of
 
     {
         ThermalCanvas tc;
-        uint16_t h = (uint16_t)((4 + 28 + (uint16_t)maxRows * 28 + 16 + 7) & ~7);
+        int16_t capH = (int16_t)tc.getFontLineHeight(FONT_CAPTION_16);
+        int16_t bodyRowH = (int16_t)tc.getFontLineHeight(FONT_BODY_20) + 4;
+        uint16_t h = (uint16_t)((4 + capH + 6 + (uint16_t)maxRows * (uint16_t)bodyRowH + 16 + 7) & ~7);
         char leftHdr[32], rightHdr[32];
         snprintf(leftHdr, sizeof(leftHdr), "ACTIVE (%d)", (int)activeCount);
         snprintf(rightHdr, sizeof(rightHdr), "INACTIVE (%d)", (int)inactiveCount);
 
         tc.renderBanded(printer, h, [&](ThermalCanvas& c) {
             int16_t curY = 4;
+            int16_t bulletOff = (int16_t)(c.getFontLineHeight(FONT_BODY_20) / 2);
             c.drawTextFont(20, curY, leftHdr, FONT_CAPTION_16);
             c.drawTextFont(296, curY, rightHdr, FONT_CAPTION_16);
-            curY += 28;
+            curY += capH + 6;
             for (uint8_t row = 0; row < maxRows; row++) {
                 if (row < activeCount) {
-                    c.fillCircle(28, curY + 12, 2, 1);
+                    c.fillCircle(28, curY + bulletOff, 2, 1);
                     c.drawTextFont(38, curY, config.getPuzzleName(activeGames[row]), FONT_BODY_20);
                 } else if (activeCount == 0 && row == 0) {
                     c.drawTextFont(38, curY, "(None)", FONT_BODY_20);
                 }
                 if (row < inactiveCount) {
-                    c.fillCircle(296, curY + 12, 2, 1);
+                    c.fillCircle(296, curY + bulletOff, 2, 1);
                     c.drawTextFont(306, curY, config.getPuzzleName(inactiveGames[row]), FONT_BODY_20);
                 } else if (inactiveCount == 0 && row == 0) {
                     c.drawTextFont(306, curY, "(None)", FONT_BODY_20);
                 }
-                curY += 28;
+                curY += bodyRowH;
             }
         });
     }
@@ -439,7 +453,8 @@ void OfflineTimeManager::printConfigSavedTicket(EscPosPrinter& printer, const Of
 
     {
         ThermalCanvas tc;
-        uint16_t h = (uint16_t)((4 + 4 * 30 + 16 + 7) & ~7);
+        int16_t kvRowH = (int16_t)tc.getFontLineHeight(FONT_SUBHEAD_22) + 4;
+        uint16_t h = (uint16_t)((4 + 4 * kvRowH + 16 + 7) & ~7);
         String countVal = String(config.getPuzzleCount()) + " Puzzles";
         const char* diffVal = config.getGradeName(config.getPuzzleGrade());
         String schedVal = config.getDailyScheduleTimeString();
@@ -447,16 +462,16 @@ void OfflineTimeManager::printConfigSavedTicket(EscPosPrinter& printer, const Of
 
         tc.renderBanded(printer, h, [&](ThermalCanvas& c) {
             int16_t curY = 4;
-            c.drawTextFont(20, curY, "Daily Count", FONT_BODY_20);
+            c.drawTextFont(20, curY + 4, "Daily Count", FONT_BODY_20);
             c.drawRightTextFont(556, curY, countVal.c_str(), FONT_SUBHEAD_22);
-            curY += 30;
-            c.drawTextFont(20, curY, "Difficulty", FONT_BODY_20);
+            curY += kvRowH;
+            c.drawTextFont(20, curY + 4, "Difficulty", FONT_BODY_20);
             c.drawRightTextFont(556, curY, diffVal, FONT_SUBHEAD_22);
-            curY += 30;
-            c.drawTextFont(20, curY, "Daily Schedule", FONT_BODY_20);
+            curY += kvRowH;
+            c.drawTextFont(20, curY + 4, "Daily Schedule", FONT_BODY_20);
             c.drawRightTextFont(556, curY, schedVal.c_str(), FONT_SUBHEAD_22);
-            curY += 30;
-            c.drawTextFont(20, curY, "Clock", FONT_BODY_20);
+            curY += kvRowH;
+            c.drawTextFont(20, curY + 4, "Clock", FONT_BODY_20);
             c.drawRightTextFont(556, curY, clockVal.c_str(), FONT_SUBHEAD_22);
         });
     }
