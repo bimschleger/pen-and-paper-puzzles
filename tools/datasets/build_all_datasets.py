@@ -21,6 +21,7 @@ import build_game_rules
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 SERVER_DATA_DIR = ROOT_DIR / "server" / "data"
 FW_GEN_DIR = ROOT_DIR / "esp32-firmware" / "src" / "generators"
+FW_PRINTER_DIR = ROOT_DIR / "esp32-firmware" / "src" / "printer"
 SIMULATOR_HTML = ROOT_DIR / "simulator" / "receipt_simulator.html"
 SYNC_SCRIPT = ROOT_DIR / "scripts" / "sync_arduino_sketch.sh"
 
@@ -819,6 +820,140 @@ def build_inequality_dataset() -> None:
     )
 
 
+# =============================================================================
+# 10. THERMAL FONTS (203 DPI 1-BIT PROPORTIONAL + IN-BOARD GLYPHS)
+# =============================================================================
+def build_thermal_fonts() -> None:
+    import base64
+
+    json_path = SERVER_DATA_DIR / "thermal_fonts.json"
+    header_path = FW_PRINTER_DIR / "ThermalFonts.h"
+    print(f"Building ThermalFonts from {json_path}...")
+
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    grid_chars = _validate_ascii(data["grid_chars"], "thermal_fonts.grid_chars")
+    grid_map = [255] * 95
+    for idx, ch in enumerate(grid_chars):
+        code = ord(ch)
+        if 32 <= code < 127:
+            grid_map[code - 32] = idx
+
+    enum_names = {
+        "caption_16": "FONT_CAPTION_16",
+        "body_20": "FONT_BODY_20",
+        "subhead_22": "FONT_SUBHEAD_22",
+        "display_32": "FONT_DISPLAY_32",
+        "grid_12x14": "FONT_GRID_12x14",
+        "grid_18x21": "FONT_GRID_18x21",
+    }
+
+    lines = [
+        "// Automatically generated from server/data/thermal_fonts.json by tools/datasets/build_all_datasets.py",
+        "// Do not edit directly!",
+        "#ifndef THERMAL_FONTS_H",
+        "#define THERMAL_FONTS_H",
+        "",
+        "#include <Arduino.h>",
+        "",
+        "enum ThermalFontId : uint8_t {",
+        "    FONT_CAPTION_16 = 0,",
+        "    FONT_BODY_20 = 1,",
+        "    FONT_SUBHEAD_22 = 2,",
+        "    FONT_DISPLAY_32 = 3,",
+        "    FONT_GRID_12x14 = 4,",
+        "    FONT_GRID_18x21 = 5,",
+        "    THERMAL_FONT_COUNT = 6",
+        "};",
+        "",
+        "struct ThermalGlyph {",
+        "    uint8_t w;",
+        "    uint8_t h;",
+        "    int8_t xOff;",
+        "    int8_t yOff;",
+        "    uint8_t xAdv;",
+        "    uint16_t bitOffset;",
+        "};",
+        "",
+        "struct ThermalFontDef {",
+        "    uint8_t lineHeight;",
+        "    uint8_t baseline;",
+        "    uint8_t fixedW;",
+        "    uint8_t fixedH;",
+        "    uint8_t glyphCount;",
+        "    const ThermalGlyph* glyphs;",
+        "    const uint8_t* bitmap;",
+        "};",
+        "",
+        "static const uint8_t THERMAL_GRID_ASCII_MAP[95] PROGMEM = {",
+    ]
+    for i in range(0, 95, 16):
+        chunk = ", ".join(str(v) for v in grid_map[i : i + 16])
+        lines.append(f"    {chunk},")
+    lines.append("};\n")
+
+    font_defs_entries = []
+    js_fonts: Dict[str, Any] = {"gridChars": grid_chars, "fonts": {}}
+
+    for font in data["fonts"]:
+        fid = font["id"]
+        upper_id = fid.upper()
+        raw_bytes = base64.b64decode(font["bitmap_b64"])
+
+        lines.append(f"static const uint8_t TF_{upper_id}_BITMAP[] PROGMEM = {{")
+        for i in range(0, len(raw_bytes), 20):
+            chunk = ", ".join(f"0x{b:02X}" for b in raw_bytes[i : i + 20])
+            lines.append(f"    {chunk},")
+        lines.append("};\n")
+
+        lines.append(f"static const ThermalGlyph TF_{upper_id}_GLYPHS[] PROGMEM = {{")
+        js_glyphs = []
+        for g in font["glyphs"]:
+            code = int(g["code"])
+            if code < 32 or code >= 127:
+                raise ValueError(f"Non-ASCII glyph code {code} in {fid}")
+            lines.append(
+                f"    {{{g['w']}, {g['h']}, {g['xOff']}, {g['yOff']}, {g['xAdv']}, {g['bitOffset']}}},"
+            )
+            js_glyphs.append([g["w"], g["h"], g["xOff"], g["yOff"], g["xAdv"], g["bitOffset"]])
+        lines.append("};\n")
+
+        font_defs_entries.append(
+            f"    {{{font['lineHeight']}, {font['baseline']}, {font['fixedW']}, {font['fixedH']}, "
+            f"{len(font['glyphs'])}, TF_{upper_id}_GLYPHS, TF_{upper_id}_BITMAP}}"
+        )
+        js_fonts["fonts"][fid] = {
+            "lh": font["lineHeight"],
+            "bl": font["baseline"],
+            "fw": font["fixedW"],
+            "fh": font["fixedH"],
+            "b64": font["bitmap_b64"],
+            "g": js_glyphs,
+        }
+
+    lines.append("static const ThermalFontDef THERMAL_FONT_DEFS[THERMAL_FONT_COUNT] PROGMEM = {")
+    for entry in font_defs_entries:
+        lines.append(f"{entry},")
+    lines.append("};\n")
+    lines.append("#endif // THERMAL_FONTS_H\n")
+
+    header_path.write_text("\n".join(lines), encoding="utf-8")
+    print(f"  -> Wrote {header_path}")
+
+    js_code = (
+        "    /* [[START_THERMAL_FONTS_DATA]] */\n"
+        "    const THERMAL_FONTS = " + json.dumps(js_fonts, separators=(",", ":")) + ";\n"
+        "    /* [[END_THERMAL_FONTS_DATA]] */"
+    )
+    update_simulator_js(
+        r"    /\* \[\[START_THERMAL_FONTS_DATA\]\] \*/.*?/\* \[\[END_THERMAL_FONTS_DATA\]\] \*/",
+        js_code,
+        "THERMAL_FONTS",
+        dotall=True,
+    )
+
+
 def main() -> None:
     global _SIM_HTML_BUF
     print("==================================================================")
@@ -838,6 +973,7 @@ def main() -> None:
         build_wheel_dataset()
         build_towers_dataset()
         build_inequality_dataset()
+        build_thermal_fonts()
         SIMULATOR_HTML.write_text(_SIM_HTML_BUF, encoding="utf-8")
         print(f"  -> Wrote buffered simulator dataset updates to {SIMULATOR_HTML}")
     finally:

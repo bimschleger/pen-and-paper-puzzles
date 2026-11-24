@@ -420,7 +420,12 @@ def test_master_receipt_header_and_footer():
     assert "Enjoy your day!" in sim_src, "Simulator missing 'Enjoy your day!'"
     assert "For more puzzles, toggle the power" in sim_src, "Simulator missing 'For more puzzles, toggle the power'"
     assert "on the front of the printer." in sim_src, "Simulator missing 'on the front of the printer.'"
-    assert "items.push({ type: 'center', text: centerLine('on the front of the printer.', COLS) });\n      items.push({ type: 'blank', text: '' });\n      items.push({ type: 'center', text: centerLine('To change settings, toggle the power', COLS) });" in sim_src, "Simulator missing blank line between daily footer instructions"
+    assert re.search(
+        r"items\.push\(\{\s*type:\s*'center',\s*text:\s*centerLine\('on the front of the printer\.',\s*COLS\)\s*\}\);\s+"
+        r"items\.push\(\{\s*type:\s*'blank',\s*text:\s*''\s*\}\);\s+"
+        r"items\.push\(\{\s*type:\s*'center',\s*text:\s*centerLine\('To change settings, toggle the power',\s*COLS\)\s*\}\);",
+        sim_src,
+    ), "Simulator missing blank line between daily footer instructions"
     assert "items.push({ type: 'text', text: centerLine('on the front of the printer.', COLS) });\n      items.push({ type: 'blank', text: '' });\n      items.push({ type: 'text', text: centerLine('To change settings, toggle the power', COLS) });" in sim_src, "Simulator missing blank line between guide footer instructions"
     assert "To change settings, toggle the power" in sim_src, "Simulator missing 'To change settings, toggle the power'"
     assert "on the cable behind the printer." in sim_src, "Simulator missing 'on the cable behind the printer.'"

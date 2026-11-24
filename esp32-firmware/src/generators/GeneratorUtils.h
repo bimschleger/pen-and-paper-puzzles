@@ -120,7 +120,11 @@ inline void printWrapped(EscPosPrinter& printer, const char* text, int maxWidth 
     }
 }
 
-inline void printPuzzleHeader(EscPosPrinter& printer, const char* title, const char* diffStr, const char* instr1, const char* instr2 = nullptr) {
+inline void printPuzzleHeader(EscPosPrinter& printer, const char* title, const char* diffStr, const char* instr1, const char* instr2 = nullptr, bool useRaster = (OFFLINE_PRINT_STYLE == STYLE_HYBRID)) {
+    if (useRaster) {
+        printer.printRasterPuzzleHeader(title, diffStr, instr1, instr2);
+        return;
+    }
     printer.setAlign(ALIGN_CENTER);
     printer.setBold(true);
     printer.print("--- ");

@@ -397,6 +397,16 @@ int main() {
         std::cout << "  -> LoopGen (15 puzzles) & BinaryGen (15 puzzles) verified 100% mathematically valid!" << std::endl;
     }
 
+    // 7. 203 DPI Native Typography & Banded Receipt Chrome Streaming
+    {
+        std::cout << "\n[TEST] 203 DPI Native Typography & Banded Receipt Chrome..." << std::endl;
+        printer.printRasterHeader("PEN + PAPER PUZZLES", "Enjoy Your Puzzles", "DAILY 5-PUZZLE MIX");
+        printer.printRasterPuzzleHeader("SUDOKU", "MEDIUM", "Fill every row, column, and 3x3 box with digits 1-9 without repeating.");
+        printer.printRasterDivider();
+        printer.printRasterMasterFooter("Enjoy your day!", false, true);
+        std::cout << "  -> Banded 203 DPI receipt chrome streamed cleanly!" << std::endl;
+    }
+
     std::cout << "\n==================================================" << std::endl;
     std::cout << ">>> SUCCESS: 100% OFFLINE CONFIG & MULTI-GRADE TESTS VERIFIED! <<<" << std::endl;
     std::cout << "==================================================" << std::endl;

@@ -404,6 +404,34 @@ globalThis.navigator = { clipboard: { writeText: async () => {} } };
     }
   }
   console.log(`  [OK] Real change event dispatch, cachedBundle reuse, and zero 'undefined' text verified!`);
+
+  // Verify 203 DPI typeset receipt chrome canvases (zero vector calls, 576px, 8-dot aligned, <= 35% duty)
+  const chromeSpecs = [
+    ['master_header', (c) => renderSimMasterHeader(c, 'PEN + PAPER PUZZLES', 'Enjoy Your Puzzles', 'DAILY 5-PUZZLE MIX')],
+    ['puzzle_header', (c) => renderSimPuzzleHeader(c, 'SUDOKU', 'MEDIUM', 'Fill every row, column, and 3x3 box with digits 1-9 without repeating.')],
+    ['divider', (c) => renderSimDivider(c)],
+    ['master_footer', (c) => renderSimMasterFooter(c, 'Enjoy your day!', false, true)],
+  ];
+  for (const [cname, fn] of chromeSpecs) {
+    const c = makeMockCanvas();
+    fn(c);
+    if (!c._imageData || c.width !== 576 || c.height <= 0 || c.height % 8 !== 0) {
+      throw new Error(`Invalid chrome canvas geometry for ${cname}: ${c.width}x${c.height}`);
+    }
+    if (c._vectorCalls.length > 0) {
+      throw new Error(`Prohibited vector canvas calls in chrome '${cname}': ${c._vectorCalls.join(', ')}`);
+    }
+    let blackDots = 0;
+    const rgba = c._imageData.data;
+    for (let i = 0; i < rgba.length; i += 4) {
+      if (rgba[i] < 128) blackDots++;
+    }
+    const duty = (blackDots / (c.width * c.height)) * 100.0;
+    if (duty > 35.0) {
+      throw new Error(`Chrome '${cname}' exceeded 35% duty cycle (${duty.toFixed(1)}%)`);
+    }
+  }
+  console.log(`  [OK] 203 DPI typeset receipt chrome canvases verified (576px, 0 vector calls, <= 35% duty)!`);
 })();
 """
 
@@ -478,6 +506,7 @@ const capturedToasts = [];
 const sandbox = {
   console, Math, Array, Object, String, Number, Boolean, Set, Map, JSON, RegExp, Error,
   Date, Uint8ClampedArray,
+  atob: (b64) => Buffer.from(b64, 'base64').toString('binary'),
   setTimeout: () => 0, clearTimeout: () => {},
   document: {
     getElementById: getEl,

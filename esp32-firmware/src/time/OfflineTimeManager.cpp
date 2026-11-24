@@ -253,24 +253,9 @@ void OfflineTimeManager::printSetupTicket(EscPosPrinter& printer, const OfflineC
     }
 
     printer.init();
-    printer.printDoubleLine();
-    printer.setAlign(ALIGN_CENTER);
-    printer.setBold(true);
-    printer.setTextSize(2, 2);
-    printer.println("PEN + PAPER PUZZLES");
-    printer.setTextSize(1, 1);
-    printer.setBold(false);
-    printer.printDoubleLine();
-    printer.println("");
-
-    // Welcome intro
-    printer.setAlign(ALIGN_CENTER);
-    printer.println("These are the games that are currently");
-    printer.println("active to print:");
-    printer.println("");
+    printer.printRasterHeader("PEN + PAPER PUZZLES", nullptr);
 
     if (config) {
-        // Categorize active games
         OfflinePuzzleType activeGames[OFFLINE_PUZZLE_TOTAL];
         uint8_t activeCount = 0;
 
@@ -280,121 +265,110 @@ void OfflineTimeManager::printSetupTicket(EscPosPrinter& printer, const OfflineC
             }
         }
 
-        // Two-column active games list in newspaper order (24 cols left, 24 cols right)
-        printer.setAlign(ALIGN_LEFT);
         uint8_t rows = (activeCount + 1) / 2;
-        if (rows == 0) {
-            rows = 1;
-        }
+        if (rows == 0) rows = 1;
 
-        for (uint8_t r = 0; r < rows; r++) {
-            String leftCol = "";
-            if (r < activeCount) {
-                leftCol = String(" * ") + config->getPuzzleName(activeGames[r]);
-            } else if (activeCount == 0 && r == 0) {
-                leftCol = "  (None)";
+        ThermalCanvas tc;
+        uint16_t h = 4 + tc.measureWrappedHeightFont("These are the games that are currently active to print:", 536, FONT_BODY_20, 4) + 12;
+        h += (uint16_t)rows * 28 + 14 + 3 * 30 + 8;
+        h = (uint16_t)((h + 7) & ~7);
+
+        String countVal = String(config->getPuzzleCount()) + " Puzzles";
+        const char* diffVal = config->getGradeName(config->getPuzzleGrade());
+        String schedVal = _timeSet ? config->getDailyScheduleTimeString() : String("(Setup instructions below)");
+
+        tc.renderBanded(printer, h, [&](ThermalCanvas& c) {
+            int16_t curY = 4;
+            curY += c.drawWrappedTextFont(20, curY, 536,
+                                          "These are the games that are currently active to print:",
+                                          FONT_BODY_20, 1, 4) + 12;
+            for (uint8_t r = 0; r < rows; r++) {
+                if (r < activeCount) {
+                    c.fillCircle(28, curY + 12, 2, 1);
+                    c.drawTextFont(38, curY, config->getPuzzleName(activeGames[r]), FONT_BODY_20);
+                } else if (activeCount == 0 && r == 0) {
+                    c.drawTextFont(38, curY, "(None)", FONT_BODY_20);
+                }
+                uint8_t rightIdx = r + rows;
+                if (rightIdx < activeCount) {
+                    c.fillCircle(296, curY + 12, 2, 1);
+                    c.drawTextFont(306, curY, config->getPuzzleName(activeGames[rightIdx]), FONT_BODY_20);
+                }
+                curY += 28;
             }
-            while (leftCol.length() < 24) {
-                leftCol += ' ';
-            }
-
-            String rightCol = "";
-            uint8_t rightIdx = r + rows;
-            if (rightIdx < activeCount) {
-                rightCol = String(" * ") + config->getPuzzleName(activeGames[rightIdx]);
-            }
-
-            printer.println(leftCol + rightCol);
-        }
-
-        // Current default settings summary
-        printer.println("");
-        printer.setAlign(ALIGN_LEFT);
-        printer.printKeyValue("Daily Count:", String(config->getPuzzleCount()) + " Puzzles");
-        printer.printKeyValue("Difficulty:", config->getGradeName(config->getPuzzleGrade()));
-        if (!_timeSet) {
-            printer.printKeyValue("Daily Schedule:", "(Setup instructions below)");
-        } else {
-            printer.printKeyValue("Daily Schedule:", config->getDailyScheduleTimeString());
-        }
-        printer.println("");
+            curY += 8;
+            c.drawHLine(20, curY, 536, 1, 1);
+            curY += 10;
+            c.drawTextFont(20, curY, "Daily Count", FONT_BODY_20);
+            c.drawRightTextFont(556, curY, countVal.c_str(), FONT_SUBHEAD_22);
+            curY += 30;
+            c.drawTextFont(20, curY, "Difficulty", FONT_BODY_20);
+            c.drawRightTextFont(556, curY, diffVal, FONT_SUBHEAD_22);
+            curY += 30;
+            c.drawTextFont(20, curY, "Daily Schedule", FONT_BODY_20);
+            c.drawRightTextFont(556, curY, schedVal.c_str(), FONT_SUBHEAD_22);
+        });
     }
 
     // Setup Mode Section
-    printer.printHorizontalLine('-');
-    printer.setAlign(ALIGN_CENTER);
-    printer.setBold(true);
-    printer.println("--- SETUP MODE ---");
-    printer.setBold(false);
-    printer.println("To customize your games, schedule, or clock,");
-    printer.println("follow the instructions below:");
-    printer.println("");
+    printer.printRasterPuzzleHeader("SETUP MODE", nullptr,
+                                    "To customize your games, schedule, or clock, follow the instructions below:");
 
     // Step 1: Wi-Fi
-    printer.printHorizontalLine('-');
-    printer.setAlign(ALIGN_CENTER);
-    printer.setBold(true);
-    printer.println("--- STEP 1: JOIN WI-FI ---");
-    printer.setBold(false);
-    printer.println("Scan the QR code below to");
-    printer.println("connect to the setup hotspot:");
-    printer.println("");
+    printer.printRasterPuzzleHeader("STEP 1: JOIN WI-FI", nullptr,
+                                    "Scan the QR code below to connect to the setup hotspot:");
 
     ThermalCanvas canvas;
-    if (canvas.begin(240)) {
-        canvas.clear(0);
-        canvas.drawQrCode(288, 120, "WIFI:T:nopass;S:Pen-And-Paper-Puzzles;;", 6);
-        canvas.printTo(printer);
-        canvas.end();
+    canvas.renderBanded(printer, 240, [&](ThermalCanvas& c) {
+        c.drawQrCode(288, 120, "WIFI:T:nopass;S:Pen-And-Paper-Puzzles;;", 6);
+    });
+    {
+        ThermalCanvas tc;
+        tc.renderBanded(printer, 64, [&](ThermalCanvas& c) {
+            c.drawCenteredTextFont(4, "Network: Pen-And-Paper-Puzzles", FONT_SUBHEAD_22);
+            c.drawCenteredTextFont(34, "(Open Network - No Password)", FONT_CAPTION_16);
+        });
     }
-    printer.setAlign(ALIGN_CENTER);
-    printer.println("Network: Pen-And-Paper-Puzzles");
-    printer.println("(Open Network - No Password)");
-    printer.println("");
 
     // Step 2: Settings URL
-    printer.printHorizontalLine('-');
-    printer.setAlign(ALIGN_CENTER);
-    printer.setBold(true);
-    printer.println("--- STEP 2: OPEN SETTINGS ---");
-    printer.setBold(false);
-    printer.println("Scan the QR code to set up your games:");
-    printer.println("");
+    printer.printRasterPuzzleHeader("STEP 2: OPEN SETTINGS", nullptr,
+                                    "Scan the QR code to set up your games:");
 
-    if (canvas.begin(216)) {
-        canvas.clear(0);
-        canvas.drawQrCode(288, 108, "http://192.168.4.1", 6);
-        canvas.printTo(printer);
-        canvas.end();
+    canvas.renderBanded(printer, 216, [&](ThermalCanvas& c) {
+        c.drawQrCode(288, 108, "http://192.168.4.1", 6);
+    });
+    {
+        ThermalCanvas tc;
+        tc.renderBanded(printer, 40, [&](ThermalCanvas& c) {
+            c.drawCenteredTextFont(4, "URL: http://192.168.4.1", FONT_SUBHEAD_22);
+        });
     }
-    printer.setAlign(ALIGN_CENTER);
-    printer.println("URL: http://192.168.4.1");
-    printer.println("");
 
     // Step 3: Customize & Save
-    printer.printHorizontalLine('-');
-    printer.setAlign(ALIGN_CENTER);
-    printer.setBold(true);
-    printer.println("--- STEP 3: CUSTOMIZE & SAVE ---");
-    printer.setBold(false);
-    printer.println("Customize your game selection and schedule:");
-    printer.println("");
-    printer.setAlign(ALIGN_LEFT);
-    printer.println("      * Select which games to get");
-    printer.println("      * How many games to print");
-    printer.println("      * Choose your difficulty level");
-    printer.println("      * Set if you want daily prints");
-    printer.println("");
-
-    // Save Instruction & Notices
-    printer.setAlign(ALIGN_CENTER);
-    printer.setBold(true);
-    printer.println("Click Save to apply your settings.");
-    printer.setBold(false);
-    printer.println("");
+    printer.printRasterPuzzleHeader("STEP 3: CUSTOMIZE & SAVE", nullptr,
+                                    "Customize your game selection and schedule:");
+    {
+        ThermalCanvas tc;
+        tc.renderBanded(printer, 168, [&](ThermalCanvas& c) {
+            int16_t curY = 4;
+            const char* bullets[4] = {
+                "Select which games to get",
+                "How many games to print",
+                "Choose your difficulty level",
+                "Set if you want daily prints"
+            };
+            for (uint8_t i = 0; i < 4; i++) {
+                c.fillCircle(44, curY + 12, 2, 1);
+                c.drawTextFont(56, curY, bullets[i], FONT_BODY_20);
+                curY += 28;
+            }
+            curY += 10;
+            c.drawCenteredTextFont(curY, "Click Save to apply your settings.", FONT_SUBHEAD_22);
+        });
+    }
 
     // Footer
-    printer.printMasterFooter("Enjoy your day!", (!config || !config->isDailyScheduleEnabled()), true);
+    printer.printRasterMasterFooter("Enjoy your day!", (!config || !config->isDailyScheduleEnabled()), true);
 
     printer.feed(4);
     printer.cut(false);
@@ -411,16 +385,7 @@ void OfflineTimeManager::printConfigSavedTicket(EscPosPrinter& printer, const Of
     }
 
     printer.init();
-    printer.printDoubleLine();
-    printer.setAlign(ALIGN_CENTER);
-    printer.setBold(true);
-    printer.setTextSize(2, 2);
-    printer.println("PEN + PAPER PUZZLES");
-    printer.setTextSize(1, 1);
-    printer.setBold(false);
-    printer.println("Configuration Saved");
-    printer.printDoubleLine();
-    printer.println("");
+    printer.printRasterHeader("PEN + PAPER PUZZLES", "Configuration Saved");
 
     // Categorize active and inactive games
     OfflinePuzzleType activeGames[OFFLINE_PUZZLE_TOTAL];
@@ -436,61 +401,68 @@ void OfflineTimeManager::printConfigSavedTicket(EscPosPrinter& printer, const Of
         }
     }
 
-    // Two-column game list (24 cols left, 24 cols right)
-    printer.setAlign(ALIGN_LEFT);
-    String leftHdr = String("ACTIVE (") + activeCount + ")";
-    while (leftHdr.length() < 24) {
-        leftHdr += ' ';
-    }
-    String rightHdr = String("INACTIVE (") + inactiveCount + ")";
-    printer.setBold(true);
-    printer.println(leftHdr + rightHdr);
-    printer.setBold(false);
-
     uint8_t maxRows = (activeCount > inactiveCount) ? activeCount : inactiveCount;
-    if (maxRows == 0) {
-        maxRows = 1;
-    }
+    if (maxRows == 0) maxRows = 1;
 
-    for (uint8_t row = 0; row < maxRows; row++) {
-        String leftCol = "";
-        if (row < activeCount) {
-            leftCol = String(" * ") + config.getPuzzleName(activeGames[row]);
-        } else if (activeCount == 0 && row == 0) {
-            leftCol = "  (None)";
-        }
-        while (leftCol.length() < 24) {
-            leftCol += ' ';
-        }
+    {
+        ThermalCanvas tc;
+        uint16_t h = (uint16_t)((4 + 28 + (uint16_t)maxRows * 28 + 16 + 7) & ~7);
+        char leftHdr[32], rightHdr[32];
+        snprintf(leftHdr, sizeof(leftHdr), "ACTIVE (%d)", (int)activeCount);
+        snprintf(rightHdr, sizeof(rightHdr), "INACTIVE (%d)", (int)inactiveCount);
 
-        String rightCol = "";
-        if (row < inactiveCount) {
-            rightCol = String(" * ") + config.getPuzzleName(inactiveGames[row]);
-        } else if (inactiveCount == 0 && row == 0) {
-            rightCol = "  (None)";
-        }
-
-        printer.println(leftCol + rightCol);
+        tc.renderBanded(printer, h, [&](ThermalCanvas& c) {
+            int16_t curY = 4;
+            c.drawTextFont(20, curY, leftHdr, FONT_CAPTION_16);
+            c.drawTextFont(296, curY, rightHdr, FONT_CAPTION_16);
+            curY += 28;
+            for (uint8_t row = 0; row < maxRows; row++) {
+                if (row < activeCount) {
+                    c.fillCircle(28, curY + 12, 2, 1);
+                    c.drawTextFont(38, curY, config.getPuzzleName(activeGames[row]), FONT_BODY_20);
+                } else if (activeCount == 0 && row == 0) {
+                    c.drawTextFont(38, curY, "(None)", FONT_BODY_20);
+                }
+                if (row < inactiveCount) {
+                    c.fillCircle(296, curY + 12, 2, 1);
+                    c.drawTextFont(306, curY, config.getPuzzleName(inactiveGames[row]), FONT_BODY_20);
+                } else if (inactiveCount == 0 && row == 0) {
+                    c.drawTextFont(306, curY, "(None)", FONT_BODY_20);
+                }
+                curY += 28;
+            }
+        });
     }
 
     // Settings Section with Standard Separator
-    printer.println("");
-    printer.printHorizontalLine('-');
-    printer.setAlign(ALIGN_CENTER);
-    printer.setBold(true);
-    printer.println("--- SETTINGS ---");
-    printer.setBold(false);
-    printer.println("");
+    printer.printRasterPuzzleHeader("SETTINGS", nullptr, nullptr);
 
-    printer.setAlign(ALIGN_LEFT);
-    printer.printKeyValue("Daily Count:", String(config.getPuzzleCount()) + " Puzzles");
-    printer.printKeyValue("Difficulty:", config.getGradeName(config.getPuzzleGrade()));
-    printer.printKeyValue("Daily Schedule:", config.getDailyScheduleTimeString());
-    printer.printKeyValue("Clock:", getFormattedTime("%I:%M %p"));
+    {
+        ThermalCanvas tc;
+        uint16_t h = (uint16_t)((4 + 4 * 30 + 16 + 7) & ~7);
+        String countVal = String(config.getPuzzleCount()) + " Puzzles";
+        const char* diffVal = config.getGradeName(config.getPuzzleGrade());
+        String schedVal = config.getDailyScheduleTimeString();
+        String clockVal = getFormattedTime("%I:%M %p");
+
+        tc.renderBanded(printer, h, [&](ThermalCanvas& c) {
+            int16_t curY = 4;
+            c.drawTextFont(20, curY, "Daily Count", FONT_BODY_20);
+            c.drawRightTextFont(556, curY, countVal.c_str(), FONT_SUBHEAD_22);
+            curY += 30;
+            c.drawTextFont(20, curY, "Difficulty", FONT_BODY_20);
+            c.drawRightTextFont(556, curY, diffVal, FONT_SUBHEAD_22);
+            curY += 30;
+            c.drawTextFont(20, curY, "Daily Schedule", FONT_BODY_20);
+            c.drawRightTextFont(556, curY, schedVal.c_str(), FONT_SUBHEAD_22);
+            curY += 30;
+            c.drawTextFont(20, curY, "Clock", FONT_BODY_20);
+            c.drawRightTextFont(556, curY, clockVal.c_str(), FONT_SUBHEAD_22);
+        });
+    }
 
     // Footer
-    printer.println("");
-    printer.printMasterFooter("Setup complete. Ready for printing!", !config.isDailyScheduleEnabled(), true);
+    printer.printRasterMasterFooter("Setup complete. Ready for printing!", !config.isDailyScheduleEnabled(), true);
 
     printer.feed(4);
     printer.cut(false);

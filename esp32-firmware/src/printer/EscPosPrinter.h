@@ -56,6 +56,15 @@ public:
                                    bool includeScheduleHint = false,
                                    bool leadingRule = true);
 
+    // 203 DPI Native Rasterized Receipt Chrome (used in STYLE_HYBRID)
+    virtual void printRasterHeader(const char* title, const char* subtitle = nullptr, const char* mixSubtitle = nullptr);
+    virtual void printRasterPuzzleHeader(const char* title, const char* diffStr = nullptr,
+                                         const char* instr1 = nullptr, const char* instr2 = nullptr);
+    virtual void printRasterDivider();
+    virtual void printRasterMasterFooter(const char* closingTagline = "Enjoy your day!",
+                                         bool includeScheduleHint = false,
+                                         bool leadingRule = true);
+
     // Raw byte stream & Raster Graphics
     virtual size_t writeRaw(const uint8_t* buffer, size_t size);
     virtual bool beginRasterBitmap(uint16_t widthDots, uint16_t totalHeightDots);

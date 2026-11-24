@@ -170,6 +170,7 @@ const dummyEl = () => ({
 const sandbox = {
   console, Math, Array, Object, String, Number, Boolean, Set, Map, JSON, RegExp, Error,
   Uint8Array, Uint8ClampedArray, Int32Array, Date,
+  atob: (b64) => Buffer.from(b64, 'base64').toString('binary'),
   performance: { now: () => Date.now() },
   setTimeout: () => 0, clearTimeout: () => {},
   addEventListener() {},
@@ -213,6 +214,16 @@ const results = items.map((item) => {
   const p = item.puzzle;
   if (p === 'guide') {
     sandbox.drawSimGuideCanvas(item.game_id, canvas);
+  } else if (p === 'chrome') {
+    if (item.kind === 'master_header') {
+      sandbox.renderSimMasterHeader(canvas, 'PEN + PAPER PUZZLES', 'Enjoy Your Puzzles', 'DAILY 5-PUZZLE MIX');
+    } else if (item.kind === 'puzzle_header') {
+      sandbox.renderSimPuzzleHeader(canvas, 'SUDOKU', 'MEDIUM', 'Fill every row, column, and 3x3 box with digits 1-9 without repeating.');
+    } else if (item.kind === 'divider') {
+      sandbox.renderSimDivider(canvas);
+    } else if (item.kind === 'master_footer') {
+      sandbox.renderSimMasterFooter(canvas, 'Enjoy your day!', false, true);
+    }
   } else if (p === 'jumble') {
     sandbox.renderOfflineJumble(canvas, item);
   } else if (p === 'wheel') {
@@ -326,7 +337,7 @@ def test_visual_consistency():
 
     for idx, item in enumerate(items):
         p_name = item["puzzle"]
-        diff_tag = item.get("difficulty") or item.get("key") or ""
+        diff_tag = item.get("difficulty") or item.get("key") or item.get("kind") or ""
         label = f"{p_name}:{diff_tag}" if diff_tag else p_name
         width = item["width"]
         height = item["height"]
@@ -338,6 +349,24 @@ def test_visual_consistency():
             assert plugin is not None, f"Plugin {plugin_id} not found in registry"
             covered_guides.add(plugin_id)
             py_escpos = plugin.render_guide_raster(576)
+        elif p_name == "chrome":
+            from app.renderer.canvas import (
+                render_master_header_raster,
+                render_puzzle_header_raster,
+                render_divider_raster,
+                render_master_footer_raster,
+            )
+            kind = item["kind"]
+            if kind == "master_header":
+                py_escpos = render_master_header_raster("PEN + PAPER PUZZLES", "Enjoy Your Puzzles", "DAILY 5-PUZZLE MIX")
+            elif kind == "puzzle_header":
+                py_escpos = render_puzzle_header_raster("SUDOKU", "MEDIUM", "Fill every row, column, and 3x3 box with digits 1-9 without repeating.")
+            elif kind == "divider":
+                py_escpos = render_divider_raster()
+            elif kind == "master_footer":
+                py_escpos = render_master_footer_raster("Enjoy your day!", False, True)
+            else:
+                raise RuntimeError(f"Unknown chrome kind {kind}")
         else:
             if p_name == "stars":
                 plugin_id = "queens"

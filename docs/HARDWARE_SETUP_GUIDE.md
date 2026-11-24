@@ -136,3 +136,13 @@ Pen and Paper Puzzles is designed to tuck away inside an enclosure or sit discre
   * **Short tap (< 1 sec)**: Prints an on-demand puzzle edition.
   * **Long press (> 2.5 sec)**: Toggles Setup Mode on and off.
 * An external arcade-style pushbutton can optionally be connected across `GPIO 4` and `GND`.
+
+---
+
+## Step 6: Physical Print Crispness & Paper Quality Tips
+
+Pen and Paper Puzzles renders typography and puzzle boards at native **203 DPI (`576` dots)** in `STYLE_HYBRID` mode. To match the sharp, high-contrast look of commercial POS receipts:
+
+* **Use 55–65 gsm BPA-Free Thermal Paper**: Standard budget rolls (45–48 gsm) can show slight thermal bleed or grayness on fine 1-dot strokes. Heavier, smoother 55–65 gsm paper produces deeper blacks and sharper hairlines.
+* **Calibrate Print Density & Speed**: Most 80mm printers (vretti, Munbyn, Rongta, Epson) include a Windows/macOS configuration utility to adjust **Print Density** and **Print Speed**. Stepping density up slightly (e.g. `100% -> 110%`) or lowering speed one notch improves solid-black contrast without smearing.
+* **Keep the Thermal Printhead Clean**: Gently wipe the ceramic thermal bar inside the top cover with an **isopropyl alcohol pen or lint-free swab** every 10–15 rolls to prevent dust from causing faint vertical streaks.

@@ -12,6 +12,12 @@ Strictly conforms to:
 import logging
 from typing import Dict, Any, List, Optional
 from ..puzzles.registry import PuzzleRegistry, DEFAULT_REGISTRY
+from .canvas import (
+    render_master_header_raster,
+    render_puzzle_header_raster,
+    render_divider_raster,
+    render_master_footer_raster,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -148,13 +154,17 @@ class DailyReceiptComposer:
         # 1. Master Receipt Header
         title = daily_data.get("title", "PEN + PAPER PUZZLES")
         tagline = daily_data.get("header_tagline", "Enjoy Your Puzzles")
-        r.header(title, tagline)
         subtitle = daily_data.get("subtitle")
-        if subtitle:
-            r.align("center")
-            r.println(subtitle)
-            r.println()
-            r.align("left")
+        if use_raster:
+            r.write_raw(render_master_header_raster(title, tagline, subtitle))
+            r.feed(1)
+        else:
+            r.header(title, tagline)
+            if subtitle:
+                r.align("center")
+                r.println(subtitle)
+                r.println()
+                r.align("left")
 
         # 2. Render each puzzle in progressive or canonical sequence
         plugins = self._get_ordered_plugins(daily_data)
@@ -165,7 +175,11 @@ class DailyReceiptComposer:
             # Header & Instruction
             diff_str = str(p_data.get("difficulty", "")).upper() if plugin.has_difficulty else None
             instruction = plugin.get_instruction(p_data)
-            r.puzzle_header(plugin.title, diff_str, instruction)
+            if use_raster:
+                r.write_raw(render_puzzle_header_raster(plugin.title.upper(), diff_str, instruction))
+                r.feed(1)
+            else:
+                r.puzzle_header(plugin.title, diff_str, instruction)
 
             # Puzzle Body: Raster or ASCII Fallback
             rendered_graphical = False
@@ -174,6 +188,7 @@ class DailyReceiptComposer:
                     raster_bytes = plugin.render_raster(p_data)
                     if raster_bytes:
                         r.write_raw(raster_bytes)
+                        r.feed(1)
                         rendered_graphical = True
                 except Exception as exc:
                     logger.warning("Raster rendering failed for '%s', falling back to ASCII: %s", plugin.puzzle_id, exc)
@@ -184,26 +199,36 @@ class DailyReceiptComposer:
                 for line in ascii_text.split("\n"):
                     r.println(line)
 
-            r.println()
             if idx < len(plugins) - 1:
-                r.horizontal_rule("-")
+                if use_raster:
+                    r.write_raw(render_divider_raster())
+                    r.feed(1)
+                else:
+                    r.println()
+                    r.horizontal_rule("-")
+            else:
+                r.println()
 
-        # 3. Optional Solution Key
+        # 3. Optional Solution Key (stays classic Font A per user spec)
         include_solutions = show_solutions if show_solutions is not None else daily_data.get("show_solutions", False)
         if include_solutions:
             self._append_solution_key(r, daily_data)
 
         # 4. Master Receipt Footer
-        r.align("center")
-        r.horizontal_rule("-")
-        r.println("Enjoy your day!")
-        r.println()
-        r.println("For more puzzles, toggle the power")
-        r.println("on the front of the printer.")
-        r.println()
-        r.println("To change settings, toggle the power")
-        r.println("on the cable behind the printer.")
-        r.horizontal_rule("-")
+        if use_raster:
+            r.write_raw(render_master_footer_raster("Enjoy your day!", False, not include_solutions))
+            r.feed(1)
+        else:
+            r.align("center")
+            r.horizontal_rule("-")
+            r.println("Enjoy your day!")
+            r.println()
+            r.println("For more puzzles, toggle the power")
+            r.println("on the front of the printer.")
+            r.println()
+            r.println("To change settings, toggle the power")
+            r.println("on the cable behind the printer.")
+            r.horizontal_rule("-")
 
         # Mandatory 4-line feed before cutter offset
         r.feed(4)
