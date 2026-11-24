@@ -33,14 +33,13 @@ void WordSearchGen::generate(WordSearchDifficulty difficulty, int seed) {
     uint8_t minIntersections = (difficulty == WS_EASY) ? 0 : ((difficulty == WS_MEDIUM) ? 2 : 3);
     _currentTheme = "";
 
-    size_t poolCount = 0;
-    const char* const* pool = getWordSearchPool(difficulty, poolCount);
-    if (!pool || poolCount == 0) {
+    size_t poolCount = getWordSearchPoolCount(difficulty);
+    if (poolCount == 0) {
         return;
     }
 
     char bestGrid[MAX_GRID_SIZE][MAX_GRID_SIZE];
-    const char* bestPlaced[12];
+    char bestPlaced[12][17];
     uint8_t bestCount = 0;
     int16_t bestIntersections = -1;
 
@@ -62,7 +61,7 @@ void WordSearchGen::generate(WordSearchDifficulty difficulty, int seed) {
     for (uint8_t restart = 0; restart < 8; restart++) {
         // Pick (targetCount + 4) words without replacement
         const uint8_t sampleSize = targetCount + 4;
-        const char* sampledWords[16];
+        char sampledWords[16][17];
         uint16_t chosenIndices[16];
         uint8_t picked = 0;
         uint16_t attempts = 0;
@@ -78,20 +77,21 @@ void WordSearchGen::generate(WordSearchDifficulty difficulty, int seed) {
             }
             if (!dup) {
                 chosenIndices[picked] = idx;
-                sampledWords[picked] = (const char*)pgm_read_ptr(&pool[idx]);
+                getWordSearchWord(difficulty, idx, sampledWords[picked], sizeof(sampledWords[picked]));
                 picked++;
             }
         }
 
         // Sort descending by length
         for (uint8_t i = 1; i < picked; i++) {
-            const char* key = sampledWords[i];
+            char key[17];
+            memcpy(key, sampledWords[i], sizeof(key));
             int8_t j = i - 1;
             while (j >= 0 && strlen(sampledWords[j]) < strlen(key)) {
-                sampledWords[j + 1] = sampledWords[j];
+                memcpy(sampledWords[j + 1], sampledWords[j], sizeof(key));
                 j--;
             }
-            sampledWords[j + 1] = key;
+            memcpy(sampledWords[j + 1], key, sizeof(key));
         }
 
         // Prepare directional assignment
@@ -103,7 +103,7 @@ void WordSearchGen::generate(WordSearchDifficulty difficulty, int seed) {
         char tempGrid[MAX_GRID_SIZE][MAX_GRID_SIZE];
         memset(tempGrid, ' ', sizeof(tempGrid));
 
-        const char* currentPlaced[12];
+        char currentPlaced[12][17];
         WordPlacement currentPlacements[12];
         uint8_t currentCount = 0;
 
@@ -195,7 +195,8 @@ void WordSearchGen::generate(WordSearchDifficulty difficulty, int seed) {
                 }
 
                 currentPlacements[currentCount] = {r, c, dIdx, len};
-                currentPlaced[currentCount] = word;
+                strncpy(currentPlaced[currentCount], word, 16);
+                currentPlaced[currentCount][16] = '\0';
                 currentCount++;
             }
         }
@@ -256,6 +257,7 @@ void WordSearchGen::generate(WordSearchDifficulty difficulty, int seed) {
     }
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void WordSearchGen::printToReceipt(EscPosPrinter& printer) {
     // Print grid centered
     for (uint8_t r = 0; r < _gridSize; r++) {
@@ -281,6 +283,7 @@ void WordSearchGen::printToReceipt(EscPosPrinter& printer) {
     }
     printer.println("");
 }
+#endif
 
 bool WordSearchGen::printRasterToReceipt(EscPosPrinter& printer) {
     const int16_t cellSize = (THERMAL_CANVAS_WIDTH - 48) / _gridSize;

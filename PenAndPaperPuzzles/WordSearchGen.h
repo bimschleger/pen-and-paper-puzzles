@@ -2,6 +2,7 @@
 #define WORD_SEARCH_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 class EscPosPrinter;
 
 enum WordSearchDifficulty {
@@ -17,7 +18,9 @@ public:
     WordSearchGen();
 
     void generate(WordSearchDifficulty difficulty = WS_MEDIUM, int seed = -1);
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer);
 
     const char* getThemeName() const { return _currentTheme; }
@@ -30,7 +33,7 @@ public:
 private:
     uint8_t _gridSize;
     char _grid[MAX_GRID_SIZE][MAX_GRID_SIZE];
-    const char* _placedWords[12];
+    char _placedWords[12][17];
     uint8_t _numPlacedWords;
     const char* _currentTheme;
 };

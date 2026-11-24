@@ -119,19 +119,25 @@ void CryptogramGen::generate(CryptogramDifficulty difficulty) {
     _difficulty = difficulty;
     size_t idx = random(NUM_CRYPTOGRAMS_PER_DIFF) % NUM_CRYPTOGRAMS_PER_DIFF;
 
-    const CryptogramQuote* quotePtr = nullptr;
+    const CryptogramQuote* pool = MEDIUM_CRYPTOGRAMS;
     if (difficulty == CRYPTO_EASY) {
-        quotePtr = &EASY_CRYPTOGRAMS[idx];
+        pool = EASY_CRYPTOGRAMS;
         _clueCount = 3;
     } else if (difficulty == CRYPTO_HARD) {
-        quotePtr = &HARD_CRYPTOGRAMS[idx];
+        pool = HARD_CRYPTOGRAMS;
         _clueCount = 1;
     } else {
-        quotePtr = &MEDIUM_CRYPTOGRAMS[idx];
         _clueCount = 2;
     }
 
-    generateWithQuote(quotePtr->phrase, quotePtr->author, difficulty, 0);
+    CryptogramQuote quote;
+    memcpy_P(&quote, &pool[idx], sizeof(CryptogramQuote));
+    char phraseBuf[192];
+    char authorBuf[64];
+    mp_bpe_decode_pgm(CRYPTOGRAM_STRINGS, quote.phraseOff, phraseBuf, sizeof(phraseBuf));
+    mp_bpe_decode_pgm(CRYPTOGRAM_STRINGS, quote.authorOff, authorBuf, sizeof(authorBuf));
+
+    generateWithQuote(phraseBuf, authorBuf, difficulty, 0);
 }
 
 void CryptogramGen::generateWithQuote(const char* phrase, const char* author, CryptogramDifficulty difficulty, uint32_t seed) {
@@ -158,6 +164,7 @@ void CryptogramGen::generateWithQuote(const char* phrase, const char* author, Cr
     selectClues(p2c);
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void CryptogramGen::printToReceipt(EscPosPrinter& printer) {
     // Word wrapping to <= 42 columns in spaced format
     // A word of length L in spaced representation takes 2*L - 1 chars.
@@ -259,6 +266,7 @@ void CryptogramGen::printToReceipt(EscPosPrinter& printer) {
         printer.println("");
     }
 }
+#endif
 
 bool CryptogramGen::printRasterToReceipt(EscPosPrinter& printer) {
     const int16_t padding = 24;

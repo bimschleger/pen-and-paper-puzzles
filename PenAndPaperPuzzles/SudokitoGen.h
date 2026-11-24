@@ -2,6 +2,7 @@
 #define SUDOKITO_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 class EscPosPrinter;
 
 enum SudokitoDifficulty {
@@ -18,7 +19,9 @@ public:
     void generate(SudokitoDifficulty difficulty = SUDOKITO_MEDIUM);
 
     // Prints formatted 80mm receipt section
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer, SudokitoDifficulty diff);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer, SudokitoDifficulty diff);
 
     uint8_t getCell(uint8_t r, uint8_t c) const { return _puzzle[r][c]; }

@@ -2,6 +2,7 @@
 #define INEQUALITY_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 class EscPosPrinter;
 
 enum InequalityDifficulty {
@@ -18,7 +19,9 @@ public:
     InequalityGen();
 
     void generate(InequalityDifficulty difficulty = INEQUALITY_MEDIUM, uint32_t seed = 0);
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer);
 
     uint8_t getSize() const { return _size; }

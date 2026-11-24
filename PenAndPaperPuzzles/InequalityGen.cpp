@@ -146,6 +146,7 @@ void InequalityGen::generate(InequalityDifficulty difficulty, uint32_t seed) {
     applyTransform(transform);
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void InequalityGen::printToReceipt(EscPosPrinter& printer) {
     for (uint8_t r = 0; r < _size; r++) {
         char rowBuf[48];
@@ -183,6 +184,7 @@ void InequalityGen::printToReceipt(EscPosPrinter& printer) {
         }
     }
 }
+#endif
 
 bool InequalityGen::printRasterToReceipt(EscPosPrinter& printer) {
     uint16_t grid_w = _size * _cellSize;

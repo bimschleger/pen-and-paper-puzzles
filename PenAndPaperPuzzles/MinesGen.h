@@ -2,6 +2,7 @@
 #define MINES_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 class EscPosPrinter;
 
 enum MinesDifficulty {
@@ -18,7 +19,9 @@ public:
     void generate(MinesDifficulty difficulty = MINES_MEDIUM);
 
     // Prints formatted 80mm receipt section
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer, MinesDifficulty diff);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer, MinesDifficulty diff);
 
     int8_t getCell(uint8_t r, uint8_t c) const { return _puzzle[r][c]; }

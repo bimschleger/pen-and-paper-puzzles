@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import bpe_codec
 import build_game_rules
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -267,13 +268,25 @@ def build_killer_dataset() -> None:
 # =============================================================================
 # 3. WORD LADDER DATASET
 # =============================================================================
-def build_ladder_dataset() -> None:
+def build_ladder_dataset(vocab: List[List[int]]) -> None:
     json_path = SERVER_DATA_DIR / "ladder_words.json"
     header_path = FW_GEN_DIR / "LadderDataset.h"
     print(f"Building LadderDataset from {json_path}...")
 
     with open(json_path, "r", encoding="utf-8") as f:
         dataset = json.load(f)
+
+    blob = bpe_codec.BpeBlobBuilder(vocab)
+    tier_entries: Dict[str, List[str]] = {}
+    for tier in ("easy", "medium", "hard"):
+        entries = []
+        for item in dataset[tier]:
+            w_len = item.get("wordLen", len(item["solution"][0]))
+            total_w = item.get("totalWords", len(item["solution"]))
+            words_str = _validate_ascii(item.get("words", " ".join(item["solution"])), f"ladder[{tier}].words")
+            off = blob.add(words_str)
+            entries.append(f"    {{ {w_len}, {total_w}, {off} }},")
+        tier_entries[tier] = entries
 
     lines = [
         "// Automatically generated from server/data/ladder_words.json by tools/datasets/build_all_datasets.py",
@@ -282,25 +295,23 @@ def build_ladder_dataset() -> None:
         "#define LADDER_DATASET_H",
         "",
         "#include <Arduino.h>",
+        '#include "BpeTextDict.h"',
         "",
         "struct LadderDef {",
         "    uint8_t wordLen;",
         "    uint8_t totalWords;",
-        "    const char* words;",
+        "    uint16_t wordsOff;",
         "};",
         "",
         "static const size_t NUM_LADDER_PUZZLES_PER_DIFF = 50;",
         "",
     ]
+    lines.extend(blob.format_c_array("LADDER_STRINGS"))
+    lines.append("")
 
     for tier, var_name in [("easy", "EASY_LADDERS"), ("medium", "MEDIUM_LADDERS"), ("hard", "HARD_LADDERS")]:
-        items = dataset[tier]
         lines.append(f"static const LadderDef {var_name}[NUM_LADDER_PUZZLES_PER_DIFF] PROGMEM = {{")
-        for item in items:
-            w_len = item.get("wordLen", len(item["solution"][0]))
-            total_w = item.get("totalWords", len(item["solution"]))
-            words_str = _validate_ascii(item.get("words", " ".join(item["solution"])), f"ladder[{tier}].words")
-            lines.append(f'    {{ {w_len}, {total_w}, "{words_str}" }},')
+        lines.extend(tier_entries[tier])
         lines.append("};")
         lines.append("")
 
@@ -316,7 +327,7 @@ def build_ladder_dataset() -> None:
 # =============================================================================
 # 4. WORD SEARCH DATASET
 # =============================================================================
-def build_wordsearch_dataset() -> None:
+def build_wordsearch_dataset(vocab: List[List[int]]) -> None:
     json_path = SERVER_DATA_DIR / "wordsearch_dataset.json"
     header_path = FW_GEN_DIR / "WordSearchDataset.h"
     print(f"Building WordSearchDataset from {json_path}...")
@@ -328,6 +339,15 @@ def build_wordsearch_dataset() -> None:
     medium_words = dataset["medium"]
     hard_words = dataset["hard"]
 
+    blob = bpe_codec.BpeBlobBuilder(vocab)
+    tier_offsets: Dict[str, List[int]] = {}
+    for tier, words in [("easy", easy_words), ("medium", medium_words), ("hard", hard_words)]:
+        offs = []
+        for w in words:
+            _validate_ascii(w, f"wordsearch[{tier}]", max_len=16)
+            offs.append(blob.add(w))
+        tier_offsets[tier] = offs
+
     lines = [
         "// Automatically generated from server/data/wordsearch_dataset.json by tools/datasets/build_all_datasets.py",
         "// Do not edit directly!",
@@ -336,41 +356,50 @@ def build_wordsearch_dataset() -> None:
         "",
         "#include <Arduino.h>",
         '#include "WordSearchGen.h"',
+        '#include "BpeTextDict.h"',
         "",
         f"static const size_t NUM_WS_EASY_WORDS = {len(easy_words)};",
         f"static const size_t NUM_WS_MEDIUM_WORDS = {len(medium_words)};",
         f"static const size_t NUM_WS_HARD_WORDS = {len(hard_words)};",
         "",
     ]
+    lines.extend(blob.format_c_array("WS_STRINGS"))
+    lines.append("")
 
-    for tier, words, var_name, count_var in [
-        ("easy", easy_words, "WS_EASY_WORDS", "NUM_WS_EASY_WORDS"),
-        ("medium", medium_words, "WS_MEDIUM_WORDS", "NUM_WS_MEDIUM_WORDS"),
-        ("hard", hard_words, "WS_HARD_WORDS", "NUM_WS_HARD_WORDS"),
+    for tier, var_name, count_var in [
+        ("easy", "WS_EASY_OFFSETS", "NUM_WS_EASY_WORDS"),
+        ("medium", "WS_MEDIUM_OFFSETS", "NUM_WS_MEDIUM_WORDS"),
+        ("hard", "WS_HARD_OFFSETS", "NUM_WS_HARD_WORDS"),
     ]:
-        lines.append(f"static const char* const {var_name}[{count_var}] PROGMEM = {{")
-        for w in words:
-            _validate_ascii(w, f"wordsearch[{tier}]", max_len=16)
-            lines.append(f'    "{w}",')
+        offs = tier_offsets[tier]
+        lines.append(f"static const uint16_t {var_name}[{count_var}] PROGMEM = {{")
+        for i in range(0, len(offs), 16):
+            chunk = ", ".join(str(x) for x in offs[i : i + 16])
+            comma = "," if i + 16 < len(offs) else ""
+            lines.append(f"    {chunk}{comma}")
         lines.append("};")
         lines.append("")
 
-    lines.append("inline const char* const* getWordSearchPool(WordSearchDifficulty diff, size_t& outCount) {")
-    lines.append("    switch (diff) {")
-    lines.append("        case WS_EASY:")
-    lines.append("            outCount = NUM_WS_EASY_WORDS;")
-    lines.append("            return WS_EASY_WORDS;")
-    lines.append("        case WS_HARD:")
-    lines.append("            outCount = NUM_WS_HARD_WORDS;")
-    lines.append("            return WS_HARD_WORDS;")
-    lines.append("        case WS_MEDIUM:")
-    lines.append("        default:")
-    lines.append("            outCount = NUM_WS_MEDIUM_WORDS;")
-    lines.append("            return WS_MEDIUM_WORDS;")
-    lines.append("    }")
-    lines.append("}")
-    lines.append("")
-    lines.append("#endif // WORD_SEARCH_DATASET_H\n")
+    lines.extend([
+        "inline size_t getWordSearchPoolCount(WordSearchDifficulty diff) {",
+        "    switch (diff) {",
+        "        case WS_EASY: return NUM_WS_EASY_WORDS;",
+        "        case WS_HARD: return NUM_WS_HARD_WORDS;",
+        "        case WS_MEDIUM:",
+        "        default: return NUM_WS_MEDIUM_WORDS;",
+        "    }",
+        "}",
+        "",
+        "inline void getWordSearchWord(WordSearchDifficulty diff, size_t idx, char* dst, size_t dstCap) {",
+        "    const uint16_t* offs = WS_MEDIUM_OFFSETS;",
+        "    if (diff == WS_EASY) offs = WS_EASY_OFFSETS;",
+        "    else if (diff == WS_HARD) offs = WS_HARD_OFFSETS;",
+        "    uint16_t off = pgm_read_word(&offs[idx]);",
+        "    mp_bpe_decode_pgm(WS_STRINGS, off, dst, dstCap);",
+        "}",
+        "",
+        "#endif // WORD_SEARCH_DATASET_H\n",
+    ])
     header_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"  -> Wrote {header_path}")
 
@@ -387,7 +416,7 @@ def build_wordsearch_dataset() -> None:
 # =============================================================================
 # 5. CRYPTOGRAM DATASET
 # =============================================================================
-def build_cryptogram_dataset() -> None:
+def build_cryptogram_dataset(vocab: List[List[int]]) -> None:
     json_path = SERVER_DATA_DIR / "cryptograms.json"
     header_path = FW_GEN_DIR / "CryptogramDataset.h"
     print(f"Building CryptogramDataset from {json_path}...")
@@ -401,6 +430,18 @@ def build_cryptogram_dataset() -> None:
         if d in by_diff:
             by_diff[d].append(q)
 
+    blob = bpe_codec.BpeBlobBuilder(vocab)
+    tier_entries: Dict[str, List[str]] = {}
+    for tier in ("easy", "medium", "hard"):
+        entries = []
+        for item in by_diff[tier][:100]:
+            phrase = _validate_ascii(item["phrase"], f"cryptogram[{tier}].phrase")
+            author = _validate_ascii(item["author"], f"cryptogram[{tier}].author")
+            p_off = blob.add(phrase)
+            a_off = blob.add(author)
+            entries.append(f"    {{{p_off}, {a_off}}},")
+        tier_entries[tier] = entries
+
     lines = [
         "// Automatically generated from server/data/cryptograms.json by tools/datasets/build_all_datasets.py",
         "// Do not edit directly!",
@@ -408,26 +449,23 @@ def build_cryptogram_dataset() -> None:
         "#define CRYPTOGRAM_DATASET_H",
         "",
         "#include <Arduino.h>",
+        '#include "BpeTextDict.h"',
         "",
         "struct CryptogramQuote {",
-        "    const char* phrase;",
-        "    const char* author;",
+        "    uint16_t phraseOff;",
+        "    uint16_t authorOff;",
         "};",
         "",
         "static const size_t NUM_CRYPTOGRAMS_PER_DIFF = 100;",
         f"static const size_t TOTAL_CRYPTOGRAM_PUZZLES = {len(quotes)};",
         "",
     ]
+    lines.extend(blob.format_c_array("CRYPTOGRAM_STRINGS"))
+    lines.append("")
 
     for tier, var_name in [("easy", "EASY_CRYPTOGRAMS"), ("medium", "MEDIUM_CRYPTOGRAMS"), ("hard", "HARD_CRYPTOGRAMS")]:
-        items = by_diff[tier][:100]
         lines.append(f"static const CryptogramQuote {var_name}[NUM_CRYPTOGRAMS_PER_DIFF] PROGMEM = {{")
-        for item in items:
-            phrase = _validate_ascii(item["phrase"], f"cryptogram[{tier}].phrase")
-            author = _validate_ascii(item["author"], f"cryptogram[{tier}].author")
-            phrase_escaped = phrase.replace('"', '\\"')
-            author_escaped = author.replace('"', '\\"')
-            lines.append(f'    {{"{phrase_escaped}", "{author_escaped}"}},')
+        lines.extend(tier_entries[tier])
         lines.append("};")
         lines.append("")
 
@@ -451,7 +489,7 @@ def build_cryptogram_dataset() -> None:
 # =============================================================================
 # 6. JUMBLE DATASET
 # =============================================================================
-def build_jumble_dataset() -> None:
+def build_jumble_dataset(vocab: List[List[int]]) -> None:
     json_path = SERVER_DATA_DIR / "jumbles.json"
     header_path = FW_GEN_DIR / "JumbleDataset.h"
     print(f"Building JumbleDataset from {json_path}...")
@@ -459,31 +497,13 @@ def build_jumble_dataset() -> None:
     with open(json_path, "r", encoding="utf-8") as f:
         jumbles = json.load(f)
 
-    lines = [
-        "// Automatically generated from server/data/jumbles.json by tools/datasets/build_all_datasets.py",
-        "// Do not edit directly!",
-        "#ifndef JUMBLE_DATASET_H",
-        "#define JUMBLE_DATASET_H",
-        "",
-        "#include <Arduino.h>",
-        "",
-        "struct CompactRiddleSet {",
-        "    uint8_t numWords;",
-        "    uint8_t circleMasks[6];",
-        "    const char* words;",
-        "    const char* riddle;",
-        "    const char* answer;",
-        "};",
-        "",
-        f"static const size_t TOTAL_JUMBLE_PUZZLES = {len(jumbles)};",
-        "static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {",
-    ]
-
+    blob = bpe_codec.BpeBlobBuilder(vocab)
+    entries = []
     for item in jumbles:
         words = item["words"]
         circles = item["circles"]
-        riddle = _validate_ascii(item["riddle"], "jumble.riddle").replace('"', '\\"')
-        answer = _validate_ascii(item["answer"], "jumble.answer").replace('"', '\\"')
+        riddle = _validate_ascii(item["riddle"], "jumble.riddle")
+        answer = _validate_ascii(item["answer"], "jumble.answer")
 
         masks = []
         for c_list in circles:
@@ -495,14 +515,35 @@ def build_jumble_dataset() -> None:
             masks.append("0x00")
 
         words_str = _validate_ascii(" ".join(words), "jumble.words")
-        lines.append("    {")
-        lines.append(f"        {len(words)},")
-        lines.append(f"        {{{', '.join(masks)}}},")
-        lines.append(f'        "{words_str}",')
-        lines.append(f'        "{riddle}",')
-        lines.append(f'        "{answer}"')
-        lines.append("    },")
+        w_off = blob.add(words_str)
+        r_off = blob.add(riddle)
+        a_off = blob.add(answer)
+        entries.append(f"    {{ {len(words)}, {{{', '.join(masks)}}}, {w_off}, {r_off}, {a_off} }},")
 
+    lines = [
+        "// Automatically generated from server/data/jumbles.json by tools/datasets/build_all_datasets.py",
+        "// Do not edit directly!",
+        "#ifndef JUMBLE_DATASET_H",
+        "#define JUMBLE_DATASET_H",
+        "",
+        "#include <Arduino.h>",
+        '#include "BpeTextDict.h"',
+        "",
+        "struct CompactRiddleSet {",
+        "    uint8_t numWords;",
+        "    uint8_t circleMasks[6];",
+        "    uint16_t wordsOff;",
+        "    uint16_t riddleOff;",
+        "    uint16_t answerOff;",
+        "};",
+        "",
+        f"static const size_t TOTAL_JUMBLE_PUZZLES = {len(jumbles)};",
+        "",
+    ]
+    lines.extend(blob.format_c_array("JUMBLE_STRINGS"))
+    lines.append("")
+    lines.append("static const CompactRiddleSet JUMBLE_DATASET[] PROGMEM = {")
+    lines.extend(entries)
     lines.append("};")
     lines.append("")
     lines.append("#endif // JUMBLE_DATASET_H\n")
@@ -954,6 +995,54 @@ def build_thermal_fonts() -> None:
     )
 
 
+def build_shared_bpe_dict() -> List[List[int]]:
+    print("Training shared 160-token BPE dictionary across text datasets...")
+    strings: List[str] = []
+
+    ladder = json.loads((SERVER_DATA_DIR / "ladder_words.json").read_text(encoding="utf-8"))
+    for tier in ("easy", "medium", "hard"):
+        for item in ladder[tier]:
+            strings.append(item.get("words", " ".join(item["solution"])))
+
+    ws = json.loads((SERVER_DATA_DIR / "wordsearch_dataset.json").read_text(encoding="utf-8"))
+    for tier in ("easy", "medium", "hard"):
+        strings.extend(ws[tier])
+
+    cryptos = json.loads((SERVER_DATA_DIR / "cryptograms.json").read_text(encoding="utf-8"))
+    for q in cryptos:
+        if q.get("diff", "easy").lower() in ("easy", "medium", "hard"):
+            strings.append(q["phrase"])
+            strings.append(q["author"])
+
+    jumbles = json.loads((SERVER_DATA_DIR / "jumbles.json").read_text(encoding="utf-8"))
+    for item in jumbles:
+        strings.append(" ".join(item["words"]))
+        strings.append(item["riddle"])
+        strings.append(item["answer"])
+
+    rules = json.loads((SERVER_DATA_DIR / "game_rules.json").read_text(encoding="utf-8"))
+    for g in rules.get("games", []):
+        for s in (
+            [
+                g["key"], g["title"], g["instruction"], g["objective"],
+                g.get("valid_move", {}).get("caption", ""),
+                g.get("invalid_move", {}).get("caption", ""),
+            ]
+            + g.get("rules", [])[:4]
+            + g.get("opening_anchors", [])[:2]
+            + [fq.get("q", "") for fq in g.get("faq", [])[:2]]
+            + [fq.get("a", "") for fq in g.get("faq", [])[:2]]
+            + [str(op[5]) for op in g.get("diagram_ops", []) if op[1] == "text"]
+        ):
+            strings.append(bpe_codec.to_thermal_ascii(s))
+
+    vocab = bpe_codec.train_bpe(strings)
+    bpe_codec.save_bpe_dict(vocab)
+    bpe_codec.write_bpe_header(vocab)
+    print(f"  -> Wrote BpeTextDict.h ({len(vocab)} BPE pairs)")
+    return vocab
+
+
 def main() -> None:
     global _SIM_HTML_BUF
     print("==================================================================")
@@ -962,14 +1051,16 @@ def main() -> None:
     if not SIMULATOR_HTML.exists():
         raise FileNotFoundError(f"Simulator HTML not found at {SIMULATOR_HTML}")
 
+    vocab = build_shared_bpe_dict()
+
     _SIM_HTML_BUF = SIMULATOR_HTML.read_text(encoding="utf-8")
     try:
         build_stars_dataset()
         build_killer_dataset()
-        build_ladder_dataset()
-        build_wordsearch_dataset()
-        build_cryptogram_dataset()
-        build_jumble_dataset()
+        build_ladder_dataset(vocab)
+        build_wordsearch_dataset(vocab)
+        build_cryptogram_dataset(vocab)
+        build_jumble_dataset(vocab)
         build_wheel_dataset()
         build_towers_dataset()
         build_inequality_dataset()

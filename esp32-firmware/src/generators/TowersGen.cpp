@@ -116,6 +116,7 @@ void TowersGen::generate(TowersDifficulty difficulty, uint32_t seed) {
     applyTransform(transform);
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void TowersGen::printToReceipt(EscPosPrinter& printer) {
     String topStr = "       ";
     for (uint8_t c = 0; c < _size; c++) {
@@ -147,6 +148,7 @@ void TowersGen::printToReceipt(EscPosPrinter& printer) {
     }
     printer.println(botStr);
 }
+#endif
 
 bool TowersGen::printRasterToReceipt(EscPosPrinter& printer) {
     uint16_t grid_w = _size * _cellSize;

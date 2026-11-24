@@ -322,6 +322,7 @@ void LoopGen::generate(LoopDifficulty difficulty) {
     }
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void LoopGen::printToReceipt(EscPosPrinter& printer, LoopDifficulty diff) {
     (void)diff;
     for (uint8_t r = 0; r < _size; r++) {
@@ -345,6 +346,7 @@ void LoopGen::printToReceipt(EscPosPrinter& printer, LoopDifficulty diff) {
     printer.println(lastDotLine);
     printer.println("");
 }
+#endif
 
 bool LoopGen::printRasterToReceipt(EscPosPrinter& printer, LoopDifficulty diff) {
     (void)diff;

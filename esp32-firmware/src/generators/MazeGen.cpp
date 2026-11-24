@@ -286,6 +286,7 @@ void MazeGen::solvePath() {
 }
 #endif
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void MazeGen::printToReceipt(EscPosPrinter& printer, MazeDifficulty diff) {
     (void)diff;
     if (_size > 20) {
@@ -356,6 +357,7 @@ void MazeGen::printToReceipt(EscPosPrinter& printer, MazeDifficulty diff) {
         }
     }
 }
+#endif
 
 bool MazeGen::printRasterToReceipt(EscPosPrinter& printer, MazeDifficulty diff) {
     (void)diff;

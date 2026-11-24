@@ -226,6 +226,7 @@ void SudokuGen::generate(SudokuDifficulty difficulty) {
     }
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void SudokuGen::printToReceipt(EscPosPrinter& printer, SudokuDifficulty /*diff*/) {
     printer.println("   +-------+-------+-------+");
     for (uint8_t r = 0; r < 9; r++) {
@@ -246,6 +247,7 @@ void SudokuGen::printToReceipt(EscPosPrinter& printer, SudokuDifficulty /*diff*/
     printer.println("   +-------+-------+-------+");
     printer.println("");
 }
+#endif
 
 bool SudokuGen::printRasterToReceipt(EscPosPrinter& printer, SudokuDifficulty /*diff*/) {
     const int16_t padding = 24;

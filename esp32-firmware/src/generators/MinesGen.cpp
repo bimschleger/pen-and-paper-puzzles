@@ -273,6 +273,7 @@ void MinesGen::generate(MinesDifficulty difficulty) {
     }
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void MinesGen::printToReceipt(EscPosPrinter& printer, MinesDifficulty /*diff*/) {
     printer.println(String("TOTAL MINES: ") + String(_totalMines));
     printer.println("");
@@ -292,6 +293,7 @@ void MinesGen::printToReceipt(EscPosPrinter& printer, MinesDifficulty /*diff*/) 
     }
     printer.println("");
 }
+#endif
 
 bool MinesGen::printRasterToReceipt(EscPosPrinter& printer, MinesDifficulty /*diff*/) {
     const int16_t padding = 24;

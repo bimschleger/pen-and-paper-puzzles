@@ -1241,11 +1241,13 @@ int main(int argc, char** argv) {
             OfflinePuzzleComposer::renderGameGuideRaster(c, g);
         });
 
+        char keyBuf[32];
+        mp_bpe_decode_pgm(GAME_RULES_STRINGS, GAME_RULES[g].keyOff, keyBuf, sizeof(keyBuf));
         printSep();
         std::cout << "  {\n";
         std::cout << "    \"puzzle\": \"guide\",\n";
         std::cout << "    \"game_id\": " << (int)g << ",\n";
-        std::cout << "    \"key\": \"" << escapeJson(GAME_RULES[g].key) << "\",\n";
+        std::cout << "    \"key\": \"" << escapeJson(keyBuf) << "\",\n";
         std::cout << "    \"width\": " << printer.lastWidth << ",\n";
         std::cout << "    \"height\": " << printer.lastHeight << ",\n";
         std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";

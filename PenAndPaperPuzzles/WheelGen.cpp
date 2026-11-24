@@ -45,6 +45,7 @@ void WheelGen::generate(WheelDifficulty difficulty) {
     _count7plus = chosen.count7plus;
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void WheelGen::printToReceipt(EscPosPrinter& printer) {
     // Visual ASCII Honeycomb Layout (60mm / 48 columns)
     printer.println("             / \\     / \\");
@@ -69,6 +70,7 @@ void WheelGen::printToReceipt(EscPosPrinter& printer) {
     printer.println("   _________________        _________________");
     printer.println("");
 }
+#endif
 
 static void drawHexCell(ThermalCanvas& canvas, int16_t cx, int16_t cy, int16_t r, uint8_t thickness = 2) {
     int16_t h = (int16_t)((r * 866 + 500) / 1000);

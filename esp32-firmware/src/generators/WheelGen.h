@@ -2,6 +2,7 @@
 #define WHEEL_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 class EscPosPrinter;
 
 enum WheelDifficulty {
@@ -15,7 +16,9 @@ public:
     WheelGen();
 
     void generate(WheelDifficulty difficulty = WHEEL_MEDIUM);
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer);
 
     char getCenterLetter() const { return _center; }

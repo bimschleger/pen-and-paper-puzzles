@@ -2,6 +2,7 @@
 #define BRIDGES_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 class EscPosPrinter;
 
 enum BridgesDifficulty {
@@ -27,7 +28,9 @@ public:
     BridgesGen();
 
     void generate(BridgesDifficulty difficulty = BRIDGES_MEDIUM);
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer, BridgesDifficulty diff);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer, BridgesDifficulty diff);
 
     uint8_t getSize() const { return _size; }

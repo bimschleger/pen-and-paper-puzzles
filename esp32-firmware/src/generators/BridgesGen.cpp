@@ -183,6 +183,7 @@ void BridgesGen::generate(BridgesDifficulty diff) {
     }
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void BridgesGen::printToReceipt(EscPosPrinter& printer, BridgesDifficulty /*diff*/) {
     uint8_t gridH = 2 * _size - 1;
     uint8_t gridW = 2 * _size - 1;
@@ -205,6 +206,7 @@ void BridgesGen::printToReceipt(EscPosPrinter& printer, BridgesDifficulty /*diff
     }
     printer.println("");
 }
+#endif
 
 bool BridgesGen::printRasterToReceipt(EscPosPrinter& printer, BridgesDifficulty /*diff*/) {
     const int16_t padding = 32;

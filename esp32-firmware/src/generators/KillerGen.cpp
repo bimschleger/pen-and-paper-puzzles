@@ -84,6 +84,7 @@ void KillerGen::generate(KillerDifficulty difficulty, uint32_t seed) {
     }
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void KillerGen::printToReceipt(EscPosPrinter& printer) {
     const char letters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -126,6 +127,7 @@ void KillerGen::printToReceipt(EscPosPrinter& printer) {
     }
     printer.println("");
 }
+#endif
 
 bool KillerGen::printRasterToReceipt(EscPosPrinter& printer) {
     const int16_t padding = 24;

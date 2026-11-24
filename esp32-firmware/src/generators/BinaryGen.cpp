@@ -276,6 +276,7 @@ void BinaryGen::generate(BinaryDifficulty difficulty) {
     }
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void BinaryGen::printToReceipt(EscPosPrinter& printer, BinaryDifficulty /*diff*/) {
     String sep = "   +";
     for (uint8_t c = 0; c < _size; c++) sep += "---+";
@@ -293,6 +294,7 @@ void BinaryGen::printToReceipt(EscPosPrinter& printer, BinaryDifficulty /*diff*/
     }
     printer.println("");
 }
+#endif
 
 bool BinaryGen::printRasterToReceipt(EscPosPrinter& printer, BinaryDifficulty /*diff*/) {
     const int16_t padding = 24;
