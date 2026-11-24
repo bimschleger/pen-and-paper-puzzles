@@ -477,6 +477,31 @@ def test_engineering_budgets_and_guardrails():
         with open(jpath, "r", encoding="utf-8") as f:
             _collect_non_ascii(json.load(f), f"server/data/{json_name}", violations)
 
+    # Rule 15 / Rule 22: Validate thermal_fonts.json SSoT structure & bitstream bounds
+    fonts_json_path = os.path.join(ROOT_DIR, "server", "data", "thermal_fonts.json")
+    if not os.path.exists(fonts_json_path):
+        violations.append("Missing canonical font pack server/data/thermal_fonts.json")
+    else:
+        with open(fonts_json_path, "r", encoding="utf-8") as f:
+            fdata = json.load(f)
+        _collect_non_ascii(fdata, "server/data/thermal_fonts.json", violations)
+        fmap = {fn["id"]: fn for fn in fdata.get("fonts", [])}
+        expected_fonts = ("caption_16", "body_20", "subhead_22", "display_32", "grid_12x14", "grid_18x21")
+        for fid in expected_fonts:
+            if fid not in fmap:
+                violations.append(f"thermal_fonts.json missing required font '{fid}'")
+                continue
+            fobj = fmap[fid]
+            glyphs = fobj.get("glyphs", [])
+            expected_count = 59 if fid.startswith("grid_") else 95
+            if len(glyphs) != expected_count:
+                violations.append(f"thermal_fonts.json '{fid}' has {len(glyphs)} glyphs (expected {expected_count})")
+            b_bytes = int(fobj.get("bitmap_bytes", -1))
+            for g in glyphs:
+                needed = int(g["bitOffset"]) + ((int(g["w"]) * int(g["h"]) + 7) // 8)
+                if needed > b_bytes:
+                    violations.append(f"thermal_fonts.json '{fid}' glyph {g.get('code')} exceeds bitmap_bytes ({needed} > {b_bytes})")
+
     # Rule 23: Zero external URLs & web payload budgets
     portal_html_path = os.path.join(ROOT_DIR, "portal.html")
     portal_hdr_path = os.path.join(ROOT_DIR, "esp32-firmware", "src", "time", "PortalHtml.h")

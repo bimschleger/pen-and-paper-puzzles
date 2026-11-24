@@ -10,11 +10,55 @@ Renders exclusively through Pure-Python ThermalBitmap 1-bit primitives.
 """
 
 from typing import Tuple, Dict, Any, List, Optional
+import base64
 import math
 import os
 
 THERMAL_WIDTH_DOTS = 576
 THERMAL_WIDTH_BYTES = 72  # 576 // 8
+
+FONT_CAPTION_16 = "caption_16"
+FONT_BODY_20 = "body_20"
+FONT_SUBHEAD_22 = "subhead_22"
+FONT_DISPLAY_32 = "display_32"
+FONT_GRID_12x14 = "grid_12x14"
+FONT_GRID_18x21 = "grid_18x21"
+
+_FONT_CACHE: Optional[Dict[str, Any]] = None
+
+
+def _load_thermal_fonts() -> Dict[str, Any]:
+    """Lazily loads and decodes server/data/thermal_fonts.json into fast lookup structures."""
+    global _FONT_CACHE
+    if _FONT_CACHE is not None:
+        return _FONT_CACHE
+
+    from ..puzzles.base import load_curated_dataset
+
+    raw = load_curated_dataset("thermal_fonts.json")
+    if not raw:
+        _FONT_CACHE = {"grid_map": {}, "fonts": {}}
+        return _FONT_CACHE
+
+    grid_chars = raw.get("grid_chars", "")
+    grid_map = {ch: idx for idx, ch in enumerate(grid_chars)}
+    fonts: Dict[str, Any] = {}
+    for f in raw.get("fonts", []):
+        bitmap = base64.b64decode(f["bitmap_b64"])
+        glyphs = tuple(
+            (g["w"], g["h"], g["xOff"], g["yOff"], g["xAdv"], g["bitOffset"])
+            for g in f["glyphs"]
+        )
+        fonts[f["id"]] = {
+            "line_height": f["lineHeight"],
+            "baseline": f["baseline"],
+            "fixed_w": f["fixedW"],
+            "fixed_h": f["fixedH"],
+            "bitmap": bitmap,
+            "glyphs": glyphs,
+        }
+    _FONT_CACHE = {"grid_map": grid_map, "fonts": fonts}
+    return _FONT_CACHE
 _BIT_COUNTS = tuple(bin(b).count("1") for b in range(256))
 _FULL_ONES = b"\xff" * THERMAL_WIDTH_BYTES
 _FULL_ZEROS = b"\x00" * THERMAL_WIDTH_BYTES
@@ -449,9 +493,36 @@ class ThermalBitmap:
                 if _hatch_predicate(pat, px, py):
                     self.set_pixel(px, py, 1)
 
+    def _blit_glyph(self, x: int, y: int, w: int, h: int, bitmap: bytes, bit_offset: int, color: int):
+        if w <= 0 or h <= 0:
+            return
+        if y + h <= 0 or y >= self.height or x + w <= 0 or x >= self.width:
+            return
+        bit_idx = 0
+        for dy in range(h):
+            py = y + dy
+            in_y = 0 <= py < self.height
+            for dx in range(w):
+                if in_y:
+                    byte_val = bitmap[bit_offset + (bit_idx >> 3)]
+                    if (byte_val >> (7 - (bit_idx & 7))) & 1:
+                        self.set_pixel(x + dx, py, color)
+                bit_idx += 1
+
     def draw_char(self, x: int, y: int, char: str, scale: int = 2, color: int = 1):
         if scale <= 0:
             return
+        if scale in (2, 3):
+            fcache = _load_thermal_fonts()
+            fid = FONT_GRID_12x14 if scale == 2 else FONT_GRID_18x21
+            fdef = fcache["fonts"].get(fid)
+            if fdef is not None:
+                uc = char.upper() if char else " "
+                g_idx = fcache["grid_map"].get(uc)
+                if g_idx is not None and g_idx < len(fdef["glyphs"]):
+                    w, h, xo, yo, _xa, boff = fdef["glyphs"][g_idx]
+                    self._blit_glyph(x + xo, y + yo, w, h, fdef["bitmap"], boff, color)
+                return
         glyph = FONT_5X7.get(char.upper(), FONT_5X7.get(' ', [0]*7))
         for row_idx, row_byte in enumerate(glyph):
             if row_byte == 0:
@@ -466,6 +537,142 @@ class ThermalBitmap:
                         self.set_pixel(px, py, color)
                     else:
                         self.draw_hline(px, py, scale, thickness=scale, color=color)
+
+    def get_font_line_height(self, font_id: str) -> int:
+        fdef = _load_thermal_fonts()["fonts"].get(font_id)
+        return fdef["line_height"] if fdef else 0
+
+    def _get_prop_glyph(self, fdef: Dict[str, Any], ch: str):
+        code = ord(ch)
+        idx = (code - 32) if 32 <= code < 127 else 0
+        glyphs = fdef["glyphs"]
+        if idx >= len(glyphs):
+            idx = 0
+        return glyphs[idx]
+
+    def measure_text_font(self, text: str, font_id: str) -> int:
+        if not text:
+            return 0
+        fdef = _load_thermal_fonts()["fonts"].get(font_id)
+        if not fdef:
+            return 0
+        glyphs = fdef["glyphs"]
+        n = len(glyphs)
+        total = 0
+        for ch in text:
+            code = ord(ch)
+            idx = (code - 32) if 32 <= code < 127 else 0
+            if idx >= n:
+                idx = 0
+            total += glyphs[idx][4]
+        return total
+
+    def draw_text_font(self, x: int, y: int, text: str, font_id: str, color: int = 1):
+        if not text:
+            return
+        fdef = _load_thermal_fonts()["fonts"].get(font_id)
+        if not fdef:
+            return
+        bitmap = fdef["bitmap"]
+        cur_x = x
+        for ch in text:
+            w, h, xo, yo, xa, boff = self._get_prop_glyph(fdef, ch)
+            if w > 0 and h > 0:
+                self._blit_glyph(cur_x + xo, y + yo, w, h, bitmap, boff, color)
+            cur_x += xa
+
+    def draw_centered_text_font(self, y: int, text: str, font_id: str, color: int = 1):
+        if not text:
+            return
+        w = self.measure_text_font(text, font_id)
+        self.draw_text_font((self.width - w) // 2, y, text, font_id, color=color)
+
+    def draw_right_text_font(self, right_x: int, y: int, text: str, font_id: str, color: int = 1):
+        if not text:
+            return
+        w = self.measure_text_font(text, font_id)
+        self.draw_text_font(right_x - w, y, text, font_id, color=color)
+
+    def _wrap_lines_font(self, text: str, max_width: int, fdef: Dict[str, Any]) -> List[Tuple[str, int]]:
+        words = [w for w in text.split(" ") if w]
+        if not words:
+            return []
+        space_adv = self._get_prop_glyph(fdef, " ")[4]
+        glyphs = fdef["glyphs"]
+        n = len(glyphs)
+
+        def word_w(word: str) -> int:
+            tot = 0
+            for ch in word:
+                c = ord(ch)
+                idx = (c - 32) if 32 <= c < 127 else 0
+                if idx >= n:
+                    idx = 0
+                tot += glyphs[idx][4]
+            return tot
+
+        lines: List[Tuple[str, int]] = []
+        cur_words: List[str] = []
+        cur_w = 0
+        for wd in words:
+            ww = word_w(wd)
+            if not cur_words:
+                cur_words.append(wd)
+                cur_w = ww
+            elif cur_w + space_adv + ww <= max_width:
+                cur_words.append(wd)
+                cur_w += space_adv + ww
+            else:
+                lines.append((" ".join(cur_words), cur_w))
+                cur_words = [wd]
+                cur_w = ww
+        if cur_words:
+            lines.append((" ".join(cur_words), cur_w))
+        return lines
+
+    def measure_wrapped_height_font(self, text: str, max_width: int, font_id: str, line_gap: int = 4) -> int:
+        if not text:
+            return 0
+        fdef = _load_thermal_fonts()["fonts"].get(font_id)
+        if not fdef:
+            return 0
+        lines = self._wrap_lines_font(text, max_width, fdef)
+        if not lines:
+            return 0
+        lh = fdef["line_height"]
+        return len(lines) * lh + (len(lines) - 1) * line_gap
+
+    def draw_wrapped_text_font(
+        self,
+        x: int,
+        y: int,
+        max_width: int,
+        text: str,
+        font_id: str,
+        align: str = "left",
+        line_gap: int = 4,
+        color: int = 1,
+    ) -> int:
+        if not text:
+            return 0
+        fdef = _load_thermal_fonts()["fonts"].get(font_id)
+        if not fdef:
+            return 0
+        lines = self._wrap_lines_font(text, max_width, fdef)
+        if not lines:
+            return 0
+        lh = fdef["line_height"]
+        cur_y = y
+        for line_str, line_w in lines:
+            if align == "center":
+                lx = x + (max_width - line_w) // 2
+            elif align == "right":
+                lx = x + max_width - line_w
+            else:
+                lx = x
+            self.draw_text_font(lx, cur_y, line_str, font_id, color=color)
+            cur_y += lh + line_gap
+        return len(lines) * lh + (len(lines) - 1) * line_gap
 
     def draw_text(self, x: int, y: int, text: str, scale: int = 2, color: int = 1):
         cur_x = x
@@ -528,3 +735,111 @@ class ThermalBitmap:
 
     def to_escpos(self) -> bytes:
         return image_to_escpos_raster(bytes(self.buffer), self.width, self.height)
+
+
+def render_master_header_raster(
+    title: str,
+    subtitle: Optional[str] = "Enjoy Your Puzzles",
+    mix_subtitle: Optional[str] = None,
+) -> bytes:
+    ref = ThermalBitmap(THERMAL_WIDTH_DOTS, 8)
+    cur_y = 20 + ref.get_font_line_height(FONT_DISPLAY_32) + 4
+    if subtitle:
+        cur_y += ref.get_font_line_height(FONT_BODY_20) + 6
+    cur_y += 13
+    if mix_subtitle:
+        cur_y += ref.get_font_line_height(FONT_CAPTION_16) + 8
+    total_h = (cur_y + 7) & ~7
+
+    bmp = ThermalBitmap(THERMAL_WIDTH_DOTS, total_h)
+    bmp.draw_hline(20, 4, 536, thickness=2, color=1)
+    bmp.draw_hline(20, 8, 536, thickness=1, color=1)
+    cy = 20
+    if title:
+        bmp.draw_centered_text_font(cy, title, FONT_DISPLAY_32, color=1)
+    cy += bmp.get_font_line_height(FONT_DISPLAY_32) + 4
+    if subtitle:
+        bmp.draw_centered_text_font(cy, subtitle, FONT_BODY_20, color=1)
+        cy += bmp.get_font_line_height(FONT_BODY_20) + 6
+    bmp.draw_hline(20, cy, 536, thickness=1, color=1)
+    bmp.draw_hline(20, cy + 3, 536, thickness=2, color=1)
+    cy += 13
+    if mix_subtitle:
+        bmp.draw_centered_text_font(cy, mix_subtitle, FONT_CAPTION_16, color=1)
+    return bmp.to_escpos()
+
+
+def render_puzzle_header_raster(
+    title: str,
+    difficulty: Optional[str] = None,
+    instruction: str = "",
+) -> bytes:
+    ref = ThermalBitmap(THERMAL_WIDTH_DOTS, 8)
+    cur_y = 36
+    if difficulty:
+        cur_y += ref.get_font_line_height(FONT_CAPTION_16) + 4
+    if instruction:
+        cur_y += 2 + ref.measure_wrapped_height_font(instruction, 536, FONT_BODY_20, line_gap=4) + 10
+    total_h = (cur_y + 7) & ~7
+
+    bmp = ThermalBitmap(THERMAL_WIDTH_DOTS, total_h)
+    if title:
+        tw = bmp.measure_text_font(title, FONT_SUBHEAD_22)
+        tx = (THERMAL_WIDTH_DOTS - tw) // 2
+        rule_y = 4 + bmp.get_font_line_height(FONT_SUBHEAD_22) // 2
+        if tx - 14 > 20:
+            bmp.draw_hline(20, rule_y, tx - 14 - 20, thickness=1, color=1)
+        if tx + tw + 14 < 556:
+            bmp.draw_hline(tx + tw + 14, rule_y, 556 - (tx + tw + 14), thickness=1, color=1)
+        bmp.draw_text_font(tx, 4, title, FONT_SUBHEAD_22, color=1)
+    cy = 36
+    if difficulty:
+        bmp.draw_centered_text_font(cy, f"DIFFICULTY: {difficulty}", FONT_CAPTION_16, color=1)
+        cy += bmp.get_font_line_height(FONT_CAPTION_16) + 4
+    if instruction:
+        cy += 2
+        bmp.draw_wrapped_text_font(20, cy, 536, instruction, FONT_BODY_20, align="center", line_gap=4, color=1)
+    return bmp.to_escpos()
+
+
+def render_divider_raster() -> bytes:
+    bmp = ThermalBitmap(THERMAL_WIDTH_DOTS, 24)
+    bmp.draw_hline(20, 11, 536, thickness=1, color=1)
+    return bmp.to_escpos()
+
+
+def render_master_footer_raster(
+    closing_tagline: Optional[str] = "Enjoy your day!",
+    include_schedule_hint: bool = False,
+    leading_rule: bool = True,
+) -> bytes:
+    ref = ThermalBitmap(THERMAL_WIDTH_DOTS, 8)
+    line1 = "For more puzzles, toggle the power on the front of the printer."
+    line2 = "To change settings, toggle the power on the cable behind the printer."
+    cur_y = 4
+    if leading_rule:
+        cur_y += 18
+    if closing_tagline:
+        cur_y += ref.get_font_line_height(FONT_SUBHEAD_22) + 8
+    cur_y += ref.measure_wrapped_height_font(line1, 536, FONT_BODY_20, line_gap=4) + 10
+    cur_y += ref.measure_wrapped_height_font(line2, 536, FONT_BODY_20, line_gap=4) + 10
+    if include_schedule_hint:
+        cur_y += ref.get_font_line_height(FONT_BODY_20) + 6
+    cur_y += 12
+    total_h = (cur_y + 7) & ~7
+
+    bmp = ThermalBitmap(THERMAL_WIDTH_DOTS, total_h)
+    cy = 4
+    if leading_rule:
+        bmp.draw_hline(20, cy + 6, 536, thickness=1, color=1)
+        cy += 18
+    if closing_tagline:
+        bmp.draw_centered_text_font(cy, closing_tagline, FONT_SUBHEAD_22, color=1)
+        cy += bmp.get_font_line_height(FONT_SUBHEAD_22) + 8
+    cy += bmp.draw_wrapped_text_font(20, cy, 536, line1, FONT_BODY_20, align="center", line_gap=4, color=1) + 10
+    cy += bmp.draw_wrapped_text_font(20, cy, 536, line2, FONT_BODY_20, align="center", line_gap=4, color=1) + 10
+    if include_schedule_hint:
+        bmp.draw_centered_text_font(cy, "To schedule daily puzzles, go to settings.", FONT_BODY_20, color=1)
+        cy += bmp.get_font_line_height(FONT_BODY_20) + 6
+    bmp.draw_hline(20, cy + 2, 536, thickness=1, color=1)
+    return bmp.to_escpos()

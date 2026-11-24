@@ -1252,6 +1252,56 @@ int main(int argc, char** argv) {
         std::cout << "  }";
     }
 
+    // 30. RECEIPT CHROME (203 DPI Native Typography)
+    {
+        printer.lastBitmap.clear();
+        printer.printRasterHeader("PEN + PAPER PUZZLES", "Enjoy Your Puzzles", "DAILY 5-PUZZLE MIX");
+        printSep();
+        std::cout << "  {\n";
+        std::cout << "    \"puzzle\": \"chrome\",\n";
+        std::cout << "    \"kind\": \"master_header\",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
+        std::cout << "  }";
+    }
+    {
+        printer.lastBitmap.clear();
+        printer.printRasterPuzzleHeader("SUDOKU", "MEDIUM", "Fill every row, column, and 3x3 box with digits 1-9 without repeating.");
+        printSep();
+        std::cout << "  {\n";
+        std::cout << "    \"puzzle\": \"chrome\",\n";
+        std::cout << "    \"kind\": \"puzzle_header\",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
+        std::cout << "  }";
+    }
+    {
+        printer.lastBitmap.clear();
+        printer.printRasterDivider();
+        printSep();
+        std::cout << "  {\n";
+        std::cout << "    \"puzzle\": \"chrome\",\n";
+        std::cout << "    \"kind\": \"divider\",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
+        std::cout << "  }";
+    }
+    {
+        printer.lastBitmap.clear();
+        printer.printRasterMasterFooter("Enjoy your day!", false, true);
+        printSep();
+        std::cout << "  {\n";
+        std::cout << "    \"puzzle\": \"chrome\",\n";
+        std::cout << "    \"kind\": \"master_footer\",\n";
+        std::cout << "    \"width\": " << printer.lastWidth << ",\n";
+        std::cout << "    \"height\": " << printer.lastHeight << ",\n";
+        std::cout << "    \"raster_hex\": \"" << toHex(printer.lastBitmap) << "\"\n";
+        std::cout << "  }";
+    }
+
     std::cout << "\n]\n";
     return 0;
 }

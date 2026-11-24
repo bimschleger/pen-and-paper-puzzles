@@ -182,16 +182,39 @@ def test_hybrid_receipt_format(bundle):
     # 2. Ends with partial cut command
     assert hybrid_bytes.endswith(CMD_CUT_PARTIAL), "Hybrid receipt must end with partial cut command"
 
-    # 3. Contains embedded GS v 0 raster commands
+    # 3. Contains embedded GS v 0 raster commands (master header + puzzle headers + dividers + boards + footer)
     gs_v_0_signature = bytes([0x1D, 0x76, 0x30, 0x00, 72, 0])
     count = hybrid_bytes.count(gs_v_0_signature)
-    assert count >= 8, f"Expected multiple embedded GS v 0 raster commands in hybrid receipt, found {count}"
+    assert count >= 60, f"Expected >= 60 embedded GS v 0 raster commands (chrome + boards) in hybrid receipt, found {count}"
 
-    # 4. Pre-cut feed check
+    # 4. Walk every embedded GS v 0 block and verify 576-dot width, 8-dot alignment, and <= 35% duty cycle
+    pos = 0
+    verified_blocks = 0
+    while True:
+        idx = hybrid_bytes.find(gs_v_0_signature, pos)
+        if idx == -1:
+            break
+        h_dots = hybrid_bytes[idx + 6] | (hybrid_bytes[idx + 7] << 8)
+        assert h_dots > 0 and h_dots % 8 == 0, f"GS v 0 block #{verified_blocks} height {h_dots} not aligned to 8"
+        block_end = idx + 8 + THERMAL_WIDTH_BYTES * h_dots
+        block = hybrid_bytes[idx:block_end]
+        duty = calculate_duty_cycle(block)
+        assert duty.get("is_safe"), f"GS v 0 block #{verified_blocks} exceeded safe thermal duty cycle: {duty}"
+        verified_blocks += 1
+        pos = block_end
+    assert verified_blocks == count, f"Verified {verified_blocks} GS v 0 blocks != count {count}"
+
+    # 5. Pre-cut feed check
     pre_cut_slice = hybrid_bytes[-(len(CMD_CUT_PARTIAL) + 4) : -len(CMD_CUT_PARTIAL)]
     assert pre_cut_slice == LF * 4, "Hybrid receipt must include 4 line feeds before cutter offset"
 
-    print(f"  -> Passed! Hybrid receipt verified ({len(hybrid_bytes)} total bytes with {count} 576-dot graphics).\n")
+    # 6. Verify Solution Key remains classic Font A text even in hybrid mode
+    bundle_sol = dict(bundle)
+    bundle_sol["show_solutions"] = True
+    hybrid_sol_bytes = build_hybrid_daily_receipt_bytes(bundle_sol)
+    assert b"[ SOLUTION KEY ]" in hybrid_sol_bytes, "Solution Key must remain classic Font A text in hybrid mode"
+
+    print(f"  -> Passed! Hybrid receipt verified ({len(hybrid_bytes)} total bytes, {verified_blocks} safe 576-dot graphics + Font A Solution Key).\n")
 
 
 def test_solution_key_spec(bundle):

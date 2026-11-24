@@ -1,4 +1,5 @@
 #include "EscPosPrinter.h"
+#include "ThermalCanvas.h"
 
 EscPosPrinter::EscPosPrinter() : 
     _mode(ACTIVE_PRINTER_MODE), 
@@ -404,6 +405,51 @@ void EscPosPrinter::printMasterFooter(const char* closingTagline, bool includeSc
         println("To schedule daily puzzles, go to settings.");
     }
     printHorizontalLine('-');
+}
+
+void EscPosPrinter::printRasterHeader(const char* title, const char* subtitle, const char* mixSubtitle) {
+    ThermalCanvas canvas;
+    uint16_t h = ThermalCanvas::measureMasterHeaderHeight(canvas, title, subtitle, mixSubtitle);
+    canvas.renderBanded(*this, h, [&](ThermalCanvas& c) {
+        c.drawMasterHeader(title, subtitle, mixSubtitle);
+    });
+}
+
+void EscPosPrinter::printRasterPuzzleHeader(const char* title, const char* diffStr,
+                                            const char* instr1, const char* instr2) {
+    char combined[192];
+    const char* instr = nullptr;
+    if (instr1 && instr1[0] != '\0') {
+        if (instr2 && instr2[0] != '\0') {
+            snprintf(combined, sizeof(combined), "%s %s", instr1, instr2);
+            instr = combined;
+        } else {
+            instr = instr1;
+        }
+    } else if (instr2 && instr2[0] != '\0') {
+        instr = instr2;
+    }
+    ThermalCanvas canvas;
+    uint16_t h = ThermalCanvas::measurePuzzleHeaderHeight(canvas, title, diffStr, instr);
+    canvas.renderBanded(*this, h, [&](ThermalCanvas& c) {
+        c.drawPuzzleHeader(title, diffStr, instr);
+    });
+}
+
+void EscPosPrinter::printRasterDivider() {
+    ThermalCanvas canvas;
+    uint16_t h = ThermalCanvas::getDividerHeight();
+    canvas.renderBanded(*this, h, [&](ThermalCanvas& c) {
+        c.drawDivider();
+    });
+}
+
+void EscPosPrinter::printRasterMasterFooter(const char* closingTagline, bool includeScheduleHint, bool leadingRule) {
+    ThermalCanvas canvas;
+    uint16_t h = ThermalCanvas::measureMasterFooterHeight(canvas, closingTagline, includeScheduleHint, leadingRule);
+    canvas.renderBanded(*this, h, [&](ThermalCanvas& c) {
+        c.drawMasterFooter(closingTagline, includeScheduleHint, leadingRule);
+    });
 }
 
 void EscPosPrinter::printKeyValue(const String& key, const String& value, int totalCols) {

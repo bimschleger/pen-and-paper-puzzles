@@ -97,6 +97,7 @@ def test_arduino_sketch_sync():
         "config.h",
         "EscPosPrinter.h",
         "EscPosPrinter.cpp",
+        "ThermalFonts.h",
         "OfflinePuzzleComposer.h",
         "OfflinePuzzleComposer.cpp",
         "PenAndPaperPuzzles.ino",
@@ -306,6 +307,7 @@ def test_rule_19_ram_and_rodata_budgets():
 #include "Arduino.h"
 #include "printer/EscPosPrinter.h"
 #include "printer/ThermalCanvas.h"
+#include "printer/ThermalFonts.h"
 #include "generators/StarsDataset.h"
 #include "generators/KillerDataset.h"
 #include "generators/TowersDataset.h"
@@ -318,7 +320,14 @@ int main() {
     size_t killer = sizeof(KILLER_EASY_DATASET) + sizeof(KILLER_MEDIUM_DATASET) + sizeof(KILLER_HARD_DATASET) + sizeof(KILLER_EXTREME_DATASET);
     size_t towers = sizeof(TOWERS_EASY_DATASET) + sizeof(TOWERS_MEDIUM_DATASET) + sizeof(TOWERS_HARD_DATASET) + sizeof(TOWERS_EXTREME_DATASET);
     size_t ineq = sizeof(INEQUALITY_EASY_DATASET) + sizeof(INEQUALITY_MEDIUM_DATASET) + sizeof(INEQUALITY_HARD_DATASET) + sizeof(INEQUALITY_EXTREME_DATASET);
-    std::cout << (ThermalCanvas::BAND_HEIGHT * 72) << " " << (stars + killer + towers + ineq) << "\n";
+    size_t fonts = sizeof(THERMAL_GRID_ASCII_MAP) + sizeof(THERMAL_FONT_DEFS)
+        + sizeof(TF_CAPTION_16_BITMAP) + sizeof(TF_CAPTION_16_GLYPHS)
+        + sizeof(TF_BODY_20_BITMAP) + sizeof(TF_BODY_20_GLYPHS)
+        + sizeof(TF_SUBHEAD_22_BITMAP) + sizeof(TF_SUBHEAD_22_GLYPHS)
+        + sizeof(TF_DISPLAY_32_BITMAP) + sizeof(TF_DISPLAY_32_GLYPHS)
+        + sizeof(TF_GRID_12X14_BITMAP) + sizeof(TF_GRID_12X14_GLYPHS)
+        + sizeof(TF_GRID_18X21_BITMAP) + sizeof(TF_GRID_18X21_GLYPHS);
+    std::cout << (ThermalCanvas::BAND_HEIGHT * 72) << " " << (stars + killer + towers + ineq) << " " << fonts << "\n";
     return 0;
 }
 """
@@ -341,19 +350,20 @@ int main() {
             assert build.returncode == 0, f"Budget probe compilation ({label}) failed:\n{build.stderr}"
             run = subprocess.run([exe], cwd=ROOT_DIR, capture_output=True, text=True)
             assert run.returncode == 0, f"Budget probe execution ({label}) failed:\n{run.stderr}"
-            band_bytes, rodata_bytes = (int(tok) for tok in run.stdout.strip().split())
-            results[label] = (band_bytes, rodata_bytes)
+            band_bytes, rodata_bytes, fonts_rodata = (int(tok) for tok in run.stdout.strip().split())
+            results[label] = (band_bytes, rodata_bytes, fonts_rodata)
 
-    band_bytes, prod_rodata = results["prod"]
-    _, host_rodata = results["host"]
+    band_bytes, prod_rodata, fonts_rodata = results["prod"]
+    _, host_rodata, _ = results["host"]
     stripped_savings = host_rodata - prod_rodata
 
     assert band_bytes <= 18432, f"ThermalCanvas band buffer {band_bytes} B exceeds 18,432 B budget (Rule 19)"
     assert prod_rodata <= 38000, f"Production curated .rodata {prod_rodata} B exceeds 38,000 B budget (Rule 19)"
+    assert fonts_rodata <= 16000, f"ThermalFonts.h .rodata {fonts_rodata} B exceeds 16,000 B budget (Rule 19)"
     assert stripped_savings >= 15000, (
         f"Expected #ifdef HOST_TEST solution stripping to save >= 15,000 B, got {stripped_savings} B (prod={prod_rodata}, host={host_rodata})"
     )
-    print(f"  -> Passed! Band RAM={band_bytes:,} B (<= 18,432 B), Prod .rodata={prod_rodata:,} B (saves {stripped_savings:,} B vs HOST_TEST).")
+    print(f"  -> Passed! Band RAM={band_bytes:,} B (<= 18,432 B), Prod .rodata={prod_rodata:,} B (saves {stripped_savings:,} B vs HOST_TEST), ThermalFonts={fonts_rodata:,} B (<= 16,000 B).")
 
 
 def run_firmware_tests(strict: bool = True):

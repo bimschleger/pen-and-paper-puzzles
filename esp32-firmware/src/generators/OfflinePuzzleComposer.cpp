@@ -376,18 +376,23 @@ bool OfflinePuzzleComposer::generateAndPrintReceipt(EscPosPrinter& printer, cons
 
     // 4. Receipt Header
     String headerSubtitle = (subtitle.length() > 0) ? subtitle : "Enjoy Your Puzzles";
-    printer.printHeader("PEN + PAPER PUZZLES", headerSubtitle);
-    printer.setAlign(ALIGN_CENTER);
     char mixHeader[32];
     snprintf(mixHeader, sizeof(mixHeader), "DAILY %d-PUZZLE MIX", (int)count);
-    printer.println(mixHeader);
-    printer.println("");
 
 #if (OFFLINE_PRINT_STYLE == STYLE_HYBRID)
     bool useRaster = true;
 #else
     bool useRaster = false;
 #endif
+
+    if (useRaster) {
+        printer.printRasterHeader("PEN + PAPER PUZZLES", headerSubtitle.c_str(), mixHeader);
+    } else {
+        printer.printHeader("PEN + PAPER PUZZLES", headerSubtitle);
+        printer.setAlign(ALIGN_CENTER);
+        printer.println(mixHeader);
+        printer.println("");
+    }
 
     // Fisher-Yates shuffle on available enabled puzzles
     mp_shuffle(activePuzzles, totalAvailable);
@@ -398,11 +403,19 @@ bool OfflinePuzzleComposer::generateAndPrintReceipt(EscPosPrinter& printer, cons
             slotGrade = getGradeForSlot(i, count);
         }
         printSinglePuzzle(printer, activePuzzles[i], useRaster, slotGrade);
-        printer.printHorizontalLine('-');
+        if (useRaster) {
+            printer.printRasterDivider();
+        } else {
+            printer.printHorizontalLine('-');
+        }
     }
 
     // Footer
-    printer.printMasterFooter("Enjoy your day!", false, false);
+    if (useRaster) {
+        printer.printRasterMasterFooter("Enjoy your day!", false, false);
+    } else {
+        printer.printMasterFooter("Enjoy your day!", false, false);
+    }
 
     printer.feed(4);
     printer.cut(false);
@@ -482,84 +495,85 @@ bool OfflinePuzzleComposer::printGameGuide(EscPosPrinter& printer, uint8_t gameI
     printer.init();
 
     // Master Header
-    printer.printHeader("PEN + PAPER PUZZLES", "GAME GUIDE & QUICK REFERENCE");
-    printer.println("");
+    printer.printRasterHeader("PEN + PAPER PUZZLES", "GAME GUIDE & QUICK REFERENCE");
 
-    // Game Title
-    printer.setAlign(ALIGN_CENTER);
-    printer.setBold(true);
-    printer.print("--- ");
-    printer.print(def->title);
-    printer.println(" ---");
-    printer.setBold(false);
-    printer.setAlign(ALIGN_LEFT);
-    printer.println("");
+    // Game Title + Instruction
+    printer.printRasterPuzzleHeader(def->title, nullptr, def->instruction);
 
-    // Instruction
-    printWrapped(printer, def->instruction, 44);
-    printer.println("");
-
-    // Objective
-    printer.setBold(true);
-    printer.println("OBJECTIVE:");
-    printer.setBold(false);
-    printWrapped(printer, def->objective, 44);
-    printer.println("");
-
-    // Rules
-    printer.setBold(true);
-    printer.println("RULES OF PLAY:");
-    printer.setBold(false);
-    for (uint8_t i = 0; i < def->ruleCount; i++) {
-        printer.print(" * ");
-        printWrapped(printer, def->rules[i], 41);
+    // Objective & Rules of Play (typeset 203 DPI)
+    {
+        ThermalCanvas tc;
+        uint16_t h = 4 + tc.getFontLineHeight(FONT_CAPTION_16) + 4 +
+                     tc.measureWrappedHeightFont(def->objective, 536, FONT_BODY_20, 4) + 14 +
+                     tc.getFontLineHeight(FONT_CAPTION_16) + 6;
+        for (uint8_t i = 0; i < def->ruleCount; i++) {
+            h += tc.measureWrappedHeightFont(def->rules[i], 516, FONT_BODY_20, 4) + 6;
+        }
+        h = (uint16_t)((h + 7) & ~7);
+        tc.renderBanded(printer, h, [&](ThermalCanvas& c) {
+            int16_t curY = 4;
+            c.drawTextFont(20, curY, "OBJECTIVE", FONT_CAPTION_16);
+            curY += c.getFontLineHeight(FONT_CAPTION_16) + 4;
+            curY += c.drawWrappedTextFont(20, curY, 536, def->objective, FONT_BODY_20, 0, 4) + 14;
+            c.drawTextFont(20, curY, "RULES OF PLAY", FONT_CAPTION_16);
+            curY += c.getFontLineHeight(FONT_CAPTION_16) + 6;
+            for (uint8_t i = 0; i < def->ruleCount; i++) {
+                c.fillCircle(26, curY + 12, 3, 1);
+                curY += c.drawWrappedTextFont(40, curY, 516, def->rules[i], FONT_BODY_20, 0, 4) + 6;
+            }
+        });
     }
-    printer.println("");
 
     // Visual Move Diagram (Thermal Canvas - Banded Streaming)
     ThermalCanvas canvas;
     canvas.renderBanded(printer, 216, [&](ThermalCanvas& c) {
         renderGameGuideRaster(c, gameId);
     });
-    printer.println("");
 
-    // Move captions
-    printer.setBold(true);
-    printer.print("[VALID MOVE]: ");
-    printer.setBold(false);
-    printWrapped(printer, def->validCaption, 44);
-    printer.println("");
-
-    printer.setBold(true);
-    printer.print("[INVALID MOVE]: ");
-    printer.setBold(false);
-    printWrapped(printer, def->invalidCaption, 44);
-    printer.println("");
-
-    // Where to Start
-    printer.setBold(true);
-    printer.println("WHERE TO START:");
-    printer.setBold(false);
-    for (uint8_t i = 0; i < def->anchorCount; i++) {
-        printer.print(" * ");
-        printWrapped(printer, def->openingAnchors[i], 41);
+    // Move captions, Where to Start, and Common Questions (typeset 203 DPI)
+    {
+        ThermalCanvas tc;
+        uint16_t h = 4;
+        h += tc.getFontLineHeight(FONT_CAPTION_16) + 4 + tc.measureWrappedHeightFont(def->validCaption, 536, FONT_BODY_20, 4) + 10;
+        h += tc.getFontLineHeight(FONT_CAPTION_16) + 4 + tc.measureWrappedHeightFont(def->invalidCaption, 536, FONT_BODY_20, 4) + 14;
+        h += tc.getFontLineHeight(FONT_CAPTION_16) + 6;
+        for (uint8_t i = 0; i < def->anchorCount; i++) {
+            h += tc.measureWrappedHeightFont(def->openingAnchors[i], 516, FONT_BODY_20, 4) + 6;
+        }
+        h += 8 + tc.getFontLineHeight(FONT_CAPTION_16) + 6;
+        for (uint8_t i = 0; i < def->faqCount; i++) {
+            h += tc.measureWrappedHeightFont(def->faq[i].question, 510, FONT_SUBHEAD_22, 2) + 4;
+            h += tc.measureWrappedHeightFont(def->faq[i].answer, 510, FONT_BODY_20, 4) + 10;
+        }
+        h = (uint16_t)((h + 7) & ~7);
+        tc.renderBanded(printer, h, [&](ThermalCanvas& c) {
+            int16_t curY = 4;
+            c.drawTextFont(20, curY, "VALID MOVE", FONT_CAPTION_16);
+            curY += c.getFontLineHeight(FONT_CAPTION_16) + 4;
+            curY += c.drawWrappedTextFont(20, curY, 536, def->validCaption, FONT_BODY_20, 0, 4) + 10;
+            c.drawTextFont(20, curY, "INVALID MOVE", FONT_CAPTION_16);
+            curY += c.getFontLineHeight(FONT_CAPTION_16) + 4;
+            curY += c.drawWrappedTextFont(20, curY, 536, def->invalidCaption, FONT_BODY_20, 0, 4) + 14;
+            c.drawTextFont(20, curY, "WHERE TO START", FONT_CAPTION_16);
+            curY += c.getFontLineHeight(FONT_CAPTION_16) + 6;
+            for (uint8_t i = 0; i < def->anchorCount; i++) {
+                c.fillCircle(26, curY + 12, 3, 1);
+                curY += c.drawWrappedTextFont(40, curY, 516, def->openingAnchors[i], FONT_BODY_20, 0, 4) + 6;
+            }
+            curY += 8;
+            c.drawTextFont(20, curY, "COMMON QUESTIONS", FONT_CAPTION_16);
+            curY += c.getFontLineHeight(FONT_CAPTION_16) + 6;
+            for (uint8_t i = 0; i < def->faqCount; i++) {
+                c.drawTextFont(20, curY + 2, "Q:", FONT_CAPTION_16);
+                curY += c.drawWrappedTextFont(46, curY, 510, def->faq[i].question, FONT_SUBHEAD_22, 0, 2) + 4;
+                c.drawTextFont(20, curY + 2, "A:", FONT_CAPTION_16);
+                curY += c.drawWrappedTextFont(46, curY, 510, def->faq[i].answer, FONT_BODY_20, 0, 4) + 10;
+            }
+        });
     }
-    printer.println("");
-
-    // FAQ
-    printer.setBold(true);
-    printer.println("COMMON QUESTIONS:");
-    printer.setBold(false);
-    for (uint8_t i = 0; i < def->faqCount; i++) {
-        printer.print(" Q: ");
-        printWrapped(printer, def->faq[i].question, 40);
-        printer.print(" A: ");
-        printWrapped(printer, def->faq[i].answer, 40);
-    }
-    printer.println("");
 
     // Master Footer
-    printer.printMasterFooter("Enjoy your day!", false, true);
+    printer.printRasterMasterFooter("Enjoy your day!", false, true);
 
     printer.feed(4);
     printer.cut(false);
@@ -589,20 +603,26 @@ bool OfflinePuzzleComposer::printGameSampler(EscPosPrinter& printer, uint8_t gam
 
     printer.init();
 
-    // Minimal header: --- [TITLE] TEST PRINT ---
-    printer.setAlign(ALIGN_CENTER);
-    printer.setBold(true);
-    printer.print("--- ");
-    printer.print(def->title);
-    printer.println(" TEST PRINT ---");
-    printer.setBold(false);
-    printer.println("");
-
 #if (OFFLINE_PRINT_STYLE == STYLE_HYBRID)
     bool useRaster = true;
 #else
     bool useRaster = false;
 #endif
+
+    // Minimal header: --- [TITLE] TEST PRINT ---
+    if (useRaster) {
+        char testTitle[48];
+        snprintf(testTitle, sizeof(testTitle), "%s TEST PRINT", def->title);
+        printer.printRasterPuzzleHeader(testTitle, nullptr, nullptr);
+    } else {
+        printer.setAlign(ALIGN_CENTER);
+        printer.setBold(true);
+        printer.print("--- ");
+        printer.print(def->title);
+        printer.println(" TEST PRINT ---");
+        printer.setBold(false);
+        printer.println("");
+    }
 
     OfflinePuzzleType type = (OfflinePuzzleType)gameId;
 
@@ -612,11 +632,19 @@ bool OfflinePuzzleComposer::printGameSampler(EscPosPrinter& printer, uint8_t gam
 
     for (uint8_t i = 0; i < tierCount; i++) {
         printSinglePuzzle(printer, type, useRaster, tiers[i]);
-        printer.printHorizontalLine('-');
+        if (useRaster) {
+            printer.printRasterDivider();
+        } else {
+            printer.printHorizontalLine('-');
+        }
     }
 
     // Standard Daily Footer
-    printer.printMasterFooter("Enjoy your day!", false, false);
+    if (useRaster) {
+        printer.printRasterMasterFooter("Enjoy your day!", false, false);
+    } else {
+        printer.printMasterFooter("Enjoy your day!", false, false);
+    }
 
     printer.feed(4);
     printer.cut(false);
