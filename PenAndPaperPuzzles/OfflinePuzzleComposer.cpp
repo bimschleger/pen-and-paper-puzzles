@@ -1,6 +1,15 @@
 #include "OfflinePuzzleComposer.h"
 #include "config.h"
 #include "GeneratorUtils.h"
+
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
+#define MP_PRINT_BOARD(useRaster, rasterCall, asciiCall) \
+    do { if (!(useRaster) || !(rasterCall)) { asciiCall; } } while (0)
+#else
+#define MP_PRINT_BOARD(useRaster, rasterCall, asciiCall) \
+    do { (void)(useRaster); (rasterCall); } while (0)
+#endif
+
 #include "EscPosPrinter.h"
 #include "ThermalCanvas.h"
 #include "GameRulesDataset.h"
@@ -58,9 +67,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             sudoku.generate(diff);
             printPuzzleHeader(printer, "SUDOKU", diffStr, 
                               "Fill every row, column, and 3x3 box with digits 1-9 without repeating.");
-            if (!useRaster || !sudoku.printRasterToReceipt(printer, diff)) {
-                sudoku.printToReceipt(printer, diff);
-            }
+            MP_PRINT_BOARD(useRaster, sudoku.printRasterToReceipt(printer, diff), sudoku.printToReceipt(printer, diff));
             break;
         }
         case PUZZLE_WORDSEARCH: {
@@ -71,9 +78,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             char wsInstr[64];
             snprintf(wsInstr, sizeof(wsInstr), "Find all %d hidden words listed below.", (int)wordSearch.getWordCount());
             printPuzzleHeader(printer, "SEARCH", diffStr, wsInstr);
-            if (!useRaster || !wordSearch.printRasterToReceipt(printer)) {
-                wordSearch.printToReceipt(printer);
-            }
+            MP_PRINT_BOARD(useRaster, wordSearch.printRasterToReceipt(printer), wordSearch.printToReceipt(printer));
             break;
         }
         case PUZZLE_NONOGRAM: {
@@ -83,9 +88,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             nonogram.generate(diff);
             printPuzzleHeader(printer, "NONOGRAM", diffStr, 
                               "Shade blocks of cells matching each clue in order, separated by at least one empty cell.");
-            if (!useRaster || !nonogram.printRasterToReceipt(printer)) {
-                nonogram.printToReceipt(printer);
-            }
+            MP_PRINT_BOARD(useRaster, nonogram.printRasterToReceipt(printer), nonogram.printToReceipt(printer));
             break;
         }
         case PUZZLE_QUEENS: {
@@ -97,9 +100,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
                 ? "Place 2 stars in each row, column, and region" 
                 : "Place 1 star in each row, column, and region";
             printPuzzleHeader(printer, "STARS", diffStr, instr1, "with no stars touching, even diagonally.");
-            if (!useRaster || !queens.printRasterToReceipt(printer)) {
-                queens.printToReceipt(printer);
-            }
+            MP_PRINT_BOARD(useRaster, queens.printRasterToReceipt(printer), queens.printToReceipt(printer));
             break;
         }
         case PUZZLE_JUMBLE: {
@@ -109,9 +110,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             jumble.generate(diff);
             printPuzzleHeader(printer, "JUMBLE", diffStr,
                               "Unscramble each word, then use the circled letters to solve the riddle.");
-            if (!useRaster || !jumble.printRasterToReceipt(printer)) {
-                jumble.printToReceipt(printer);
-            }
+            MP_PRINT_BOARD(useRaster, jumble.printRasterToReceipt(printer), jumble.printToReceipt(printer));
             break;
         }
         case PUZZLE_BINARY: {
@@ -126,9 +125,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
                 ? "three 1s, with no more than two consecutive of each type."
                 : "four 1s, with no more than two consecutive of each type.";
             printPuzzleHeader(printer, "BINARY", diffStr, binInstr1, binInstr2);
-            if (!useRaster || !binary.printRasterToReceipt(printer, diff)) {
-                binary.printToReceipt(printer, diff);
-            }
+            MP_PRINT_BOARD(useRaster, binary.printRasterToReceipt(printer, diff), binary.printToReceipt(printer, diff));
             break;
         }
         case PUZZLE_MINES: {
@@ -139,9 +136,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             char instr[64];
             snprintf(instr, sizeof(instr), "Deduce all %d hidden mines using the adjacent numbered clues.", (int)mines.getTotalMines());
             printPuzzleHeader(printer, "MINES", diffStr, instr);
-            if (!useRaster || !mines.printRasterToReceipt(printer, diff)) {
-                mines.printToReceipt(printer, diff);
-            }
+            MP_PRINT_BOARD(useRaster, mines.printRasterToReceipt(printer, diff), mines.printToReceipt(printer, diff));
             break;
         }
         case PUZZLE_TENTS: {
@@ -152,9 +147,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             char tentsInstr[128];
             snprintf(tentsInstr, sizeof(tentsInstr), "Pitch %d tents beside trees; no tents may touch even diagonally, matching row/column counts.", (int)tents.getTreeCount());
             printPuzzleHeader(printer, "TENTS", diffStr, tentsInstr);
-            if (!useRaster || !tents.printRasterToReceipt(printer, diff)) {
-                tents.printToReceipt(printer, diff);
-            }
+            MP_PRINT_BOARD(useRaster, tents.printRasterToReceipt(printer, diff), tents.printToReceipt(printer, diff));
             break;
         }
         case PUZZLE_BRIDGES: {
@@ -164,9 +157,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             bridges.generate(diff);
             printPuzzleHeader(printer, "BRIDGES", diffStr, 
                               "Connect all islands into one network using 1 or 2 lines matching each island's number.");
-            if (!useRaster || !bridges.printRasterToReceipt(printer, diff)) {
-                bridges.printToReceipt(printer, diff);
-            }
+            MP_PRINT_BOARD(useRaster, bridges.printRasterToReceipt(printer, diff), bridges.printToReceipt(printer, diff));
             break;
         }
         case PUZZLE_TANGO: {
@@ -178,9 +169,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
                 ? "Fill each line with four 0s and four 1s without trios; = means same, x means opposite."
                 : "Fill each line with three 0s and three 1s without trios; = means same, x means opposite.";
             printPuzzleHeader(printer, "TANGO", diffStr, tangoInstr);
-            if (!useRaster || !tango.printRasterToReceipt(printer, diff)) {
-                tango.printToReceipt(printer, diff);
-            }
+            MP_PRINT_BOARD(useRaster, tango.printRasterToReceipt(printer, diff), tango.printToReceipt(printer, diff));
             break;
         }
         case PUZZLE_WHEEL: {
@@ -192,9 +181,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             snprintf(instr, sizeof(instr), "Find %d+ words using center letter %c (letters may repeat), including a 7-letter pangram.", 
                      (int)wheel.getWordCount(), wheel.getCenterLetter());
             printPuzzleHeader(printer, "WHEEL", diffStr, instr);
-            if (!useRaster || !wheel.printRasterToReceipt(printer)) {
-                wheel.printToReceipt(printer);
-            }
+            MP_PRINT_BOARD(useRaster, wheel.printRasterToReceipt(printer), wheel.printToReceipt(printer));
             break;
         }
         case PUZZLE_LIGHTS: {
@@ -205,9 +192,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             char lightsInstr[128];
             snprintf(lightsInstr, sizeof(lightsInstr), "Place %d bulbs to light corridors; none can face each other; numbers show bulbs sharing an edge.", (int)lights.getTotalBulbs());
             printPuzzleHeader(printer, "LIGHTS", diffStr, lightsInstr);
-            if (!useRaster || !lights.printRasterToReceipt(printer, diff)) {
-                lights.printToReceipt(printer, diff);
-            }
+            MP_PRINT_BOARD(useRaster, lights.printRasterToReceipt(printer, diff), lights.printToReceipt(printer, diff));
             break;
         }
         case PUZZLE_LOOP: {
@@ -217,9 +202,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             loop.generate(diff);
             printPuzzleHeader(printer, "LOOP", diffStr, 
                               "Draw a single continuous closed loop connecting dots so each number matches its edge count.");
-            if (!useRaster || !loop.printRasterToReceipt(printer, diff)) {
-                loop.printToReceipt(printer, diff);
-            }
+            MP_PRINT_BOARD(useRaster, loop.printRasterToReceipt(printer, diff), loop.printToReceipt(printer, diff));
             break;
         }
         case PUZZLE_KILLER: {
@@ -231,9 +214,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             char killerInstr[100];
             snprintf(killerInstr, sizeof(killerInstr), "Fill every row, column, and box with digits %s, matching cage sums without repeats.", rangeStr);
             printPuzzleHeader(printer, "KILLER", diffStr, killerInstr);
-            if (!useRaster || !killer.printRasterToReceipt(printer)) {
-                killer.printToReceipt(printer);
-            }
+            MP_PRINT_BOARD(useRaster, killer.printRasterToReceipt(printer), killer.printToReceipt(printer));
             break;
         }
         case PUZZLE_CRYPTOGRAM: {
@@ -246,9 +227,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             snprintf(cryptoInstr, sizeof(cryptoInstr), "Deduce the hidden phrase using the %s and substitution logic.",
                      (clueCnt == 1) ? "1 letter clue" : (clueCnt == 3 ? "3 letter clues" : "2 letter clues"));
             printPuzzleHeader(printer, "CRYPTOGRAM", diffStr, cryptoInstr);
-            if (!useRaster || !cryptogram.printRasterToReceipt(printer)) {
-                cryptogram.printToReceipt(printer);
-            }
+            MP_PRINT_BOARD(useRaster, cryptogram.printRasterToReceipt(printer), cryptogram.printToReceipt(printer));
             break;
         }
         case PUZZLE_LADDER: {
@@ -267,9 +246,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             snprintf(instr, sizeof(instr), "Deduce %s to link %s to %s, changing 1 letter each step.",
                      countPhrase, ladder.getStartWord(), ladder.getTargetWord());
             printPuzzleHeader(printer, "LADDER", diffStr, instr);
-            if (!useRaster || !ladder.printRasterToReceipt(printer)) {
-                ladder.printToReceipt(printer);
-            }
+            MP_PRINT_BOARD(useRaster, ladder.printRasterToReceipt(printer), ladder.printToReceipt(printer));
             break;
         }
         case PUZZLE_TOWERS: {
@@ -280,9 +257,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             char towersInstr[100];
             snprintf(towersInstr, sizeof(towersInstr), "Place heights 1-%d per line so exterior numbers match the count of visible taller buildings.", (int)towers.getSize());
             printPuzzleHeader(printer, "TOWERS", diffStr, towersInstr);
-            if (!useRaster || !towers.printRasterToReceipt(printer)) {
-                towers.printToReceipt(printer);
-            }
+            MP_PRINT_BOARD(useRaster, towers.printRasterToReceipt(printer), towers.printToReceipt(printer));
             break;
         }
         case PUZZLE_INEQUALITY: {
@@ -293,9 +268,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             char inequalityInstr[100];
             snprintf(inequalityInstr, sizeof(inequalityInstr), "Fill digits 1-%d in every line while satisfying all inequality signs between adjacent cells.", (int)inequality.getSize());
             printPuzzleHeader(printer, "INEQUALITY", diffStr, inequalityInstr);
-            if (!useRaster || !inequality.printRasterToReceipt(printer)) {
-                inequality.printToReceipt(printer);
-            }
+            MP_PRINT_BOARD(useRaster, inequality.printRasterToReceipt(printer), inequality.printToReceipt(printer));
             break;
         }
         case PUZZLE_MAZE: {
@@ -304,9 +277,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             MazeGen maze;
             maze.generate(diff);
             printPuzzleHeader(printer, "MAZE", diffStr, "Draw a path from the entrance to the exit without crossing any walls.");
-            if (!useRaster || !maze.printRasterToReceipt(printer, diff)) {
-                maze.printToReceipt(printer, diff);
-            }
+            MP_PRINT_BOARD(useRaster, maze.printRasterToReceipt(printer, diff), maze.printToReceipt(printer, diff));
             break;
         }
         case PUZZLE_SUDOKITO: {
@@ -316,9 +287,7 @@ void OfflinePuzzleComposer::printSinglePuzzle(EscPosPrinter& printer, OfflinePuz
             sudokito.generate(diff);
             printPuzzleHeader(printer, "SUDOKITO", diffStr, 
                               "Fill every row, column, and 2x3 box with digits 1-6 without repeating.");
-            if (!useRaster || !sudokito.printRasterToReceipt(printer, diff)) {
-                sudokito.printToReceipt(printer, diff);
-            }
+            MP_PRINT_BOARD(useRaster, sudokito.printRasterToReceipt(printer, diff), sudokito.printToReceipt(printer, diff));
             break;
         }
         default:
@@ -475,7 +444,12 @@ void OfflinePuzzleComposer::renderGameGuideRaster(ThermalCanvas& canvas, uint8_t
             case GOP_DHLINE: canvas.drawDashedHLine(cx + op.a, op.b, op.c, 4, 3, (uint8_t)op.d); break;
             case GOP_LINE:   canvas.drawLine(cx + op.a, op.b, cx + op.c, op.d, (uint8_t)op.e); break;
             case GOP_CIRC:   canvas.drawCircle(cx + op.a, op.b, op.c, (uint8_t)op.d); break;
-            case GOP_TEXT:   canvas.drawText(cx + op.a, op.b, op.text, (uint8_t)op.c); break;
+            case GOP_TEXT: {
+                char txtBuf[64];
+                mp_bpe_decode_pgm(GAME_RULES_STRINGS, op.textOff, txtBuf, sizeof(txtBuf));
+                canvas.drawText(cx + op.a, op.b, txtBuf, (uint8_t)op.c);
+                break;
+            }
         }
     }
 }
@@ -492,34 +466,46 @@ bool OfflinePuzzleComposer::printGameGuide(EscPosPrinter& printer, uint8_t gameI
         return false;
     }
 
+    GameRuleDef ruleCopy;
+    memcpy_P(&ruleCopy, def, sizeof(GameRuleDef));
+
+    char titleBuf[32];
+    char strBuf[384];
+    mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.titleOff, titleBuf, sizeof(titleBuf));
+
     printer.init();
 
     // Master Header
     printer.printRasterHeader("PEN + PAPER PUZZLES", "GAME GUIDE & QUICK REFERENCE");
 
     // Game Title + Instruction
-    printer.printRasterPuzzleHeader(def->title, nullptr, def->instruction);
+    mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.instructionOff, strBuf, sizeof(strBuf));
+    printer.printRasterPuzzleHeader(titleBuf, nullptr, strBuf);
 
     // Objective & Rules of Play (typeset 203 DPI)
     {
         ThermalCanvas tc;
+        mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.objectiveOff, strBuf, sizeof(strBuf));
         uint16_t h = 4 + tc.getFontLineHeight(FONT_CAPTION_16) + 4 +
-                     tc.measureWrappedHeightFont(def->objective, 536, FONT_BODY_20, 4) + 14 +
+                     tc.measureWrappedHeightFont(strBuf, 536, FONT_BODY_20, 4) + 14 +
                      tc.getFontLineHeight(FONT_CAPTION_16) + 6;
-        for (uint8_t i = 0; i < def->ruleCount; i++) {
-            h += tc.measureWrappedHeightFont(def->rules[i], 516, FONT_BODY_20, 4) + 6;
+        for (uint8_t i = 0; i < ruleCopy.ruleCount; i++) {
+            mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.rulesOff[i], strBuf, sizeof(strBuf));
+            h += tc.measureWrappedHeightFont(strBuf, 516, FONT_BODY_20, 4) + 6;
         }
         h = (uint16_t)((h + 7) & ~7);
         tc.renderBanded(printer, h, [&](ThermalCanvas& c) {
             int16_t curY = 4;
             c.drawTextFont(20, curY, "OBJECTIVE", FONT_CAPTION_16);
             curY += c.getFontLineHeight(FONT_CAPTION_16) + 4;
-            curY += c.drawWrappedTextFont(20, curY, 536, def->objective, FONT_BODY_20, 0, 4) + 14;
+            mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.objectiveOff, strBuf, sizeof(strBuf));
+            curY += c.drawWrappedTextFont(20, curY, 536, strBuf, FONT_BODY_20, 0, 4) + 14;
             c.drawTextFont(20, curY, "RULES OF PLAY", FONT_CAPTION_16);
             curY += c.getFontLineHeight(FONT_CAPTION_16) + 6;
-            for (uint8_t i = 0; i < def->ruleCount; i++) {
+            for (uint8_t i = 0; i < ruleCopy.ruleCount; i++) {
                 c.fillCircle(26, curY + 12, 3, 1);
-                curY += c.drawWrappedTextFont(40, curY, 516, def->rules[i], FONT_BODY_20, 0, 4) + 6;
+                mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.rulesOff[i], strBuf, sizeof(strBuf));
+                curY += c.drawWrappedTextFont(40, curY, 516, strBuf, FONT_BODY_20, 0, 4) + 6;
             }
         });
     }
@@ -534,40 +520,50 @@ bool OfflinePuzzleComposer::printGameGuide(EscPosPrinter& printer, uint8_t gameI
     {
         ThermalCanvas tc;
         uint16_t h = 4;
-        h += tc.getFontLineHeight(FONT_CAPTION_16) + 4 + tc.measureWrappedHeightFont(def->validCaption, 536, FONT_BODY_20, 4) + 10;
-        h += tc.getFontLineHeight(FONT_CAPTION_16) + 4 + tc.measureWrappedHeightFont(def->invalidCaption, 536, FONT_BODY_20, 4) + 14;
+        mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.validCaptionOff, strBuf, sizeof(strBuf));
+        h += tc.getFontLineHeight(FONT_CAPTION_16) + 4 + tc.measureWrappedHeightFont(strBuf, 536, FONT_BODY_20, 4) + 10;
+        mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.invalidCaptionOff, strBuf, sizeof(strBuf));
+        h += tc.getFontLineHeight(FONT_CAPTION_16) + 4 + tc.measureWrappedHeightFont(strBuf, 536, FONT_BODY_20, 4) + 14;
         h += tc.getFontLineHeight(FONT_CAPTION_16) + 6;
-        for (uint8_t i = 0; i < def->anchorCount; i++) {
-            h += tc.measureWrappedHeightFont(def->openingAnchors[i], 516, FONT_BODY_20, 4) + 6;
+        for (uint8_t i = 0; i < ruleCopy.anchorCount; i++) {
+            mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.openingAnchorsOff[i], strBuf, sizeof(strBuf));
+            h += tc.measureWrappedHeightFont(strBuf, 516, FONT_BODY_20, 4) + 6;
         }
         h += 8 + tc.getFontLineHeight(FONT_CAPTION_16) + 6;
-        for (uint8_t i = 0; i < def->faqCount; i++) {
-            h += tc.measureWrappedHeightFont(def->faq[i].question, 510, FONT_SUBHEAD_22, 2) + 4;
-            h += tc.measureWrappedHeightFont(def->faq[i].answer, 510, FONT_BODY_20, 4) + 10;
+        for (uint8_t i = 0; i < ruleCopy.faqCount; i++) {
+            mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.faq[i].questionOff, strBuf, sizeof(strBuf));
+            h += tc.measureWrappedHeightFont(strBuf, 510, FONT_SUBHEAD_22, 2) + 4;
+            mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.faq[i].answerOff, strBuf, sizeof(strBuf));
+            h += tc.measureWrappedHeightFont(strBuf, 510, FONT_BODY_20, 4) + 10;
         }
         h = (uint16_t)((h + 7) & ~7);
         tc.renderBanded(printer, h, [&](ThermalCanvas& c) {
             int16_t curY = 4;
             c.drawTextFont(20, curY, "VALID MOVE", FONT_CAPTION_16);
             curY += c.getFontLineHeight(FONT_CAPTION_16) + 4;
-            curY += c.drawWrappedTextFont(20, curY, 536, def->validCaption, FONT_BODY_20, 0, 4) + 10;
+            mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.validCaptionOff, strBuf, sizeof(strBuf));
+            curY += c.drawWrappedTextFont(20, curY, 536, strBuf, FONT_BODY_20, 0, 4) + 10;
             c.drawTextFont(20, curY, "INVALID MOVE", FONT_CAPTION_16);
             curY += c.getFontLineHeight(FONT_CAPTION_16) + 4;
-            curY += c.drawWrappedTextFont(20, curY, 536, def->invalidCaption, FONT_BODY_20, 0, 4) + 14;
+            mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.invalidCaptionOff, strBuf, sizeof(strBuf));
+            curY += c.drawWrappedTextFont(20, curY, 536, strBuf, FONT_BODY_20, 0, 4) + 14;
             c.drawTextFont(20, curY, "WHERE TO START", FONT_CAPTION_16);
             curY += c.getFontLineHeight(FONT_CAPTION_16) + 6;
-            for (uint8_t i = 0; i < def->anchorCount; i++) {
+            for (uint8_t i = 0; i < ruleCopy.anchorCount; i++) {
                 c.fillCircle(26, curY + 12, 3, 1);
-                curY += c.drawWrappedTextFont(40, curY, 516, def->openingAnchors[i], FONT_BODY_20, 0, 4) + 6;
+                mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.openingAnchorsOff[i], strBuf, sizeof(strBuf));
+                curY += c.drawWrappedTextFont(40, curY, 516, strBuf, FONT_BODY_20, 0, 4) + 6;
             }
             curY += 8;
             c.drawTextFont(20, curY, "COMMON QUESTIONS", FONT_CAPTION_16);
             curY += c.getFontLineHeight(FONT_CAPTION_16) + 6;
-            for (uint8_t i = 0; i < def->faqCount; i++) {
+            for (uint8_t i = 0; i < ruleCopy.faqCount; i++) {
                 c.drawTextFont(20, curY + 2, "Q:", FONT_CAPTION_16);
-                curY += c.drawWrappedTextFont(46, curY, 510, def->faq[i].question, FONT_SUBHEAD_22, 0, 2) + 4;
+                mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.faq[i].questionOff, strBuf, sizeof(strBuf));
+                curY += c.drawWrappedTextFont(46, curY, 510, strBuf, FONT_SUBHEAD_22, 0, 2) + 4;
                 c.drawTextFont(20, curY + 2, "A:", FONT_CAPTION_16);
-                curY += c.drawWrappedTextFont(46, curY, 510, def->faq[i].answer, FONT_BODY_20, 0, 4) + 10;
+                mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.faq[i].answerOff, strBuf, sizeof(strBuf));
+                curY += c.drawWrappedTextFont(46, curY, 510, strBuf, FONT_BODY_20, 0, 4) + 10;
             }
         });
     }
@@ -579,7 +575,7 @@ bool OfflinePuzzleComposer::printGameGuide(EscPosPrinter& printer, uint8_t gameI
     printer.cut(false);
     printer.disconnect();
 
-    Serial.printf("[COMPOSER] Printed Game Guide for %s (ID %d)!\n", def->title, gameId);
+    Serial.printf("[COMPOSER] Printed Game Guide for %s (ID %d)!\n", titleBuf, gameId);
     return true;
 }
 
@@ -601,6 +597,11 @@ bool OfflinePuzzleComposer::printGameSampler(EscPosPrinter& printer, uint8_t gam
         return false;
     }
 
+    GameRuleDef ruleCopy;
+    memcpy_P(&ruleCopy, def, sizeof(GameRuleDef));
+    char titleBuf[32];
+    mp_bpe_decode_pgm(GAME_RULES_STRINGS, ruleCopy.titleOff, titleBuf, sizeof(titleBuf));
+
     printer.init();
 
 #if (OFFLINE_PRINT_STYLE == STYLE_HYBRID)
@@ -612,13 +613,13 @@ bool OfflinePuzzleComposer::printGameSampler(EscPosPrinter& printer, uint8_t gam
     // Minimal header: --- [TITLE] TEST PRINT ---
     if (useRaster) {
         char testTitle[48];
-        snprintf(testTitle, sizeof(testTitle), "%s TEST PRINT", def->title);
+        snprintf(testTitle, sizeof(testTitle), "%s TEST PRINT", titleBuf);
         printer.printRasterPuzzleHeader(testTitle, nullptr, nullptr);
     } else {
         printer.setAlign(ALIGN_CENTER);
         printer.setBold(true);
         printer.print("--- ");
-        printer.print(def->title);
+        printer.print(titleBuf);
         printer.println(" TEST PRINT ---");
         printer.setBold(false);
         printer.println("");
@@ -650,7 +651,7 @@ bool OfflinePuzzleComposer::printGameSampler(EscPosPrinter& printer, uint8_t gam
     printer.cut(false);
     printer.disconnect();
 
-    Serial.printf("[COMPOSER] Printed Game Sampler for %s (ID %d)!\n", def->title, gameId);
+    Serial.printf("[COMPOSER] Printed Game Sampler for %s (ID %d)!\n", titleBuf, gameId);
     return true;
 }
 

@@ -97,6 +97,7 @@ void QueensGen::generate(QueensDifficulty difficulty, uint32_t seed) {
     applyTransform(transform);
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void QueensGen::printToReceipt(EscPosPrinter& printer) {
     // Column numbers header
     String header = "     ";
@@ -123,6 +124,7 @@ void QueensGen::printToReceipt(EscPosPrinter& printer) {
     }
     printer.println("");
 }
+#endif
 
 bool QueensGen::printRasterToReceipt(EscPosPrinter& printer) {
     const int16_t padding = 24;

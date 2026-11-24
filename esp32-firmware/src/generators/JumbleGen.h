@@ -2,6 +2,7 @@
 #define JUMBLE_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 class EscPosPrinter;
 
 enum JumbleDifficulty {
@@ -22,7 +23,9 @@ public:
     JumbleGen();
 
     void generate(JumbleDifficulty difficulty = JUMBLE_MEDIUM);
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer);
 
     const char* getRiddle() const { return _riddle; }
@@ -34,8 +37,8 @@ private:
     static const uint8_t MAX_WORDS = 6;
     JumbleItem _words[MAX_WORDS];
     uint8_t _numWords;
-    const char* _riddle;
-    const char* _answer;
+    char _riddle[192];
+    char _answer[64];
     JumbleDifficulty _difficulty;
 
     String scrambleWord(const char* word);

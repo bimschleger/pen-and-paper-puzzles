@@ -2,6 +2,7 @@
 #define LADDER_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 class EscPosPrinter;
 
 enum LadderDifficulty {
@@ -15,7 +16,9 @@ public:
     LadderGen();
 
     void generate(LadderDifficulty difficulty = LADDER_MEDIUM);
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer);
 
     uint8_t getWordLen() const { return _wordLen; }

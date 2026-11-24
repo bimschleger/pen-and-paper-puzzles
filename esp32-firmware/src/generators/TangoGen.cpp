@@ -360,6 +360,7 @@ void TangoGen::generate(TangoDifficulty difficulty) {
     }
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void TangoGen::printToReceipt(EscPosPrinter& printer, TangoDifficulty /*diff*/) {
     String sepTop = "   +";
     for (uint8_t c = 0; c < _size; c++) sepTop += "---+";
@@ -401,6 +402,7 @@ void TangoGen::printToReceipt(EscPosPrinter& printer, TangoDifficulty /*diff*/) 
     }
     printer.println("");
 }
+#endif
 
 bool TangoGen::printRasterToReceipt(EscPosPrinter& printer, TangoDifficulty /*diff*/) {
     const int16_t padding = 24;

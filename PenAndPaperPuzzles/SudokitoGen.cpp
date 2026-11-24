@@ -270,6 +270,7 @@ void SudokitoGen::generate(SudokitoDifficulty difficulty) {
     }
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void SudokitoGen::printToReceipt(EscPosPrinter& printer, SudokitoDifficulty /*diff*/) {
     printer.println("      +-------+-------+");
     for (uint8_t r = 0; r < 6; r++) {
@@ -290,6 +291,7 @@ void SudokitoGen::printToReceipt(EscPosPrinter& printer, SudokitoDifficulty /*di
     printer.println("      +-------+-------+");
     printer.println("");
 }
+#endif
 
 bool SudokitoGen::printRasterToReceipt(EscPosPrinter& printer, SudokitoDifficulty /*diff*/) {
     const int16_t padding = 24;

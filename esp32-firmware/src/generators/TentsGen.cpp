@@ -115,6 +115,7 @@ void TentsGen::generate(TentsDifficulty diff) {
     }
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void TentsGen::printToReceipt(EscPosPrinter& printer, TentsDifficulty /*diff*/) {
     // Col clues header
     String colHeader = "       ";
@@ -143,6 +144,7 @@ void TentsGen::printToReceipt(EscPosPrinter& printer, TentsDifficulty /*diff*/) 
     printer.println(sep);
     printer.println("");
 }
+#endif
 
 bool TentsGen::printRasterToReceipt(EscPosPrinter& printer, TentsDifficulty /*diff*/) {
     const int16_t padding = 24;

@@ -2,6 +2,7 @@
 #define TENTS_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 class EscPosPrinter;
 
 enum TentsDifficulty {
@@ -15,7 +16,9 @@ public:
     TentsGen();
 
     void generate(TentsDifficulty difficulty = TENTS_MEDIUM);
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer, TentsDifficulty diff);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer, TentsDifficulty diff);
 
     uint8_t getSize() const { return _size; }

@@ -2,6 +2,7 @@
 #define LIGHTS_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 class EscPosPrinter;
 
 enum LightsDifficulty {
@@ -19,7 +20,9 @@ public:
     void generate(LightsDifficulty difficulty = LIGHTS_MEDIUM);
 
     // Prints formatted 80mm receipt section
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer, LightsDifficulty diff);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer, LightsDifficulty diff);
 
     int8_t getCell(uint8_t r, uint8_t c) const { return _puzzle[r][c]; }

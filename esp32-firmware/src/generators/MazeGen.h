@@ -2,6 +2,7 @@
 #define MAZE_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 
 class EscPosPrinter;
 
@@ -18,7 +19,9 @@ public:
 
     void generate(MazeDifficulty diff = MAZE_MEDIUM, uint32_t seed = 0);
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer, MazeDifficulty diff = MAZE_MEDIUM);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer, MazeDifficulty diff = MAZE_MEDIUM);
 
     uint8_t getSize() const { return _size; }

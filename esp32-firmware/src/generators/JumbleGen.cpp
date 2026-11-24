@@ -4,7 +4,10 @@
 #include "../printer/EscPosPrinter.h"
 #include "../printer/ThermalCanvas.h"
 
-JumbleGen::JumbleGen() : _numWords(0), _riddle(""), _answer(""), _difficulty(JUMBLE_MEDIUM) {}
+JumbleGen::JumbleGen() : _numWords(0), _difficulty(JUMBLE_MEDIUM) {
+    _riddle[0] = '\0';
+    _answer[0] = '\0';
+}
 
 String JumbleGen::scrambleWord(const char* word) {
     int len = strlen(word);
@@ -36,15 +39,19 @@ void JumbleGen::generate(JumbleDifficulty difficulty) {
         chosenIdx = 0;
     }
 
-    const CompactRiddleSet& chosen = JUMBLE_DATASET[chosenIdx];
+    CompactRiddleSet chosen;
+    memcpy_P(&chosen, &JUMBLE_DATASET[chosenIdx], sizeof(CompactRiddleSet));
 
     _numWords = chosen.numWords;
     if (_numWords > MAX_WORDS) _numWords = MAX_WORDS;
-    _riddle = chosen.riddle;
-    _answer = chosen.answer;
+    mp_bpe_decode_pgm(JUMBLE_STRINGS, chosen.riddleOff, _riddle, sizeof(_riddle));
+    mp_bpe_decode_pgm(JUMBLE_STRINGS, chosen.answerOff, _answer, sizeof(_answer));
+
+    char wordsBuf[96];
+    mp_bpe_decode_pgm(JUMBLE_STRINGS, chosen.wordsOff, wordsBuf, sizeof(wordsBuf));
 
     // Parse space-delimited words and unpack bitmask circles
-    const char* p = chosen.words;
+    const char* p = wordsBuf;
     for (uint8_t i = 0; i < _numWords; i++) {
         while (*p == ' ') p++;
         const char* start = p;
@@ -70,6 +77,7 @@ void JumbleGen::generate(JumbleDifficulty difficulty) {
     }
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void JumbleGen::printToReceipt(EscPosPrinter& printer) {
     for (uint8_t i = 0; i < _numWords; i++) {
         const JumbleItem& item = _words[i];
@@ -96,7 +104,7 @@ void JumbleGen::printToReceipt(EscPosPrinter& printer) {
     }
 
     String rClean = "";
-    if (_riddle) {
+    if (_riddle[0] != '\0') {
         size_t rLen = strlen(_riddle);
         for (size_t i = 0; i < rLen; ) {
             if ((uint8_t)_riddle[i] == 0xE2 && i + 2 < rLen && (uint8_t)_riddle[i+1] == 0x80 &&
@@ -135,6 +143,7 @@ void JumbleGen::printToReceipt(EscPosPrinter& printer) {
     printer.println(ansLine);
     printer.println("");
 }
+#endif
 
 struct JumbleLineSpan {
     uint8_t startIdx;
@@ -155,7 +164,7 @@ bool JumbleGen::printRasterToReceipt(EscPosPrinter& printer) {
 
     String ansWords[8];
     uint8_t numAnsWords = 0;
-    String ansStr = _answer ? _answer : "";
+    String ansStr = (_answer[0] != '\0') ? _answer : "";
     int16_t aStart = 0;
     for (int16_t i = 0; i <= (int16_t)ansStr.length(); i++) {
         if (i == (int16_t)ansStr.length() || ansStr[i] == ' ') {
@@ -221,7 +230,7 @@ bool JumbleGen::printRasterToReceipt(EscPosPrinter& printer) {
 
     // Format riddle into wrapped lines (~28 chars)
     String rClean = "";
-    if (_riddle) {
+    if (_riddle[0] != '\0') {
         size_t rLen = strlen(_riddle);
         for (size_t i = 0; i < rLen; ) {
             if ((uint8_t)_riddle[i] == 0xE2 && i + 2 < rLen && (uint8_t)_riddle[i+1] == 0x80 &&

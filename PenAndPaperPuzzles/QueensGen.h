@@ -2,6 +2,7 @@
 #define QUEENS_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 class EscPosPrinter;
 
 enum QueensDifficulty {
@@ -25,7 +26,9 @@ public:
     QueensGen();
 
     void generate(QueensDifficulty difficulty = QUEENS_MEDIUM, uint32_t seed = 0);
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer);
 
     uint8_t getSize() const { return _size; }

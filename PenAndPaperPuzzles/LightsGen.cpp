@@ -355,6 +355,7 @@ void LightsGen::generate(LightsDifficulty difficulty) {
     }
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void LightsGen::printToReceipt(EscPosPrinter& printer, LightsDifficulty diff) {
     (void)diff;
     char bulbsBuf[32];
@@ -393,6 +394,7 @@ void LightsGen::printToReceipt(EscPosPrinter& printer, LightsDifficulty diff) {
     }
     printer.println("");
 }
+#endif
 
 bool LightsGen::printRasterToReceipt(EscPosPrinter& printer, LightsDifficulty diff) {
     (void)diff;

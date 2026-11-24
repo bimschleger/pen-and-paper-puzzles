@@ -2,6 +2,7 @@
 #define LOOP_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 
 class EscPosPrinter;
 
@@ -17,7 +18,9 @@ public:
 
     void generate(LoopDifficulty difficulty = LOOP_MEDIUM);
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer, LoopDifficulty diff);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer, LoopDifficulty diff);
 
     uint8_t getSize() const { return _size; }

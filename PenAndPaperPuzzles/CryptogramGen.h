@@ -2,6 +2,7 @@
 #define CRYPTOGRAM_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 
 class EscPosPrinter;
 
@@ -21,7 +22,9 @@ public:
     CryptogramGen();
 
     void generate(CryptogramDifficulty difficulty = CRYPTO_MEDIUM);
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer);
 
     const char* getPhrase() const { return _phrase.c_str(); }

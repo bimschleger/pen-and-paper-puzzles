@@ -2,6 +2,7 @@
 #define NONOGRAM_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 class EscPosPrinter;
 
 enum NonogramDifficulty {
@@ -30,7 +31,9 @@ public:
     NonogramGen();
 
     void generate(NonogramDifficulty difficulty = NONO_EASY);
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer);
 
     uint8_t getSize() const { return _size; }

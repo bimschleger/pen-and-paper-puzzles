@@ -181,8 +181,18 @@ def test_compiled_artifacts():
     assert cpp_header.exists(), f"GameRulesDataset.h missing at {cpp_header}"
     cpp_text = cpp_header.read_text(encoding="utf-8")
     assert f"TOTAL_GAME_RULES = {len(APPROVED_TITLES)};" in cpp_text
+    assert "GAME_RULES_STRINGS" in cpp_text, "GameRulesDataset.h missing BPE GAME_RULES_STRINGS"
+
+    sys.path.insert(0, str(ROOT_DIR / "tools" / "datasets"))
+    import bpe_codec  # noqa: E402
+    import re as _re
+    m = _re.search(r"GAME_RULES_STRINGS\[\d+\] PROGMEM = \{(.*?)\};", cpp_text, _re.DOTALL)
+    assert m, "Could not parse GAME_RULES_STRINGS array in GameRulesDataset.h"
+    blob_bytes = bytes(int(h, 16) for h in _re.findall(r"0x[0-9A-Fa-f]{2}", m.group(1)))
+    vocab = bpe_codec.load_bpe_dict()
+    decoded_strings = {bpe_codec.decode_bpe(chunk, vocab) for chunk in blob_bytes.split(b"\x00") if chunk}
     for title in APPROVED_TITLES:
-        assert f'"{title}"' in cpp_text, f"Missing title {title} in GameRulesDataset.h"
+        assert title in decoded_strings, f"Missing title {title} in decoded GameRulesDataset.h"
 
     docs_md = ROOT_DIR / "docs" / "GAME_RULES_FAQ.md"
     assert docs_md.exists(), f"docs/GAME_RULES_FAQ.md missing at {docs_md}"

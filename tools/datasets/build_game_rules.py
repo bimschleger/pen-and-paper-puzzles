@@ -17,6 +17,8 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT_DIR / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import bpe_codec  # noqa: E402
 from build_portal_header import build_portal_header  # noqa: E402
 
 RULES_JSON_PATH = ROOT_DIR / "server" / "data" / "game_rules.json"
@@ -56,31 +58,85 @@ def compact_games_for_html(games: list) -> list:
     return compacted
 
 
-def _encode_guide_op(op_item: list) -> str:
+def _encode_guide_op(op_item: list, blob: bpe_codec.BpeBlobBuilder) -> str:
     panel = int(op_item[0])
     kind = op_item[1]
     enum_name = OP_CODE_ENUM[kind]
     if kind == "text":
         # [panel, "text", dx, y, scale, "STR"]
         a, b, c = int(op_item[2]), int(op_item[3]), int(op_item[4])
-        txt = escape_cpp_string(str(op_item[5]))
-        return f'{{ "{txt}", {a}, {b}, {c}, 0, 0, {panel}, {enum_name} }}'
+        txt_off = blob.add(bpe_codec.to_thermal_ascii(str(op_item[5])))
+        return f"{{ {txt_off}, {a}, {b}, {c}, 0, 0, {panel}, {enum_name} }}"
     ints = [int(v) for v in op_item[2:]]
     while len(ints) < 5:
         ints.append(0)
-    return f'{{ nullptr, {ints[0]}, {ints[1]}, {ints[2]}, {ints[3]}, {ints[4]}, {panel}, {enum_name} }}'
+    return f"{{ 0xFFFF, {ints[0]}, {ints[1]}, {ints[2]}, {ints[3]}, {ints[4]}, {panel}, {enum_name} }}"
 
 
 def generate_cpp_header(data: dict) -> None:
     print(f"Generating C++ GameRulesDataset.h -> {GAME_RULES_H_PATH}...")
     games = data.get("games", [])
+    vocab = bpe_codec.load_bpe_dict()
+    blob = bpe_codec.BpeBlobBuilder(vocab)
+
     flat_ops = []
     op_spans = []
     for g in games:
         ops = g.get("diagram_ops", [])
         op_spans.append((len(flat_ops), len(ops)))
         for item in ops:
-            flat_ops.append(_encode_guide_op(item))
+            flat_ops.append(_encode_guide_op(item, blob))
+
+    rule_entries = []
+    for g, (ops_off, ops_cnt) in zip(games, op_spans):
+        rules_raw = g.get("rules", [])[:4]
+        rule_count = len(rules_raw)
+        rules_offs = [str(blob.add(bpe_codec.to_thermal_ascii(r))) for r in rules_raw]
+        while len(rules_offs) < 4:
+            rules_offs.append("0xFFFF")
+
+        anchors_raw = g.get("opening_anchors", [])[:2]
+        anchor_count = len(anchors_raw)
+        anchors_offs = [str(blob.add(bpe_codec.to_thermal_ascii(a))) for a in anchors_raw]
+        while len(anchors_offs) < 2:
+            anchors_offs.append("0xFFFF")
+
+        faqs = g.get("faq", [])[:2]
+        faq_count = len(faqs)
+        faq_offs = []
+        for item in faqs:
+            q_off = blob.add(bpe_codec.to_thermal_ascii(item.get("q", "")))
+            a_off = blob.add(bpe_codec.to_thermal_ascii(item.get("a", "")))
+            faq_offs.append(f"{{{q_off}, {a_off}}}")
+        while len(faq_offs) < 2:
+            faq_offs.append("{0xFFFF, 0xFFFF}")
+
+        key_off = blob.add(bpe_codec.to_thermal_ascii(g["key"]))
+        title_off = blob.add(bpe_codec.to_thermal_ascii(g["title"]))
+        instr_off = blob.add(bpe_codec.to_thermal_ascii(g["instruction"]))
+        obj_off = blob.add(bpe_codec.to_thermal_ascii(g["objective"]))
+        val_off = blob.add(bpe_codec.to_thermal_ascii(g.get("valid_move", {}).get("caption", "")))
+        inv_off = blob.add(bpe_codec.to_thermal_ascii(g.get("invalid_move", {}).get("caption", "")))
+
+        rule_entries.extend([
+            "    {",
+            f'        {g["id"]},',
+            f"        {key_off},",
+            f"        {title_off},",
+            f"        {instr_off},",
+            f"        {obj_off},",
+            f'        {{ {", ".join(rules_offs)} }},',
+            f"        {rule_count},",
+            f"        {val_off},",
+            f"        {inv_off},",
+            f'        {{ {", ".join(anchors_offs)} }},',
+            f"        {anchor_count},",
+            f'        {{ {", ".join(faq_offs)} }},',
+            f"        {faq_count},",
+            f"        {ops_off},",
+            f"        {ops_cnt}",
+            "    },",
+        ])
 
     lines = [
         "// Automatically generated from server/data/game_rules.json by tools/datasets/build_game_rules.py",
@@ -89,6 +145,7 @@ def generate_cpp_header(data: dict) -> None:
         "#define GAME_RULES_DATASET_H",
         "",
         "#include <Arduino.h>",
+        '#include "BpeTextDict.h"',
         "",
         "enum GuideOpCode : uint8_t {",
         "    GOP_GRID = 0,",
@@ -104,37 +161,28 @@ def generate_cpp_header(data: dict) -> None:
         "};",
         "",
         "struct GuideOp {",
-        "    const char* text;",
+        "    uint16_t textOff;",
         "    int16_t a, b, c, d, e;",
         "    uint8_t panel;",
         "    uint8_t op;",
         "};",
         "",
-        f"static const size_t TOTAL_GUIDE_OPS = {len(flat_ops)};",
-        "static const GuideOp GUIDE_OPS_TABLE[TOTAL_GUIDE_OPS] PROGMEM = {",
-    ]
-    for i, op_line in enumerate(flat_ops):
-        comma = "," if i + 1 < len(flat_ops) else ""
-        lines.append(f"    {op_line}{comma}")
-    lines.extend([
-        "};",
-        "",
         "struct GameFaqItem {",
-        "    const char* question;",
-        "    const char* answer;",
+        "    uint16_t questionOff;",
+        "    uint16_t answerOff;",
         "};",
         "",
         "struct GameRuleDef {",
         "    uint8_t id;",
-        "    const char* key;",
-        "    const char* title;",
-        "    const char* instruction;",
-        "    const char* objective;",
-        "    const char* rules[4];",
+        "    uint16_t keyOff;",
+        "    uint16_t titleOff;",
+        "    uint16_t instructionOff;",
+        "    uint16_t objectiveOff;",
+        "    uint16_t rulesOff[4];",
         "    uint8_t ruleCount;",
-        "    const char* validCaption;",
-        "    const char* invalidCaption;",
-        "    const char* openingAnchors[2];",
+        "    uint16_t validCaptionOff;",
+        "    uint16_t invalidCaptionOff;",
+        "    uint16_t openingAnchorsOff[2];",
         "    uint8_t anchorCount;",
         "    GameFaqItem faq[2];",
         "    uint8_t faqCount;",
@@ -142,48 +190,23 @@ def generate_cpp_header(data: dict) -> None:
         "    uint8_t opsCount;",
         "};",
         "",
+    ]
+    lines.extend(blob.format_c_array("GAME_RULES_STRINGS"))
+    lines.extend([
+        "",
+        f"static const size_t TOTAL_GUIDE_OPS = {len(flat_ops)};",
+        "static const GuideOp GUIDE_OPS_TABLE[TOTAL_GUIDE_OPS] PROGMEM = {",
+    ])
+    for i, op_line in enumerate(flat_ops):
+        comma = "," if i + 1 < len(flat_ops) else ""
+        lines.append(f"    {op_line}{comma}")
+    lines.extend([
+        "};",
+        "",
         f"static const size_t TOTAL_GAME_RULES = {len(games)};",
         "static const GameRuleDef GAME_RULES[TOTAL_GAME_RULES] PROGMEM = {",
     ])
-
-    for g, (ops_off, ops_cnt) in zip(games, op_spans):
-        rules_strs = [f'"{escape_cpp_string(r)}"' for r in g.get("rules", [])[:4]]
-        rule_count = len(rules_strs)
-        while len(rules_strs) < 4:
-            rules_strs.append('""')
-
-        anchors = [f'"{escape_cpp_string(a)}"' for a in g.get("opening_anchors", [])[:2]]
-        anchor_count = len(anchors)
-        while len(anchors) < 2:
-            anchors.append('""')
-
-        faqs = g.get("faq", [])[:2]
-        faq_count = len(faqs)
-        faq_strs = []
-        for item in faqs:
-            q = escape_cpp_string(item.get("q", ""))
-            a = escape_cpp_string(item.get("a", ""))
-            faq_strs.append(f'{{"{q}", "{a}"}}')
-        while len(faq_strs) < 2:
-            faq_strs.append('{"", ""}')
-
-        lines.append("    {")
-        lines.append(f'        {g["id"]},')
-        lines.append(f'        "{escape_cpp_string(g["key"]) }",')
-        lines.append(f'        "{escape_cpp_string(g["title"]) }",')
-        lines.append(f'        "{escape_cpp_string(g["instruction"]) }",')
-        lines.append(f'        "{escape_cpp_string(g["objective"]) }",')
-        lines.append(f'        {{ {", ".join(rules_strs)} }},')
-        lines.append(f"        {rule_count},")
-        lines.append(f'        "{escape_cpp_string(g.get("valid_move", {}).get("caption", "")) }",')
-        lines.append(f'        "{escape_cpp_string(g.get("invalid_move", {}).get("caption", "")) }",')
-        lines.append(f'        {{ {", ".join(anchors)} }},')
-        lines.append(f"        {anchor_count},")
-        lines.append(f'        {{ {", ".join(faq_strs)} }},')
-        lines.append(f"        {faq_count},")
-        lines.append(f"        {ops_off},")
-        lines.append(f"        {ops_cnt}")
-        lines.append("    },")
+    lines.extend(rule_entries)
 
     lines.append("};")
     lines.append("")

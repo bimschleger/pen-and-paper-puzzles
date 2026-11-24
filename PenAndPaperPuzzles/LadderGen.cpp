@@ -21,14 +21,18 @@ void LadderGen::generate(LadderDifficulty difficulty) {
     }
 
     size_t chosenIdx = random(NUM_LADDER_PUZZLES_PER_DIFF) % NUM_LADDER_PUZZLES_PER_DIFF;
-    const LadderDef& chosen = pool[chosenIdx];
+    LadderDef chosen;
+    memcpy_P(&chosen, &pool[chosenIdx], sizeof(LadderDef));
 
     _wordLen = chosen.wordLen;
     _totalWords = chosen.totalWords;
     if (_totalWords > MAX_RUNGS) _totalWords = MAX_RUNGS;
 
+    char wordsBuf[96];
+    mp_bpe_decode_pgm(LADDER_STRINGS, chosen.wordsOff, wordsBuf, sizeof(wordsBuf));
+
     // Parse space-separated words
-    const char* p = chosen.words;
+    const char* p = wordsBuf;
     for (uint8_t i = 0; i < _totalWords; i++) {
         while (*p == ' ') p++;
         const char* start = p;
@@ -40,6 +44,7 @@ void LadderGen::generate(LadderDifficulty difficulty) {
     }
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void LadderGen::printToReceipt(EscPosPrinter& printer) {
     // Monospaced ASCII layout
     // Format: centered box "+---+---+---+"
@@ -95,6 +100,7 @@ void LadderGen::printToReceipt(EscPosPrinter& printer) {
     printer.print(boxIndent);
     printer.println(boxSep);
 }
+#endif
 
 bool LadderGen::printRasterToReceipt(EscPosPrinter& printer) {
     const uint16_t targetWidth = 576;

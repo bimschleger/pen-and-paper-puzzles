@@ -2,6 +2,7 @@
 #define TANGO_GEN_H
 
 #include <Arduino.h>
+#include "config.h"
 class EscPosPrinter;
 
 enum TangoDifficulty {
@@ -18,7 +19,9 @@ public:
     void generate(TangoDifficulty difficulty = TANGO_MEDIUM);
 
     // Prints formatted 80mm receipt section
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
     void printToReceipt(EscPosPrinter& printer, TangoDifficulty diff);
+#endif
     bool printRasterToReceipt(EscPosPrinter& printer, TangoDifficulty diff);
 
     int8_t getCell(uint8_t r, uint8_t c) const { return _puzzle[r][c]; }

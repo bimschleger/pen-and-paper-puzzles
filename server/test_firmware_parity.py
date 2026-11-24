@@ -312,6 +312,13 @@ def test_rule_19_ram_and_rodata_budgets():
 #include "generators/KillerDataset.h"
 #include "generators/TowersDataset.h"
 #include "generators/InequalityDataset.h"
+#include "generators/BpeTextDict.h"
+#include "generators/JumbleDataset.h"
+#include "generators/CryptogramDataset.h"
+#include "generators/GameRulesDataset.h"
+#include "generators/WordSearchGen.h"
+#include "generators/WordSearchDataset.h"
+#include "generators/LadderDataset.h"
 int main() {
     size_t stars = sizeof(STARS_EASY_REGIONS) + sizeof(STARS_MEDIUM_REGIONS) + sizeof(STARS_HARD_REGIONS) + sizeof(STARS_EXTREME_REGIONS);
 #ifdef HOST_TEST
@@ -320,6 +327,12 @@ int main() {
     size_t killer = sizeof(KILLER_EASY_DATASET) + sizeof(KILLER_MEDIUM_DATASET) + sizeof(KILLER_HARD_DATASET) + sizeof(KILLER_EXTREME_DATASET);
     size_t towers = sizeof(TOWERS_EASY_DATASET) + sizeof(TOWERS_MEDIUM_DATASET) + sizeof(TOWERS_HARD_DATASET) + sizeof(TOWERS_EXTREME_DATASET);
     size_t ineq = sizeof(INEQUALITY_EASY_DATASET) + sizeof(INEQUALITY_MEDIUM_DATASET) + sizeof(INEQUALITY_HARD_DATASET) + sizeof(INEQUALITY_EXTREME_DATASET);
+    size_t text_rodata = sizeof(MP_BPE_PAIRS)
+        + sizeof(JUMBLE_STRINGS) + sizeof(JUMBLE_DATASET)
+        + sizeof(CRYPTOGRAM_STRINGS) + sizeof(EASY_CRYPTOGRAMS) + sizeof(MEDIUM_CRYPTOGRAMS) + sizeof(HARD_CRYPTOGRAMS)
+        + sizeof(GAME_RULES_STRINGS) + sizeof(GUIDE_OPS_TABLE) + sizeof(GAME_RULES)
+        + sizeof(WS_STRINGS) + sizeof(WS_EASY_OFFSETS) + sizeof(WS_MEDIUM_OFFSETS) + sizeof(WS_HARD_OFFSETS)
+        + sizeof(LADDER_STRINGS) + sizeof(EASY_LADDERS) + sizeof(MEDIUM_LADDERS) + sizeof(HARD_LADDERS);
     size_t fonts = sizeof(THERMAL_GRID_ASCII_MAP) + sizeof(THERMAL_FONT_DEFS)
         + sizeof(TF_CAPTION_16_BITMAP) + sizeof(TF_CAPTION_16_GLYPHS)
         + sizeof(TF_BODY_20_BITMAP) + sizeof(TF_BODY_20_GLYPHS)
@@ -327,7 +340,7 @@ int main() {
         + sizeof(TF_DISPLAY_32_BITMAP) + sizeof(TF_DISPLAY_32_GLYPHS)
         + sizeof(TF_GRID_12X14_BITMAP) + sizeof(TF_GRID_12X14_GLYPHS)
         + sizeof(TF_GRID_18X21_BITMAP) + sizeof(TF_GRID_18X21_GLYPHS);
-    std::cout << (ThermalCanvas::BAND_HEIGHT * 72) << " " << (stars + killer + towers + ineq) << " " << fonts << "\n";
+    std::cout << (ThermalCanvas::BAND_HEIGHT * 72) << " " << (stars + killer + towers + ineq) << " " << fonts << " " << text_rodata << "\n";
     return 0;
 }
 """
@@ -350,20 +363,30 @@ int main() {
             assert build.returncode == 0, f"Budget probe compilation ({label}) failed:\n{build.stderr}"
             run = subprocess.run([exe], cwd=ROOT_DIR, capture_output=True, text=True)
             assert run.returncode == 0, f"Budget probe execution ({label}) failed:\n{run.stderr}"
-            band_bytes, rodata_bytes, fonts_rodata = (int(tok) for tok in run.stdout.strip().split())
-            results[label] = (band_bytes, rodata_bytes, fonts_rodata)
+            band_bytes, rodata_bytes, fonts_rodata, text_rodata = (int(tok) for tok in run.stdout.strip().split())
+            results[label] = (band_bytes, rodata_bytes, fonts_rodata, text_rodata)
 
-    band_bytes, prod_rodata, fonts_rodata = results["prod"]
-    _, host_rodata, _ = results["host"]
+    band_bytes, prod_rodata, fonts_rodata, text_rodata = results["prod"]
+    _, host_rodata, _, _ = results["host"]
     stripped_savings = host_rodata - prod_rodata
 
     assert band_bytes <= 18432, f"ThermalCanvas band buffer {band_bytes} B exceeds 18,432 B budget (Rule 19)"
     assert prod_rodata <= 38000, f"Production curated .rodata {prod_rodata} B exceeds 38,000 B budget (Rule 19)"
     assert fonts_rodata <= 16000, f"ThermalFonts.h .rodata {fonts_rodata} B exceeds 16,000 B budget (Rule 19)"
+    assert text_rodata <= 68000, f"BPE text datasets .rodata {text_rodata} B exceeds 68,000 B budget (Rule 19)"
     assert stripped_savings >= 15000, (
         f"Expected #ifdef HOST_TEST solution stripping to save >= 15,000 B, got {stripped_savings} B (prod={prod_rodata}, host={host_rodata})"
     )
-    print(f"  -> Passed! Band RAM={band_bytes:,} B (<= 18,432 B), Prod .rodata={prod_rodata:,} B (saves {stripped_savings:,} B vs HOST_TEST), ThermalFonts={fonts_rodata:,} B (<= 16,000 B).")
+    print(f"  -> Passed! Band RAM={band_bytes:,} B (<= 18,432 B), Prod .rodata={prod_rodata:,} B (saves {stripped_savings:,} B vs HOST_TEST), Text .rodata={text_rodata:,} B (<= 68,000 B), ThermalFonts={fonts_rodata:,} B (<= 16,000 B).")
+
+    # Verify all 20 generators gate STYLE_ASCII printToReceipt() in STYLE_HYBRID builds
+    gen_dir = os.path.join(FW_DIR, "src", "generators")
+    for fname in sorted(os.listdir(gen_dir)):
+        if fname.endswith("Gen.cpp") or fname.endswith("Gen.h"):
+            content = open(os.path.join(gen_dir, fname), encoding="utf-8").read()
+            assert "#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)" in content, (
+                f"{fname} must gate printToReceipt() behind #if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST) (Rule 19)"
+            )
 
 
 def run_firmware_tests(strict: bool = True):

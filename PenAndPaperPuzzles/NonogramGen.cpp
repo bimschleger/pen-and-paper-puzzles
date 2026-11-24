@@ -58,6 +58,7 @@ void NonogramGen::generate(NonogramDifficulty difficulty) {
     calculateClues();
 }
 
+#if (OFFLINE_PRINT_STYLE == STYLE_ASCII) || defined(HOST_TEST)
 void NonogramGen::printToReceipt(EscPosPrinter& printer) {
     // Find maximum depth of column clues and max row clue text width
     size_t maxColClues = 1;
@@ -132,6 +133,7 @@ void NonogramGen::printToReceipt(EscPosPrinter& printer) {
     }
     printer.println("");
 }
+#endif
 
 bool NonogramGen::printRasterToReceipt(EscPosPrinter& printer) {
     const int16_t padding = 24;
