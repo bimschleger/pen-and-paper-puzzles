@@ -87,32 +87,32 @@ bool WheelGen::printRasterToReceipt(EscPosPrinter& printer) {
     const int16_t hexRadius = 46;
     const int16_t outerX[6] = { 288, 357, 357, 288, 219, 219 };
     const int16_t outerY[6] = {  50,  90, 170, 210, 170,  90 };
-    const int16_t boxW = 500;
+    const int16_t boxW = 528;
     const int16_t boxH = 64;
     const int16_t boxX = (THERMAL_CANVAS_WIDTH - boxW) / 2;
     const int16_t boxY = 258;
 
     char benchBuf[48];
-    snprintf(benchBuf, sizeof(benchBuf), "GOOD: %d   GREAT: %d   GENIUS: %d+", (int)_good, (int)_great, (int)_genius);
+    snprintf(benchBuf, sizeof(benchBuf), "GOOD: %d  GREAT: %d  GENIUS: %d+", (int)_good, (int)_great, (int)_genius);
     char lenBuf[48];
-    snprintf(lenBuf, sizeof(lenBuf), "4L: %d   5L: %d   6L: %d   7+: %d", (int)_count4, (int)_count5, (int)_count6, (int)_count7plus);
+    snprintf(lenBuf, sizeof(lenBuf), "4L: %d  5L: %d  6L: %d  7+: %d", (int)_count4, (int)_count5, (int)_count6, (int)_count7plus);
 
     ThermalCanvas canvas;
     return canvas.renderBanded(printer, totalHeight, [&](ThermalCanvas& canvas) {
         for (int i = 0; i < 6; i++) {
             char ch = _outer[i] ? _outer[i] : ' ';
             drawHexCell(canvas, outerX[i], outerY[i], hexRadius, 2);
-            canvas.drawChar(outerX[i] - 9, outerY[i] - 10, ch, 3);
+            canvas.drawChar(outerX[i] - 10, outerY[i] - 11, ch, 3);
         }
 
         drawHexCell(canvas, xc, yc, hexRadius, 2);
         drawHexCell(canvas, xc, yc, hexRadius - 4, 2);
-        canvas.drawChar(xc - 9, yc - 10, _center, 3);
+        canvas.drawChar(xc - 10, yc - 11, _center, 3);
 
         canvas.drawRect(boxX, boxY, boxW, boxH, 2);
-        canvas.drawCenteredText(boxY + 9, benchBuf, 2);
+        canvas.drawCenteredText(boxY + 8, benchBuf, 2);
         canvas.drawHLine(boxX, boxY + 32, boxW, 1);
-        canvas.drawCenteredText(boxY + 41, lenBuf, 2);
+        canvas.drawCenteredText(boxY + 40, lenBuf, 2);
 
         canvas.drawHLine(48, 340, 220, 1);
         canvas.drawHLine(308, 340, 220, 1);

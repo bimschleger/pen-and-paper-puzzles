@@ -676,7 +676,7 @@ class ThermalBitmap:
 
     def draw_text(self, x: int, y: int, text: str, scale: int = 2, color: int = 1):
         cur_x = x
-        char_w = 6 * scale + max(1, scale // 2)
+        char_w = 14 if scale == 2 else (6 * scale + max(1, scale // 2))
         for ch in text:
             self.draw_char(cur_x, y, ch, scale=scale, color=color)
             cur_x += char_w
@@ -684,7 +684,7 @@ class ThermalBitmap:
     def get_text_width(self, text: str, scale: int = 2) -> int:
         if not text or scale == 0:
             return 0
-        char_w = 6 * scale + max(1, scale // 2)
+        char_w = 14 if scale == 2 else (6 * scale + max(1, scale // 2))
         return len(text) * char_w
 
     def draw_centered_text(self, y: int, text: str, scale: int = 2, color: int = 1):
@@ -775,7 +775,8 @@ def render_puzzle_header_raster(
     instruction: str = "",
 ) -> bytes:
     ref = ThermalBitmap(THERMAL_WIDTH_DOTS, 8)
-    cur_y = 36
+    title_h = ref.get_font_line_height(FONT_SUBHEAD_22)
+    cur_y = 4 + title_h + 4
     if difficulty:
         cur_y += ref.get_font_line_height(FONT_CAPTION_16) + 4
     if instruction:
@@ -784,15 +785,8 @@ def render_puzzle_header_raster(
 
     bmp = ThermalBitmap(THERMAL_WIDTH_DOTS, total_h)
     if title:
-        tw = bmp.measure_text_font(title, FONT_SUBHEAD_22)
-        tx = (THERMAL_WIDTH_DOTS - tw) // 2
-        rule_y = 4 + bmp.get_font_line_height(FONT_SUBHEAD_22) // 2
-        if tx - 14 > 20:
-            bmp.draw_hline(20, rule_y, tx - 14 - 20, thickness=1, color=1)
-        if tx + tw + 14 < 556:
-            bmp.draw_hline(tx + tw + 14, rule_y, 556 - (tx + tw + 14), thickness=1, color=1)
-        bmp.draw_text_font(tx, 4, title, FONT_SUBHEAD_22, color=1)
-    cy = 36
+        bmp.draw_centered_text_font(4, title, FONT_SUBHEAD_22, color=1)
+    cy = 4 + bmp.get_font_line_height(FONT_SUBHEAD_22) + 4
     if difficulty:
         bmp.draw_centered_text_font(cy, f"DIFFICULTY: {difficulty}", FONT_CAPTION_16, color=1)
         cy += bmp.get_font_line_height(FONT_CAPTION_16) + 4

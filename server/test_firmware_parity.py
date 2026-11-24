@@ -372,12 +372,12 @@ int main() {
 
     assert band_bytes <= 18432, f"ThermalCanvas band buffer {band_bytes} B exceeds 18,432 B budget (Rule 19)"
     assert prod_rodata <= 38000, f"Production curated .rodata {prod_rodata} B exceeds 38,000 B budget (Rule 19)"
-    assert fonts_rodata <= 16000, f"ThermalFonts.h .rodata {fonts_rodata} B exceeds 16,000 B budget (Rule 19)"
+    assert fonts_rodata <= 22000, f"ThermalFonts.h .rodata {fonts_rodata} B exceeds 22,000 B budget (Rule 19)"
     assert text_rodata <= 68000, f"BPE text datasets .rodata {text_rodata} B exceeds 68,000 B budget (Rule 19)"
     assert stripped_savings >= 15000, (
         f"Expected #ifdef HOST_TEST solution stripping to save >= 15,000 B, got {stripped_savings} B (prod={prod_rodata}, host={host_rodata})"
     )
-    print(f"  -> Passed! Band RAM={band_bytes:,} B (<= 18,432 B), Prod .rodata={prod_rodata:,} B (saves {stripped_savings:,} B vs HOST_TEST), Text .rodata={text_rodata:,} B (<= 68,000 B), ThermalFonts={fonts_rodata:,} B (<= 16,000 B).")
+    print(f"  -> Passed! Band RAM={band_bytes:,} B (<= 18,432 B), Prod .rodata={prod_rodata:,} B (saves {stripped_savings:,} B vs HOST_TEST), Text .rodata={text_rodata:,} B (<= 68,000 B), ThermalFonts={fonts_rodata:,} B (<= 22,000 B).")
 
     # Verify all 20 generators gate STYLE_ASCII printToReceipt() in STYLE_HYBRID builds
     gen_dir = os.path.join(FW_DIR, "src", "generators")

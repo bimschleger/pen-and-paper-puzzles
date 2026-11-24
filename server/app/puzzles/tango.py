@@ -220,8 +220,8 @@ class TangoPuzzle(BasePuzzle):
                 if e in (1, 2):
                     x = padding + (c + 1) * cell_size
                     y = padding + r * cell_size + cell_size // 2
-                    tb.fill_rect(x - 8, y - 8, 16, 16, color=0)
-                    tb.draw_char(x - 5, y - 7, "=" if e == 1 else "X", scale=2, color=1)
+                    tb.fill_rect(x - 9, y - 9, 18, 18, color=0)
+                    tb.draw_char(x - 8, y - 8, "=" if e == 1 else "X", scale=2, color=1)
 
         for r in range(size - 1):
             for c in range(size):
@@ -229,8 +229,8 @@ class TangoPuzzle(BasePuzzle):
                 if e in (1, 2):
                     x = padding + c * cell_size + cell_size // 2
                     y = padding + (r + 1) * cell_size
-                    tb.fill_rect(x - 8, y - 8, 16, 16, color=0)
-                    tb.draw_char(x - 5, y - 7, "=" if e == 1 else "X", scale=2, color=1)
+                    tb.fill_rect(x - 9, y - 9, 18, 18, color=0)
+                    tb.draw_char(x - 8, y - 8, "=" if e == 1 else "X", scale=2, color=1)
 
         return tb.to_escpos()
 

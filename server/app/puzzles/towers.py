@@ -182,32 +182,32 @@ class TowersPuzzle(BasePuzzle):
         left = clues.get("left", [0] * size)
         right = clues.get("right", [0] * size)
 
-        # Top exterior clues (scale 2: 10x14px glyph, 12px char width)
+        # Top exterior clues (scale 2: 16x16px glyph box)
         for c in range(size):
             if top[c] > 0:
-                cx = grid_x + c * cell_size + (cell_size - 12) // 2
-                cy = grid_y - 20
+                cx = grid_x + c * cell_size + (cell_size - 16) // 2
+                cy = grid_y - 22
                 tb.draw_text(cx, cy, str(top[c]), scale=2)
 
         # Bottom exterior clues
         for c in range(size):
             if bottom[c] > 0:
-                cx = grid_x + c * cell_size + (cell_size - 12) // 2
+                cx = grid_x + c * cell_size + (cell_size - 16) // 2
                 cy = grid_y + grid_w + 6
                 tb.draw_text(cx, cy, str(bottom[c]), scale=2)
 
         # Left exterior clues
         for r in range(size):
             if left[r] > 0:
-                cx = grid_x - 18
-                cy = grid_y + r * cell_size + (cell_size - 14) // 2
+                cx = grid_x - 20
+                cy = grid_y + r * cell_size + (cell_size - 16) // 2
                 tb.draw_text(cx, cy, str(left[r]), scale=2)
 
         # Right exterior clues
         for r in range(size):
             if right[r] > 0:
-                cx = grid_x + grid_w + 6
-                cy = grid_y + r * cell_size + (cell_size - 14) // 2
+                cx = grid_x + grid_w + 4
+                cy = grid_y + r * cell_size + (cell_size - 16) // 2
                 tb.draw_text(cx, cy, str(right[r]), scale=2)
 
         return tb.to_escpos()

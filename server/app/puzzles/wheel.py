@@ -429,26 +429,26 @@ class WheelPuzzle(BasePuzzle):
             poly = get_hex_polygon(px, py, hex_radius)
             tb.draw_polygon(poly, thickness=2, color=1)
             letter_ch = outer[idx]
-            tb.draw_char(px - 9, py - 10, letter_ch, scale=3)
+            tb.draw_char(px - 10, py - 11, letter_ch, scale=3)
 
         # Draw center hexagon with double-thick frame
         center_poly = get_hex_polygon(xc, yc, hex_radius)
         tb.draw_polygon(center_poly, thickness=2, color=1)
         center_inner = get_hex_polygon(xc, yc, hex_radius - 4)
         tb.draw_polygon(center_inner, thickness=2, color=1)
-        tb.draw_char(xc - 9, yc - 10, center, scale=3)
+        tb.draw_char(xc - 10, yc - 11, center, scale=3)
 
         # Draw Consolidated 2-Row Target Benchmarks & Lengths box with internal divider
         box_y = 258
         box_h = 64
-        box_w = 500
+        box_w = 528
         box_x = (target_width - box_w) // 2
         tb.draw_rect(box_x, box_y, box_w, box_h, thickness=2, color=1)
-        bench_text = f"GOOD: {b_good}   GREAT: {b_great}   GENIUS: {b_genius}+"
-        tb.draw_centered_text(box_y + 9, bench_text, scale=2, color=1)
+        bench_text = f"GOOD: {b_good}  GREAT: {b_great}  GENIUS: {b_genius}+"
+        tb.draw_centered_text(box_y + 8, bench_text, scale=2, color=1)
         tb.draw_hline(box_x, box_y + 32, box_w, thickness=1, color=1)
-        len_text = f"4L: {c4}   5L: {c5}   6L: {c6}   7+: {c7}"
-        tb.draw_centered_text(box_y + 41, len_text, scale=2, color=1)
+        len_text = f"4L: {c4}  5L: {c5}  6L: {c6}  7+: {c7}"
+        tb.draw_centered_text(box_y + 40, len_text, scale=2, color=1)
 
         # Ruled handwriting lines (3 rows, 2 columns)
         tb.draw_hline(48, 340, 220, thickness=1, color=1)

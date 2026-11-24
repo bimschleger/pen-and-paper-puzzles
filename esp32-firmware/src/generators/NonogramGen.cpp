@@ -166,7 +166,7 @@ bool NonogramGen::printRasterToReceipt(EscPosPrinter& printer) {
                 int16_t dist = (numClues - 1 - k) * colClueItemH;
                 char buf[4];
                 snprintf(buf, sizeof(buf), "%d", _colClues[c][k]);
-                int16_t clueW = (strlen(buf) > 1) ? 23 : 10;
+                int16_t clueW = (strlen(buf) > 1) ? 28 : 16;
                 int16_t colCx = gridX + c * cellSize + (cellSize - clueW) / 2;
                 canvas.drawText(colCx, gridY - 26 - dist, buf, 2);
             }
@@ -177,14 +177,14 @@ bool NonogramGen::printRasterToReceipt(EscPosPrinter& printer) {
         }
 
         for (uint8_t r = 0; r < _size; r++) {
-            int16_t rowCy = gridY + r * cellSize + cellSize / 2 - 7;
+            int16_t rowCy = gridY + r * cellSize + cellSize / 2 - 8;
             size_t numClues = _rowClues[r].size();
             for (size_t k = 0; k < numClues; k++) {
                 int16_t dist = (numClues - 1 - k) * 20;
                 char buf[4];
                 snprintf(buf, sizeof(buf), "%d", _rowClues[r][k]);
-                int16_t charOffset = (strlen(buf) > 1) ? 13 : 0;
-                canvas.drawText(gridX - 22 - dist - charOffset, rowCy, buf, 2);
+                int16_t charOffset = (strlen(buf) > 1) ? 14 : 0;
+                canvas.drawText(gridX - 24 - dist - charOffset, rowCy, buf, 2);
             }
             if (r > 0) {
                 bool isMajor = (r % majorInterval == 0);

@@ -217,14 +217,14 @@ class TentsPuzzle(BasePuzzle):
         # Column clues
         for c in range(size):
             clue = col_clues[c] if c < len(col_clues) else 0
-            cx = grid_x + c * cell_size + (cell_size - 12) // 2
+            cx = grid_x + c * cell_size + (cell_size - 16) // 2
             tb.draw_text(cx, grid_y - 24, str(clue), scale=2)
 
         # Row clues
         for r in range(size):
             clue = row_clues[r] if r < len(row_clues) else 0
-            cy = grid_y + r * cell_size + (cell_size - 14) // 2
-            tb.draw_text(padding + 16, cy, str(clue), scale=2)
+            cy = grid_y + r * cell_size + (cell_size - 16) // 2
+            tb.draw_text(padding + 14, cy, str(clue), scale=2)
 
         # Trees ('T')
         for r in range(size):

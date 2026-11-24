@@ -223,7 +223,7 @@ bool BridgesGen::printRasterToReceipt(EscPosPrinter& printer, BridgesDifficulty 
 
             canvas.fillCircle(cx, cy, islandRadius, 0);
             canvas.drawCircle(cx, cy, islandRadius, 2, 1);
-            canvas.drawChar(cx - 5, cy - 7, '0' + _islands[i].count, 2, 1);
+            canvas.drawChar(cx - 8, cy - 8, '0' + _islands[i].count, 2, 1);
         }
     });
 }

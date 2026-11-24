@@ -431,8 +431,8 @@ bool TangoGen::printRasterToReceipt(EscPosPrinter& printer, TangoDifficulty /*di
                 if (e == 1 || e == 2) {
                     int16_t x = padding + (c + 1) * cellSize;
                     int16_t y = padding + r * cellSize + cellSize / 2;
-                    canvas.fillRect(x - 8, y - 8, 16, 16, 0);
-                    canvas.drawChar(x - 5, y - 7, (e == 1) ? '=' : 'X', 2, 1);
+                    canvas.fillRect(x - 9, y - 9, 18, 18, 0);
+                    canvas.drawChar(x - 8, y - 8, (e == 1) ? '=' : 'X', 2, 1);
                 }
             }
         }
@@ -443,8 +443,8 @@ bool TangoGen::printRasterToReceipt(EscPosPrinter& printer, TangoDifficulty /*di
                 if (e == 1 || e == 2) {
                     int16_t x = padding + c * cellSize + cellSize / 2;
                     int16_t y = padding + (r + 1) * cellSize;
-                    canvas.fillRect(x - 8, y - 8, 16, 16, 0);
-                    canvas.drawChar(x - 5, y - 7, (e == 1) ? '=' : 'X', 2, 1);
+                    canvas.fillRect(x - 9, y - 9, 18, 18, 0);
+                    canvas.drawChar(x - 8, y - 8, (e == 1) ? '=' : 'X', 2, 1);
                 }
             }
         }

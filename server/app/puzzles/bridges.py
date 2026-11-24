@@ -227,7 +227,7 @@ class BridgesPuzzle(BasePuzzle):
             cy = padding + r * step
 
             tb.draw_circle(cx, cy, island_radius, thickness=2, color=1)
-            tb.draw_char(cx - 5, cy - 7, str(count), scale=2, color=1)
+            tb.draw_char(cx - 8, cy - 8, str(count), scale=2, color=1)
 
         return tb.to_escpos()
 
